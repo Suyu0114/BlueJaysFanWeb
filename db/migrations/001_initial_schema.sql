@@ -1,8 +1,10 @@
 -- P0: initial schema for Blue Jays fan web
+-- NOTE: this Supabase project is SHARED with other projects, so every table
+-- in this app is prefixed with `web_` to avoid name collisions.
 -- Apply via:  psql "$DATABASE_URL" -f db/migrations/001_initial_schema.sql
 -- or paste into Supabase Studio → SQL editor.
 
-create table if not exists players (
+create table if not exists web_players (
   mlbam_id     bigint primary key,
   name         text not null,
   position     text,
@@ -13,13 +15,13 @@ create table if not exists players (
   birthdate    date
 );
 
-create table if not exists statcast_events (
+create table if not exists web_statcast_events (
   id            bigserial primary key,
   game_pk       bigint not null,
   game_date     date   not null,
   game_type     char(1),
-  batter_id     bigint not null references players(mlbam_id),
-  pitcher_id    bigint not null references players(mlbam_id),
+  batter_id     bigint not null references web_players(mlbam_id),
+  pitcher_id    bigint not null references web_players(mlbam_id),
   at_bat_number int    not null,
   pitch_number  int    not null,
   event         text,                  -- at-bat outcome (single/double/home_run/...)
@@ -39,13 +41,13 @@ create table if not exists statcast_events (
   unique (game_pk, batter_id, pitcher_id, at_bat_number, pitch_number)
 );
 
-create index if not exists statcast_events_batter_date_idx
-  on statcast_events (batter_id, game_date);
-create index if not exists statcast_events_pitcher_date_idx
-  on statcast_events (pitcher_id, game_date);
+create index if not exists web_statcast_events_batter_date_idx
+  on web_statcast_events (batter_id, game_date);
+create index if not exists web_statcast_events_pitcher_date_idx
+  on web_statcast_events (pitcher_id, game_date);
 
-create table if not exists player_season_stats (
-  mlbam_id   bigint not null references players(mlbam_id),
+create table if not exists web_player_season_stats (
+  mlbam_id   bigint not null references web_players(mlbam_id),
   season     int    not null,
   ops        numeric,
   wrc_plus   numeric,

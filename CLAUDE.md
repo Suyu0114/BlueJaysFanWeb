@@ -19,6 +19,17 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 
 ## Critical rules (must follow)
 
+### Python environment (no exceptions)
+- **Always use the existing conda env `MLBxBaZi`** for any Python / ETL work.
+- **Never** create a `venv`, `.venv`, or a `requirements.txt` for a fresh venv.
+- Run scripts via `conda run -n MLBxBaZi python ...` or after `conda activate MLBxBaZi`.
+- Install missing packages into that env: `conda run -n MLBxBaZi pip install <pkg>`.
+
+### Supabase tables are shared — prefix everything with `web_`
+- This Supabase project is **shared with other projects** that already have a `players` table.
+- **Every table for this app is prefixed `web_`**: `web_players`, `web_statcast_events`, `web_player_season_stats`.
+- Never create an unprefixed table here; it will collide.
+
 ### Audience & language
 - **Primary audience: English-speaking Toronto locals**, including non-Chinese speakers curious about BaZi. Chinese (TW/HK) fans are secondary.
 - UI default locale = `en`. `zh-TW` is an optional switch.
@@ -29,7 +40,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 - All player names: `Vladimir Guerrero Jr.`, `Bichette`, `Gausman`, …
 - All baseball jargon: `OPS`, `wRC+`, `ERA`, `FIP`, `Spray Chart`, `Statcast`, `Launch Angle`, `Exit Velocity`, `FRV`, …
 - Only translate: navigation, buttons, prose descriptions, BaZi explanations.
-- **Do not add a `name_tc` column to `players`.** The schema has a single `name` (English) field.
+- **Do not add a `name_tc` column to `web_players`.** The schema has a single `name` (English) field.
 
 ### Data sources
 - pybaseball is the only data source for MVP (free, covers Statcast batter/pitcher/fielding).
@@ -46,7 +57,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
   x_feet = 2.5 * (hc_x - 125.42)
   y_feet = 2.5 * (198.27 - hc_y)
   ```
-- Upsert key for `statcast_events`: `(game_pk, batter_id, pitcher_id, at_bat_number, pitch_number)`.
+- Upsert key for `web_statcast_events`: `(game_pk, batter_id, pitcher_id, at_bat_number, pitch_number)`.
 
 ---
 
@@ -70,11 +81,13 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
 ## Folder layout (target — not all exist yet)
 
 ```
-/etl/                          # Python: pybaseball → Supabase
+/etl/                          # Python (conda env MLBxBaZi): pybaseball → Supabase
   pull_statcast.py
   transform.py                 # hc_x/y → feet, game_type filter
-  roster.py                    # 26-man maintenance
-  requirements.txt
+  db.py                        # psycopg3 connection + upserts
+  roster.py                    # 26-man maintenance (not built yet)
+/db/migrations/                # plain SQL, apply via psql or Supabase Studio
+  001_initial_schema.sql
 /.github/workflows/etl.yml     # daily cron
 /web/                          # Next.js app
   app/[locale]/
@@ -112,22 +125,21 @@ cd web
 pnpm install
 pnpm dev                       # http://localhost:3000
 
-# ETL (one-shot, local)
-cd etl
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python pull_statcast.py --player 665489 --season 2026   # Vladdy = 665489
+# ETL (one-shot, local) — uses the existing conda env, NOT a venv
+conda activate MLBxBaZi
+python etl/pull_statcast.py                         # defaults to Vladdy 2025
+python etl/pull_statcast.py --player 665489 --start 2026-03-27 --end 2026-05-26
 ```
 
-Env vars live in `.env.local` (web) and `.env` (etl). See `.env.example` at repo root.
+Env vars live in `.env` at the repo root (single `DATABASE_URL`). The ETL loads
+`.env` from the repo root or `etl/`, whichever exists. See `.env.example`.
 
 ---
 
 ## Conventions
 
 - **Server components by default.** Fetch from Supabase in server components; only drop to `"use client"` when D3 / interactivity demands it.
-- **Pre-aggregate in ETL where possible.** Player season stats go in `player_season_stats`; pages should not aggregate 3000 rows on every request.
+- **Pre-aggregate in ETL where possible.** Player season stats go in `web_player_season_stats`; pages should not aggregate 3000 rows on every request.
 - **D3 components receive plain JSON props** (`BattedBallEvent[]`), not Supabase clients. Keep them framework-pure for easier testing.
 - **No new dependencies without a clear reason.** The stack is intentionally small.
 

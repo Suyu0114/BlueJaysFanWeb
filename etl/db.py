@@ -36,11 +36,11 @@ def _to_python(value: Any) -> Any:
 def upsert_players(conn, rows: Iterable[dict]) -> int:
     """Insert players; on conflict, only fill name if the existing one is blank."""
     sql = """
-        insert into players (mlbam_id, name)
+        insert into web_players (mlbam_id, name)
         values (%(mlbam_id)s, %(name)s)
         on conflict (mlbam_id) do update
         set name = excluded.name
-        where players.name is null or players.name = ''
+        where web_players.name is null or web_players.name = ''
     """
     rows = list(rows)
     if not rows:
@@ -78,7 +78,7 @@ def upsert_statcast_events(conn, df: pd.DataFrame) -> int:
         f"{c} = excluded.{c}" for c in STATCAST_COLUMNS if c not in key_cols
     )
     sql = f"""
-        insert into statcast_events ({cols})
+        insert into web_statcast_events ({cols})
         values ({placeholders})
         on conflict (game_pk, batter_id, pitcher_id, at_bat_number, pitch_number)
         do update set {set_clause}
