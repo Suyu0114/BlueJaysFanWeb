@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import { getRoster } from "@/lib/players";
 
 export default async function PlayersPage({
@@ -22,32 +23,34 @@ export default async function PlayersPage({
       ) : (
         <ul className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {players.map((p) => (
-            <li
-              key={p.mlbam_id}
-              className="rounded-xl border border-brick/20 bg-white p-4 transition-shadow hover:border-brick hover:shadow-md"
-            >
-              {p.headshot_url && (
-                <Image
-                  src={p.headshot_url}
-                  alt={p.name}
-                  width={120}
-                  height={120}
-                  unoptimized
-                  className="mx-auto rounded-full bg-papaya"
-                />
-              )}
-              <div className="mt-3 text-center">
-                <div className="font-medium text-navy">{p.name}</div>
-                <div className="mt-1 text-xs text-navy/60">
-                  {p.position}
-                  {p.bats && p.throws && (
-                    <>
-                      {" · "}
-                      {t("bats")} {p.bats} / {t("throws")} {p.throws}
-                    </>
-                  )}
+            <li key={p.mlbam_id}>
+              <Link
+                href={`/players/${p.mlbam_id}/batting`}
+                className="block rounded-xl border border-brick/20 bg-white p-4 transition-shadow hover:border-brick hover:shadow-md"
+              >
+                {p.headshot_url && (
+                  <Image
+                    src={p.headshot_url}
+                    alt={p.name}
+                    width={120}
+                    height={120}
+                    unoptimized
+                    className="mx-auto rounded-full bg-papaya"
+                  />
+                )}
+                <div className="mt-3 text-center">
+                  <div className="font-medium text-navy">{p.name}</div>
+                  <div className="mt-1 text-xs text-navy/60">
+                    {p.position}
+                    {p.bats && p.throws && (
+                      <>
+                        {" · "}
+                        {t("bats")} {p.bats} / {t("throws")} {p.throws}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </Link>
             </li>
           ))}
         </ul>

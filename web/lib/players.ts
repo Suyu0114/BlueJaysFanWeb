@@ -17,3 +17,15 @@ export async function getRoster(): Promise<RosterPlayer[]> {
     order by position nulls last, name
   `;
 }
+
+export async function getPlayer(
+  mlbamId: number,
+): Promise<RosterPlayer | null> {
+  const rows = await sql<RosterPlayer[]>`
+    select mlbam_id, name, position, bats, throws, headshot_url
+    from web_players
+    where mlbam_id = ${mlbamId}
+    limit 1
+  `;
+  return rows[0] ?? null;
+}

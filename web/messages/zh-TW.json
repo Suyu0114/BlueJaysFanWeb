@@ -17,6 +17,20 @@
     "throws": "投球",
     "empty": "尚無球員資料，請執行 roster ETL 匯入名單。"
   },
+  "Batting": {
+    "sprayChart": "Spray Chart",
+    "subtitle": "2025 例行賽的每一顆擊球。",
+    "battedBalls": "顆擊球",
+    "noData": "尚無擊球資料。",
+    "legendHomeRun": "HR",
+    "legendExtraBase": "Extra-base hit",
+    "legendSingle": "Single",
+    "legendOut": "Out",
+    "tipDate": "日期",
+    "tipPitch": "球種",
+    "tipExitVelo": "Exit Velocity",
+    "tipLaunchAngle": "Launch Angle"
+  },
   "About": {
     "title": "關於",
     "body": "這是一個球迷專案。Statcast 數據來自 pybaseball / Baseball Savant，與 Toronto Blue Jays 及 MLB 無官方關聯。"

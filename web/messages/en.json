@@ -17,6 +17,20 @@
     "throws": "Throws",
     "empty": "No players yet. Run the roster ETL to populate the table."
   },
+  "Batting": {
+    "sprayChart": "Spray Chart",
+    "subtitle": "Every batted ball from the 2025 regular season.",
+    "battedBalls": "batted balls",
+    "noData": "No batted-ball data yet.",
+    "legendHomeRun": "HR",
+    "legendExtraBase": "Extra-base hit",
+    "legendSingle": "Single",
+    "legendOut": "Out",
+    "tipDate": "Date",
+    "tipPitch": "Pitch",
+    "tipExitVelo": "Exit Velocity",
+    "tipLaunchAngle": "Launch Angle"
+  },
   "About": {
     "title": "About",
     "body": "A fan project. Statcast data via pybaseball / Baseball Savant. Not affiliated with the Toronto Blue Jays or MLB."
