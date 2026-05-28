@@ -1,0 +1,27 @@
+{
+  "Nav": {
+    "brand": "Blue Jays Fan Hub",
+    "home": "首頁",
+    "players": "球員",
+    "about": "關於"
+  },
+  "Home": {
+    "title": "Toronto Blue Jays — 球迷中心",
+    "subtitle": "給藍鳥球迷的數據視覺化與新手友善的球員頁面。",
+    "viewRoster": "查看 26 人現役名單"
+  },
+  "Roster": {
+    "title": "現役名單",
+    "subtitle": "目前 26 人名單",
+    "bats": "打擊",
+    "throws": "投球",
+    "empty": "尚無球員資料，請執行 roster ETL 匯入名單。"
+  },
+  "About": {
+    "title": "關於",
+    "body": "這是一個球迷專案。Statcast 數據來自 pybaseball / Baseball Savant，與 Toronto Blue Jays 及 MLB 無官方關聯。"
+  },
+  "LocaleSwitcher": {
+    "label": "語言"
+  }
+}

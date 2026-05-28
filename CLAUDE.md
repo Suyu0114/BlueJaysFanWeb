@@ -65,7 +65,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 
 | Layer | Choice |
 |---|---|
-| Frontend | Next.js 15 App Router + TypeScript |
+| Frontend | Next.js 16 App Router + TypeScript |
 | Styling | Tailwind CSS + shadcn/ui |
 | i18n | `next-intl` with `[locale]` route segments |
 | Charts | D3.js (spray / pitch zone / fielding heatmap) + Recharts (KPI bars / lines) |
@@ -120,10 +120,10 @@ v2 routes to leave room for but not implement: `/[locale]/players/[id]/bazi/`, `
 Nothing is scaffolded yet. When initialized:
 
 ```powershell
-# Web
+# Web (needs DATABASE_URL in web/.env.local — Next.js does not read the repo-root .env)
 cd web
-pnpm install
-pnpm dev                       # http://localhost:3000
+pnpm install                   # if pnpm is missing: npm install -g pnpm
+pnpm dev                       # http://localhost:3000  (locale routing via proxy.ts)
 
 # ETL (one-shot, local) — uses the existing conda env, NOT a venv
 conda activate MLBxBaZi

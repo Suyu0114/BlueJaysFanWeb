@@ -1,0 +1,27 @@
+{
+  "Nav": {
+    "brand": "Blue Jays Fan Hub",
+    "home": "Home",
+    "players": "Players",
+    "about": "About"
+  },
+  "Home": {
+    "title": "Toronto Blue Jays — Fan Hub",
+    "subtitle": "Data visualizations and beginner-friendly player pages for Blue Jays fans.",
+    "viewRoster": "View the 26-man roster"
+  },
+  "Roster": {
+    "title": "Active Roster",
+    "subtitle": "Current 26-man roster",
+    "bats": "Bats",
+    "throws": "Throws",
+    "empty": "No players yet. Run the roster ETL to populate the table."
+  },
+  "About": {
+    "title": "About",
+    "body": "A fan project. Statcast data via pybaseball / Baseball Savant. Not affiliated with the Toronto Blue Jays or MLB."
+  },
+  "LocaleSwitcher": {
+    "label": "Language"
+  }
+}
