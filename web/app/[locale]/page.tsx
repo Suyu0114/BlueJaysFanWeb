@@ -17,12 +17,12 @@ export default function HomePage({
       <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
         {t("title")}
       </h1>
-      <p className="mt-4 max-w-prose text-lg text-zinc-600 dark:text-zinc-400">
+      <p className="mt-4 max-w-prose text-lg text-navy/70">
         {t("subtitle")}
       </p>
       <Link
         href="/players"
-        className="mt-8 inline-flex items-center rounded-full bg-blue-700 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-800"
+        className="mt-8 inline-flex items-center rounded-full bg-brick px-5 py-2.5 text-sm font-medium text-papaya transition-colors hover:bg-lava"
       >
         {t("viewRoster")}
       </Link>

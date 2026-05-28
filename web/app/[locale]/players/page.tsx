@@ -15,7 +15,7 @@ export default async function PlayersPage({
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-      <p className="mt-1 text-sm text-zinc-500">{t("subtitle")}</p>
+      <p className="mt-1 text-sm text-navy/60">{t("subtitle")}</p>
 
       {players.length === 0 ? (
         <p className="mt-8 text-zinc-500">{t("empty")}</p>
@@ -24,7 +24,7 @@ export default async function PlayersPage({
           {players.map((p) => (
             <li
               key={p.mlbam_id}
-              className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+              className="rounded-xl border border-brick/20 bg-white p-4 transition-shadow hover:border-brick hover:shadow-md"
             >
               {p.headshot_url && (
                 <Image
@@ -33,12 +33,12 @@ export default async function PlayersPage({
                   width={120}
                   height={120}
                   unoptimized
-                  className="mx-auto rounded-full bg-zinc-100 dark:bg-zinc-800"
+                  className="mx-auto rounded-full bg-papaya"
                 />
               )}
               <div className="mt-3 text-center">
-                <div className="font-medium">{p.name}</div>
-                <div className="mt-1 text-xs text-zinc-500">
+                <div className="font-medium text-navy">{p.name}</div>
+                <div className="mt-1 text-xs text-navy/60">
                   {p.position}
                   {p.bats && p.throws && (
                     <>

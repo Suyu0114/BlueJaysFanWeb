@@ -6,19 +6,19 @@ export function Header() {
   const t = useTranslations("Nav");
 
   return (
-    <header className="border-b border-zinc-200 dark:border-zinc-800">
+    <header className="border-b-2 border-brick bg-navy text-papaya">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
         <Link href="/" className="font-semibold tracking-tight">
           {t("brand")}
         </Link>
         <nav className="flex items-center gap-4 text-sm">
-          <Link href="/" className="hover:underline">
+          <Link href="/" className="transition-colors hover:text-steel">
             {t("home")}
           </Link>
-          <Link href="/players" className="hover:underline">
+          <Link href="/players" className="transition-colors hover:text-steel">
             {t("players")}
           </Link>
-          <Link href="/about" className="hover:underline">
+          <Link href="/about" className="transition-colors hover:text-steel">
             {t("about")}
           </Link>
           <LocaleSwitcher />

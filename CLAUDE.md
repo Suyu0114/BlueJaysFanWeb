@@ -143,6 +143,22 @@ Env vars live in `.env` at the repo root (single `DATABASE_URL`). The ETL loads
 - **D3 components receive plain JSON props** (`BattedBallEvent[]`), not Supabase clients. Keep them framework-pure for easier testing.
 - **No new dependencies without a clear reason.** The stack is intentionally small.
 
+## Theme / colors
+
+Light/warm theme (no dark mode). Palette is defined as Tailwind v4 `@theme` tokens in `web/app/globals.css` and used via utilities (`bg-papaya`, `text-navy`, `border-brick`, …):
+
+| Token | Hex | Role |
+|---|---|---|
+| `papaya` | `#fdf0d5` | primary page background |
+| `navy` | `#003049` | secondary surfaces (header) + body text |
+| `steel` | `#669bbc` | accents / hover (not body text — too low contrast on papaya) |
+| `lava` | `#780000` | lines / dark-red hover (e.g. button hover) |
+| `brick` | `#c1121f` | lines / primary action (buttons, card borders) |
+
+Reuse these tokens in charts too (e.g. SprayChart marker colors), don't introduce new ad-hoc colors.
+
+> Turbopack gotcha: after changing `@theme` in `globals.css`, custom color utilities may not regenerate. Stop dev, delete `web/.next`, restart.
+
 ---
 
 ## Phases (current = P0)
