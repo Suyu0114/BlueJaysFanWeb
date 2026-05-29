@@ -37,6 +37,23 @@
     "tipExitVelo": "Exit Velocity",
     "tipLaunchAngle": "Launch Angle"
   },
+  "Pitching": {
+    "title": "Pitch Mix",
+    "subtitle": "2025 例行賽投出的每一顆球。",
+    "noData": "尚無投球資料。",
+    "showing": "共 {total} 球，顯示 {shown} 球",
+    "filterMonth": "月份",
+    "filterFullSeason": "整季",
+    "filterPitchType": "球種",
+    "filterBatterHand": "對戰打者手別",
+    "filterAll": "全部",
+    "usageTitle": "使用比例",
+    "locationTitle": "進壘位置（投手視角）",
+    "colCount": "球數",
+    "colAvgVelo": "平均球速",
+    "heatmapLow": "少",
+    "heatmapHigh": "多"
+  },
   "About": {
     "title": "關於",
     "body": "這是一個球迷專案。Statcast 數據來自 pybaseball / Baseball Savant，與 Toronto Blue Jays 及 MLB 無官方關聯。"

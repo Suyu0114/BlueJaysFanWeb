@@ -37,6 +37,23 @@
     "tipExitVelo": "Exit Velocity",
     "tipLaunchAngle": "Launch Angle"
   },
+  "Pitching": {
+    "title": "Pitch Mix",
+    "subtitle": "Every pitch thrown in the 2025 regular season.",
+    "noData": "No pitch data yet.",
+    "showing": "Showing {shown} of {total} pitches",
+    "filterMonth": "Month",
+    "filterFullSeason": "Full season",
+    "filterPitchType": "Pitch type",
+    "filterBatterHand": "Batter hand",
+    "filterAll": "All",
+    "usageTitle": "Usage",
+    "locationTitle": "Location (pitcher's view)",
+    "colCount": "Pitches",
+    "colAvgVelo": "Avg Velo",
+    "heatmapLow": "Less",
+    "heatmapHigh": "More"
+  },
   "About": {
     "title": "About",
     "body": "A fan project. Statcast data via pybaseball / Baseball Savant. Not affiliated with the Toronto Blue Jays or MLB."

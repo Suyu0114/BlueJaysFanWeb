@@ -25,7 +25,7 @@ export default async function PlayersPage({
           {players.map((p) => (
             <li key={p.mlbam_id}>
               <Link
-                href={`/players/${p.mlbam_id}/batting`}
+                href={`/players/${p.mlbam_id}/${p.position === "P" ? "pitching" : "batting"}`}
                 className="block rounded-xl border border-brick/20 bg-white p-4 transition-shadow hover:border-brick hover:shadow-md"
               >
                 {p.headshot_url && (
