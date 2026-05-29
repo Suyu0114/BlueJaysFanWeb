@@ -144,7 +144,7 @@ What stays English in zh-TW (do **not** translate):
 | P1 | Next.js skeleton + i18n + roster list | done |
 | P2 | SprayChart D3 component | done |
 | P3 | SprayChart + Supabase + filters | done |
-| P4 | Pitch distribution + fielding pages | not started |
+| P4 | Pitch distribution + fielding pages | done |
 | P5 | Cron ETL + Vercel deploy | not started |
 
 ---
