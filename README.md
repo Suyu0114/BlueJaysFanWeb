@@ -61,19 +61,21 @@ Detailed design (architecture, schema, spray-chart spec) lives in the personal p
 ### Prerequisites
 
 - Node.js 20+ and pnpm
-- Python 3.11+
+- The existing conda env **`MLBxBaZi`** for the Python ETL (do **not** create a venv)
 - A Supabase project (free tier is fine for MVP)
 
 ### Environment
 
-Copy `.env.example` to `.env.local` (for the web app) and `.env` (for the ETL):
+The app talks to Supabase Postgres through a single `DATABASE_URL` connection
+string. Copy the template into both git-ignored locations and fill it in:
 
 ```powershell
-Copy-Item .env.example .env.local
-Copy-Item .env.example etl\.env
+Copy-Item .env.example web\.env.local   # read by the Next.js app
+Copy-Item .env.example .env             # read by the Python ETL
 ```
 
-Fill in the Supabase URL, anon key, and service role key from your Supabase project settings.
+Set `DATABASE_URL` to your Supabase Postgres connection string (Supabase project
+→ Settings → Database). The other vars are optional until P5.
 
 ### Web
 
@@ -86,14 +88,16 @@ pnpm dev
 
 ### ETL (one-shot, local)
 
-```powershell
-cd etl
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+Uses the existing conda env `MLBxBaZi` — never a venv or `requirements.txt`.
 
-# Pull one player one season (Vladdy MLBAM id = 665489)
-python pull_statcast.py --player 665489 --season 2026
+```powershell
+conda activate MLBxBaZi
+
+# Default run = Vladimir Guerrero Jr. (665489), full 2025 regular season
+python etl/pull_statcast.py
+
+# Or pass a specific player / date range
+python etl/pull_statcast.py --player 665489 --start 2025-03-27 --end 2025-09-28
 ```
 
 The cron version runs in GitHub Actions; see `.github/workflows/etl.yml`.
