@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import PitchingExplorer from "@/components/charts/PitchingExplorer";
+import PlayerNav from "@/components/PlayerNav";
 import { getPitches } from "@/lib/pitching";
 import { getPlayer } from "@/lib/players";
 
@@ -29,6 +30,7 @@ export default async function PitchingPage({
         <p className="text-sm text-navy/60">{player.name}</p>
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="mt-0.5 text-sm text-navy/60">{t("subtitle")}</p>
+        <PlayerNav mlbamId={pitcherId} active="pitching" />
       </div>
 
       <div className="mt-6">

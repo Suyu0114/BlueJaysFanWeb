@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import SprayChartExplorer from "@/components/charts/SprayChartExplorer";
+import PlayerNav from "@/components/PlayerNav";
 import { getBattedBalls } from "@/lib/batting";
 import { getPlayer } from "@/lib/players";
 
@@ -31,6 +32,7 @@ export default async function BattingPage({
           {t("sprayChart")}
         </h1>
         <p className="mt-0.5 text-sm text-navy/60">{t("subtitle")}</p>
+        <PlayerNav mlbamId={batterId} active="batting" />
       </div>
 
       <div className="mt-3 min-h-0 flex-1">

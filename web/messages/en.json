@@ -54,6 +54,23 @@
     "heatmapLow": "Less",
     "heatmapHigh": "More"
   },
+  "PlayerNav": {
+    "batting": "Batting",
+    "pitching": "Pitching",
+    "fielding": "Fielding"
+  },
+  "Fielding": {
+    "title": "Fielding",
+    "subtitle": "Statcast defensive value, per position and season.",
+    "noData": "No fielding data yet. Pitchers and catchers are not covered by Savant's OAA leaderboard.",
+    "colSeason": "Season",
+    "colPosition": "Pos",
+    "explainTitle": "How to read FRV and OAA",
+    "explainBody": "FRV (Fielding Run Value) is how many runs the player saved or cost their team with their glove compared to a league-average fielder at the same position. +5 is excellent, 0 is average, −5 is poor. OAA (Outs Above Average) is the underlying count of plays made above the league rate.",
+    "note": "Source: Baseball Savant via pybaseball. Catcher framing and pitcher PFP use different metrics and are not shown here.",
+    "diagramCaption": "Primary position: {position} ({season})",
+    "diagramCaptionGeneric": "Field layout"
+  },
   "About": {
     "title": "About",
     "body": "A fan project. Statcast data via pybaseball / Baseball Savant. Not affiliated with the Toronto Blue Jays or MLB."

@@ -54,6 +54,23 @@
     "heatmapLow": "少",
     "heatmapHigh": "多"
   },
+  "PlayerNav": {
+    "batting": "打擊",
+    "pitching": "投球",
+    "fielding": "守備"
+  },
+  "Fielding": {
+    "title": "Fielding",
+    "subtitle": "Statcast 守備價值，依守位與球季呈現。",
+    "noData": "尚無守備資料。投手與捕手不在 Savant 的 OAA 排行榜內。",
+    "colSeason": "球季",
+    "colPosition": "守位",
+    "explainTitle": "如何解讀 FRV 與 OAA",
+    "explainBody": "FRV（Fielding Run Value）衡量這位球員在自己的守位上，相較於聯盟平均守備員，總共幫球隊省下或丟失了多少分。+5 算頂尖、0 是平均、−5 則偏弱。OAA（Outs Above Average）是更上游的指標，計算比平均多接到（或漏接）了幾顆球。",
+    "note": "資料來源：Baseball Savant（透過 pybaseball）。捕手 framing 與投手 PFP 屬於另一套指標，這頁不列入。",
+    "diagramCaption": "主要守位：{position}（{season}）",
+    "diagramCaptionGeneric": "球場示意"
+  },
   "About": {
     "title": "關於",
     "body": "這是一個球迷專案。Statcast 數據來自 pybaseball / Baseball Savant，與 Toronto Blue Jays 及 MLB 無官方關聯。"
