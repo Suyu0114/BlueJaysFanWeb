@@ -24,16 +24,16 @@ export default async function BattingPage({
   if (!player) notFound();
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
-      <p className="text-sm text-navy/60">{player.name}</p>
-      <h1 className="text-2xl font-semibold tracking-tight">
-        {t("sprayChart")}
-      </h1>
-      <p className="mt-1 text-sm text-navy/60">
-        {t("subtitle")}
-      </p>
+    <div className="mx-auto flex h-[calc(100dvh-64px)] max-w-3xl flex-col px-4 pt-4 pb-2">
+      <div className="shrink-0">
+        <p className="text-sm text-navy/60">{player.name}</p>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {t("sprayChart")}
+        </h1>
+        <p className="mt-0.5 text-sm text-navy/60">{t("subtitle")}</p>
+      </div>
 
-      <div className="mt-6">
+      <div className="mt-3 min-h-0 flex-1">
         {events.length === 0 ? (
           <p className="text-navy/60">{t("noData")}</p>
         ) : (

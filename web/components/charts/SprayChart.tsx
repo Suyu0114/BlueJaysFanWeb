@@ -140,11 +140,15 @@ export default function SprayChart({
   ];
 
   return (
-    <div className="w-full">
-      <div className="relative" style={{ maxWidth: width }}>
+    <div className="flex h-full flex-col">
+      <div
+        className="relative min-h-0 flex-1 self-center"
+        style={{ aspectRatio: `${width} / ${height}` }}
+      >
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className="h-auto w-full"
+          className="h-full w-full"
+          preserveAspectRatio="xMidYMid meet"
           role="img"
           aria-label="Spray chart"
         >
@@ -299,7 +303,7 @@ export default function SprayChart({
       </div>
 
       {/* legend */}
-      <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-navy/70">
+      <ul className="mt-1 flex shrink-0 flex-wrap gap-x-4 gap-y-0.5 text-xs text-navy/70">
         {legend.map(({ category, label }) => (
           <li key={category} className="flex items-center gap-1.5">
             <span

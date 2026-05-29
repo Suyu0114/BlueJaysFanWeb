@@ -39,7 +39,7 @@ function Chip({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+      className={`rounded-full border px-3 py-0.5 text-xs font-medium transition-colors ${
         active
           ? "border-navy bg-navy text-papaya"
           : "border-steel/40 text-navy/70 hover:border-steel hover:text-navy"
@@ -52,8 +52,8 @@ function Chip({
 
 function FilterGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="w-24 shrink-0 text-xs font-semibold uppercase tracking-wide text-navy/45">
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="w-20 shrink-0 text-xs font-semibold uppercase tracking-wide text-navy/45">
         {label}
       </span>
       {children}
@@ -133,8 +133,8 @@ export default function SprayChartExplorer({
     });
 
   return (
-    <div className="w-full">
-      <div className="mb-4 space-y-2.5">
+    <div className="flex h-full flex-col">
+      <div className="mb-2 shrink-0 space-y-1.5">
         <FilterGroup label={t("filterMonth")}>
           <Chip active={month === "all"} onClick={() => setMonth("all")}>
             {t("filterFullSeason")}
@@ -192,7 +192,9 @@ export default function SprayChartExplorer({
         </p>
       </div>
 
-      <SprayChart events={filtered} labels={labels} />
+      <div className="min-h-0 flex-1">
+        <SprayChart events={filtered} labels={labels} />
+      </div>
     </div>
   );
 }
