@@ -29,6 +29,7 @@ export type BattedBallEvent = {
   launch_angle: number | null;
   event: string | null;
   pitch_type: string | null;
+  p_throws: string | null; // pitcher handedness: "L" | "R"
   game_date: string; // YYYY-MM-DD
 };
 

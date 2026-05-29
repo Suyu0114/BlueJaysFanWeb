@@ -15,6 +15,7 @@ export async function getBattedBalls(
       launch_angle::float8 as launch_angle,
       event,
       pitch_type,
+      p_throws,
       to_char(game_date, 'YYYY-MM-DD') as game_date
     from web_statcast_events
     where batter_id = ${batterId}

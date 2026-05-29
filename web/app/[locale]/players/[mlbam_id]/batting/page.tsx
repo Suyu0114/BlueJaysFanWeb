@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import SprayChart from "@/components/charts/SprayChart";
+import SprayChartExplorer from "@/components/charts/SprayChartExplorer";
 import { getBattedBalls } from "@/lib/batting";
 import { getPlayer } from "@/lib/players";
 
@@ -23,17 +23,6 @@ export default async function BattingPage({
 
   if (!player) notFound();
 
-  const labels = {
-    homeRun: t("legendHomeRun"),
-    extraBase: t("legendExtraBase"),
-    single: t("legendSingle"),
-    out: t("legendOut"),
-    date: t("tipDate"),
-    pitch: t("tipPitch"),
-    exitVelo: t("tipExitVelo"),
-    launchAngle: t("tipLaunchAngle"),
-  };
-
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
       <p className="text-sm text-navy/60">{player.name}</p>
@@ -41,14 +30,14 @@ export default async function BattingPage({
         {t("sprayChart")}
       </h1>
       <p className="mt-1 text-sm text-navy/60">
-        {t("subtitle")} &middot; {events.length} {t("battedBalls")}
+        {t("subtitle")}
       </p>
 
       <div className="mt-6">
         {events.length === 0 ? (
           <p className="text-navy/60">{t("noData")}</p>
         ) : (
-          <SprayChart events={events} labels={labels} />
+          <SprayChartExplorer events={events} />
         )}
       </div>
     </div>
