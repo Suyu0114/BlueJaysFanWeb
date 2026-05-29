@@ -163,13 +163,13 @@ Reuse these tokens — don't introduce ad-hoc hex. The brand 5 (`papaya`/`navy`/
 
 ---
 
-## Phases (current = P0)
+## Phases (current = P4)
 
 | Phase | Status | Done when |
 |---|---|---|
-| P0 | not started | Supabase schema created; Vladdy 2025 statcast in DB; row count matches Savant |
-| P1 | not started | Next.js skeleton + i18n + roster list page renders in en + zh-TW |
-| P2 | not started | SprayChart D3 component visually matches Savant with hard-coded data |
-| P3 | not started | SprayChart wired to Supabase + filters work client-side |
+| P0 | done | Supabase schema created; Vladdy 2025 statcast in DB; row count matches Savant |
+| P1 | done | Next.js skeleton + i18n + roster list page renders in en + zh-TW |
+| P2 | done | SprayChart D3 component visually matches Savant with hard-coded data |
+| P3 | done | SprayChart wired to Supabase + filters work client-side |
 | P4 | not started | Pitch distribution + fielding heatmap pages live |
 | P5 | not started | GitHub Actions cron + Vercel deploy; data refreshes overnight |

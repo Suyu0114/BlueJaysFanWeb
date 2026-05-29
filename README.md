@@ -21,7 +21,7 @@
 
 ## Tech stack
 
-- **Frontend:** Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui
+- **Frontend:** Next.js 16 (App Router) + TypeScript + Tailwind + shadcn/ui
 - **i18n:** `next-intl` — default `en`, optional `zh-TW`
 - **Charts:** D3.js (spray / pitch zone / fielding) + Recharts (KPI bars / lines)
 - **Database:** Supabase Postgres
@@ -136,10 +136,10 @@ What stays English in zh-TW (do **not** translate):
 
 | Phase | What | Status |
 |---|---|---|
-| P0 | Supabase schema + first player ETL | not started |
-| P1 | Next.js skeleton + i18n + roster list | not started |
-| P2 | SprayChart D3 component (mock data) | not started |
-| P3 | SprayChart + Supabase + filters | not started |
+| P0 | Supabase schema + first player ETL | done |
+| P1 | Next.js skeleton + i18n + roster list | done |
+| P2 | SprayChart D3 component | done |
+| P3 | SprayChart + Supabase + filters | done |
 | P4 | Pitch distribution + fielding pages | not started |
 | P5 | Cron ETL + Vercel deploy | not started |
 
