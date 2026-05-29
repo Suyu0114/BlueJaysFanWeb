@@ -154,10 +154,10 @@ Light/warm theme (no dark mode). Palette is defined as Tailwind v4 `@theme` toke
 | `steel` | `#669bbc` | accents / hover (not body text — too low contrast on papaya) |
 | `lava` | `#780000` | lines / dark-red hover (e.g. button hover) |
 | `brick` | `#c1121f` | lines / primary action (buttons, card borders) |
-| `grass` | `#8faa6e` | field surface fill (SprayChart fair/foul grass) |
-| `dirt` | `#c9a257` | field surface fill (SprayChart warning track + infield dirt) |
+| `grass` | `#84934D` | field surface fill (SprayChart fair/foul grass) |
+| `dirt` | `#DAB681` | field surface fill (SprayChart warning track + infield dirt) |
 
-Reuse these tokens — don't introduce ad-hoc hex. The brand 5 (`papaya`/`navy`/`steel`/`lava`/`brick`) are for chrome and data marks; `grass`/`dirt` are *only* for the realistic ballpark surfaces in the SprayChart (applied via `var(--color-grass)` / `var(--color-dirt)` with per-layer `fillOpacity`, not as utility classes). SprayChart batted-ball markers still use the brand tokens (HR=brick, single=steel, XBH/out=navy).
+Reuse these tokens — don't introduce ad-hoc hex. The brand 5 (`papaya`/`navy`/`steel`/`lava`/`brick`) are for chrome and data marks; `grass`/`dirt` are *only* for the realistic ballpark surfaces in the SprayChart (applied via `var(--color-grass)` / `var(--color-dirt)` with per-layer `fillOpacity`, not as utility classes). SprayChart batted-ball markers use the brand tokens (HR=brick, single=navy, XBH=lava, out=steel).
 
 > Turbopack gotcha: after changing `@theme` in `globals.css`, custom color utilities may not regenerate. Stop dev, delete `web/.next`, restart.
 

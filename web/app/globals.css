@@ -9,8 +9,8 @@
   --color-brick: #c1121f;
 
   /* Field surfaces (realistic ballpark look; used in chart fills, not chrome) */
-  --color-grass: #8faa6e;
-  --color-dirt: #c9a257;
+  --color-grass: #84934D;
+  --color-dirt: #DAB681;
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

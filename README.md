@@ -1,6 +1,6 @@
 # Blue Jays Fan Web
 
-一個給多倫多藍鳥隊球迷的觀察站。主要受眾是英語使用者（包含對中華 BaZi 文化好奇的非華人），同時提供繁體中文切換。
+一個給多倫多藍鳥隊球迷的觀察站。同時提供英文和繁體中文切換。
 
 > Toronto Blue Jays fan website. English-primary UI with optional Traditional Chinese (zh-TW) toggle. Data visualizations powered by Statcast (via [pybaseball](https://github.com/jldbc/pybaseball)).
 

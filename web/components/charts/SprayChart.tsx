@@ -48,9 +48,9 @@ type Category = "hr" | "xbh" | "single" | "out";
 
 const CATEGORY_COLOR: Record<Category, string> = {
   hr: "var(--color-brick)",
-  xbh: "var(--color-navy)",
-  single: "var(--color-steel)",
-  out: "var(--color-navy)",
+  xbh: "var(--color-lava)",
+  single: "var(--color-navy)",
+  out: "var(--color-steel)",
 };
 
 // Draw order: outs at the back, home runs on top.
@@ -148,16 +148,16 @@ export default function SprayChart({
           aria-label="Spray chart"
         >
           {/* foul ground — grass */}
-          <path d={foulPath} fill="var(--color-grass)" fillOpacity={0.55} stroke="none" />
+          <path d={foulPath} fill="var(--color-grass)" fillOpacity={0.25} stroke="none" />
 
           {/* fair territory — grass */}
-          <path d={fairPath} fill="var(--color-grass)" fillOpacity={0.80} stroke="none" />
+          <path d={fairPath} fill="var(--color-grass)" fillOpacity={0.7} stroke="none" />
 
-          {/* warning track — dirt */}
-          <path d={warningPath} fill="var(--color-dirt)" fillOpacity={0.90} stroke="none" />
+          {/* warning track — dirt (opacity 0: intentionally hidden) */}
+          <path d={warningPath} fill="var(--color-dirt)" fillOpacity={0} stroke="none" />
 
           {/* infield dirt circle — clipped to fair territory */}
-          <path d={dirtPath} fill="var(--color-dirt)" fillOpacity={0.90} stroke="none" />
+          <path d={dirtPath} fill="var(--color-dirt)" fillOpacity={1} stroke="none" />
           {/* pitcher's mound + home-plate circles */}
           {([
             [MOUND, 9],
@@ -249,7 +249,7 @@ export default function SprayChart({
               cy={p.cy}
               r={p.r}
               fill={CATEGORY_COLOR[p.category]}
-              fillOpacity={p.category === "out" ? 0.22 : 0.85}
+              fillOpacity={p.category === "out" ? 0.25 : 0.85}
               stroke={p.category === "hr" ? "var(--color-papaya)" : "none"}
               strokeWidth={p.category === "hr" ? 1 : 0}
               onMouseEnter={() => setHovered(p)}
