@@ -4,16 +4,20 @@ import { useMemo, useState } from "react";
 import { scaleLinear } from "d3-scale";
 import {
   BASES,
+  DISTANCE_MARKERS,
   FIELD,
   FIELD_HEIGHT_FT,
   FIELD_WIDTH_FT,
   FOUL_LINES,
   INFIELD_DIAMOND,
-  LEFT_FOUL_POLE,
-  RIGHT_FOUL_POLE,
+  MOUND,
   fairTerritoryPoints,
+  foulGroundPoints,
+  infieldDirtPoints,
   outfieldWallPoints,
+  warningTrackPoints,
   toPath,
+  type Point,
   type Project,
 } from "@/lib/field-geometry";
 
@@ -44,7 +48,7 @@ type Category = "hr" | "xbh" | "single" | "out";
 
 const CATEGORY_COLOR: Record<Category, string> = {
   hr: "var(--color-brick)",
-  xbh: "var(--color-lava)",
+  xbh: "var(--color-navy)",
   single: "var(--color-steel)",
   out: "var(--color-navy)",
 };
@@ -93,33 +97,37 @@ export default function SprayChart({
   width?: number;
 }) {
   const height = (width * FIELD_HEIGHT_FT) / FIELD_WIDTH_FT;
+  const pxPerFoot = width / FIELD_WIDTH_FT;
   const [hovered, setHovered] = useState<PlacedEvent | null>(null);
 
-  const { project, placed, wallPath, fairPath, infieldPath } = useMemo(() => {
-    const xScale = scaleLinear([FIELD.xMin, FIELD.xMax], [0, width]);
-    const yScale = scaleLinear([FIELD.yMin, FIELD.yMax], [height, 0]);
-    const project: Project = (x, y) => [xScale(x), yScale(y)];
+  const { project, placed, wallPath, fairPath, foulPath, dirtPath, warningPath } =
+    useMemo(() => {
+      const xScale = scaleLinear([FIELD.xMin, FIELD.xMax], [0, width]);
+      const yScale = scaleLinear([FIELD.yMin, FIELD.yMax], [height, 0]);
+      const project: Project = (x, y) => [xScale(x), yScale(y)];
 
-    // Marker radius scales with exit velocity (60-115 mph -> 3-8 px).
-    const rScale = scaleLinear([60, 115], [3, 8]).clamp(true);
+      // Marker radius scales with exit velocity (60-115 mph -> 3-8 px).
+      const rScale = scaleLinear([60, 115], [3, 8]).clamp(true);
 
-    const placed: PlacedEvent[] = events
-      .map((ev) => {
-        const [cx, cy] = project(ev.x_feet, ev.y_feet);
-        const category = categorize(ev.event);
-        const r = ev.launch_speed == null ? 3 : rScale(ev.launch_speed);
-        return { ev, cx, cy, r, category };
-      })
-      .sort((a, b) => CATEGORY_Z[a.category] - CATEGORY_Z[b.category]);
+      const placed: PlacedEvent[] = events
+        .map((ev) => {
+          const [cx, cy] = project(ev.x_feet, ev.y_feet);
+          const category = categorize(ev.event);
+          const r = ev.launch_speed == null ? 3 : rScale(ev.launch_speed);
+          return { ev, cx, cy, r, category };
+        })
+        .sort((a, b) => CATEGORY_Z[a.category] - CATEGORY_Z[b.category]);
 
-    return {
-      project,
-      placed,
-      wallPath: toPath(outfieldWallPoints(), project),
-      fairPath: toPath(fairTerritoryPoints(), project, true),
-      infieldPath: toPath(INFIELD_DIAMOND, project, true),
-    };
-  }, [events, width, height]);
+      return {
+        project,
+        placed,
+        wallPath: toPath(outfieldWallPoints(), project),
+        fairPath: toPath(fairTerritoryPoints(), project, true),
+        foulPath: toPath(foulGroundPoints(), project, true),
+        dirtPath: toPath(infieldDirtPoints(), project, true),
+        warningPath: toPath(warningTrackPoints(), project, true),
+      };
+    }, [events, width, height]);
 
   const baseSize = width * 0.014;
 
@@ -139,22 +147,36 @@ export default function SprayChart({
           role="img"
           aria-label="Spray chart"
         >
-          {/* fair territory */}
-          <path
-            d={fairPath}
-            fill="var(--color-steel)"
-            fillOpacity={0.12}
-            stroke="none"
-          />
-          {/* infield diamond */}
-          <path
-            d={infieldPath}
-            fill="var(--color-steel)"
-            fillOpacity={0.22}
-            stroke="var(--color-navy)"
-            strokeOpacity={0.35}
-            strokeWidth={1}
-          />
+          {/* foul ground — grass */}
+          <path d={foulPath} fill="var(--color-grass)" fillOpacity={0.55} stroke="none" />
+
+          {/* fair territory — grass */}
+          <path d={fairPath} fill="var(--color-grass)" fillOpacity={0.80} stroke="none" />
+
+          {/* warning track — dirt */}
+          <path d={warningPath} fill="var(--color-dirt)" fillOpacity={0.90} stroke="none" />
+
+          {/* infield dirt circle — clipped to fair territory */}
+          <path d={dirtPath} fill="var(--color-dirt)" fillOpacity={0.90} stroke="none" />
+          {/* pitcher's mound + home-plate circles */}
+          {([
+            [MOUND, 9],
+            [BASES.home, 13],
+          ] as [Point, number][]).map(([pt, rFt], i) => {
+            const [px, py] = project(pt[0], pt[1]);
+            return (
+              <circle
+                key={`c${i}`}
+                cx={px}
+                cy={py}
+                r={rFt * pxPerFoot}
+                fill="none"
+                stroke="var(--color-navy)"
+                strokeOpacity={0.3}
+                strokeWidth={1}
+              />
+            );
+          })}
           {/* outfield wall */}
           <path
             d={wallPath}
@@ -162,6 +184,7 @@ export default function SprayChart({
             stroke="var(--color-lava)"
             strokeWidth={2.5}
             strokeLinecap="round"
+            strokeLinejoin="round"
           />
           {/* foul lines */}
           {FOUL_LINES.map(([a, b], i) => {
@@ -169,14 +192,14 @@ export default function SprayChart({
             const [bx, by] = project(b[0], b[1]);
             return (
               <line
-                key={i}
+                key={`f${i}`}
                 x1={ax}
                 y1={ay}
                 x2={bx}
                 y2={by}
-                stroke="var(--color-navy)"
-                strokeOpacity={0.4}
-                strokeWidth={1.5}
+                stroke="var(--color-lava)"
+                strokeOpacity={0.7}
+                strokeWidth={2}
               />
             );
           })}
@@ -186,7 +209,7 @@ export default function SprayChart({
               const [px, py] = project(bxf, byf);
               return (
                 <rect
-                  key={i}
+                  key={`b${i}`}
                   x={px - baseSize / 2}
                   y={py - baseSize / 2}
                   width={baseSize}
@@ -201,25 +224,20 @@ export default function SprayChart({
             },
           )}
           {/* distance markers */}
-          {(
-            [
-              [LEFT_FOUL_POLE, FIELD.lineLF, "end"],
-              [[0, FIELD.centerCF], FIELD.centerCF, "middle"],
-              [RIGHT_FOUL_POLE, FIELD.lineRF, "start"],
-            ] as [[number, number], number, string][]
-          ).map(([pt, dist, anchor], i) => {
-            const [px, py] = project(pt[0], pt[1]);
+          {DISTANCE_MARKERS.map((m, i) => {
+            const [px, py] = project(m.at[0], m.at[1]);
             return (
               <text
-                key={i}
+                key={`d${i}`}
                 x={px}
-                y={py - 6}
-                textAnchor={anchor as "start" | "middle" | "end"}
+                y={py}
+                textAnchor={m.anchor}
+                dominantBaseline="middle"
                 fill="var(--color-navy)"
                 fillOpacity={0.55}
                 fontSize={11}
               >
-                {dist}
+                {m.label}
               </text>
             );
           })}
@@ -231,7 +249,7 @@ export default function SprayChart({
               cy={p.cy}
               r={p.r}
               fill={CATEGORY_COLOR[p.category]}
-              fillOpacity={p.category === "out" ? 0.32 : 0.85}
+              fillOpacity={p.category === "out" ? 0.22 : 0.85}
               stroke={p.category === "hr" ? "var(--color-papaya)" : "none"}
               strokeWidth={p.category === "hr" ? 1 : 0}
               onMouseEnter={() => setHovered(p)}
