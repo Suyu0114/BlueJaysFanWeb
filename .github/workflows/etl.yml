@@ -26,6 +26,9 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       REVALIDATE_URL: ${{ secrets.REVALIDATE_URL }}
       REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+      # Silences the Node 20 deprecation warning from setup-python until
+      # an action release with native Node 24 support lands.
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v5
 
