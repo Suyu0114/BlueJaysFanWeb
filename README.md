@@ -104,6 +104,34 @@ The cron version runs in GitHub Actions; see `.github/workflows/etl.yml`.
 
 ---
 
+## Deploy & cron
+
+### Vercel
+
+1. Import the repo, set **Root Directory** to `web/`. Vercel auto-detects Next.js + pnpm.
+2. Add environment variables (Production **and** Preview):
+   - `DATABASE_URL` — Supabase Postgres **pooler** connection string (port 6543). `web/lib/db.ts` uses `prepare: false` so PgBouncer transaction mode works.
+   - `REVALIDATE_SECRET` — a long random string. The cron passes this to `/api/revalidate`.
+3. Deploy. Note the production URL (e.g. `https://bluejaysfanweb.vercel.app`); the cron needs it.
+
+### GitHub Actions cron (`.github/workflows/etl.yml`)
+
+Schedule: `0 13 * * *` (≈09:00 ET; drifts an hour across DST). Trigger manually with **Actions → daily-etl → Run workflow**.
+
+Required repository secrets (Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+|---|---|
+| `DATABASE_URL` | Same Supabase pooler string as Vercel |
+| `REVALIDATE_URL` | `https://<your-vercel-app>/api/revalidate` |
+| `REVALIDATE_SECRET` | Same value as Vercel |
+
+The workflow installs Python deps with `pip` rather than the local conda env — runners are ephemeral and `MLBxBaZi` does not exist there. The header of the workflow file explains this exception.
+
+After ETL writes to Supabase, the final step `curl`s the revalidate endpoint so Next.js ISR caches drop in seconds rather than waiting out the 24-hour `revalidate` window.
+
+---
+
 ## i18n conventions
 
 UI strings live in `web/messages/{en,zh-TW}.json`. **Write English first.**
@@ -119,7 +147,7 @@ What stays English in zh-TW (do **not** translate):
 
 ## Data sources
 
-- **[pybaseball](https://github.com/jldbc/pybaseball)** — free wrapper around Baseball Savant / Statcast. Covers batting (spray data), pitching (location, velocity, spin), and fielding (FRV via `statcast_fielding_run_value`).
+- **[pybaseball](https://github.com/jldbc/pybaseball)** — free wrapper around Baseball Savant / Statcast. Covers batting (spray data), pitching (location, velocity, spin), and fielding (FRV via `statcast_outs_above_average`, which returns `fielding_runs_prevented`).
 - **Baseball Savant** is the upstream source; data updates within minutes of game end.
 - **FanGraphs paid** — not used in MVP. Reconsider in v2 if vs-LHP/RHP splits or DRS become must-haves.
 
@@ -145,7 +173,7 @@ What stays English in zh-TW (do **not** translate):
 | P2 | SprayChart D3 component | done |
 | P3 | SprayChart + Supabase + filters | done |
 | P4 | Pitch distribution + fielding pages | done |
-| P5 | Cron ETL + Vercel deploy | not started |
+| P5 | Cron ETL + Vercel deploy | done |
 
 ---
 

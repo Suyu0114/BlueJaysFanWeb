@@ -163,7 +163,7 @@ Reuse these tokens — don't introduce ad-hoc hex. The brand 5 (`papaya`/`navy`/
 
 ---
 
-## Phases (current = P5)
+## Phases (current = maintenance; MVP shipped)
 
 | Phase | Status | Done when |
 |---|---|---|
@@ -172,4 +172,4 @@ Reuse these tokens — don't introduce ad-hoc hex. The brand 5 (`papaya`/`navy`/
 | P2 | done | SprayChart D3 component visually matches Savant with hard-coded data |
 | P3 | done | SprayChart wired to Supabase + filters work client-side |
 | P4 | done | Pitch distribution + fielding FRV pages live (en + zh-TW), PlayerNav links the three sub-pages |
-| P5 | not started | GitHub Actions cron + Vercel deploy; data refreshes overnight |
+| P5 | done | GitHub Actions cron + Vercel deploy; data refreshes overnight |
