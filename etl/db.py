@@ -18,7 +18,11 @@ DATABASE_URL = os.environ["DATABASE_URL"]
 
 @contextmanager
 def connect():
-    with psycopg.connect(DATABASE_URL) as conn:
+    # prepare_threshold=None disables psycopg's automatic prepared statements.
+    # Supabase's pooler (port 6543) runs PgBouncer in transaction mode, which
+    # recycles connections between transactions and chokes on cached statement
+    # names with "DuplicatePreparedStatement: _pg3_0 already exists".
+    with psycopg.connect(DATABASE_URL, prepare_threshold=None) as conn:
         yield conn
 
 
