@@ -5,6 +5,8 @@ import PlayerNav from "@/components/PlayerNav";
 import { getPitches } from "@/lib/pitching";
 import { getPlayer } from "@/lib/players";
 
+export const revalidate = 86400;
+
 export default async function PitchingPage({
   params,
 }: {

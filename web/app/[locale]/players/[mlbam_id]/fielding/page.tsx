@@ -5,6 +5,8 @@ import PlayerNav from "@/components/PlayerNav";
 import { getFielding } from "@/lib/fielding";
 import { getPlayer } from "@/lib/players";
 
+export const revalidate = 86400;
+
 function formatFrv(v: number | null): string {
   if (v == null) return "—";
   if (v > 0) return `+${v}`;

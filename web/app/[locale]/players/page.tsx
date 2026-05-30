@@ -3,6 +3,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getRoster } from "@/lib/players";
 
+export const revalidate = 86400;
+
 export default async function PlayersPage({
   params,
 }: {

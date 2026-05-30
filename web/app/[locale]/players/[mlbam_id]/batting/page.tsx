@@ -5,6 +5,8 @@ import PlayerNav from "@/components/PlayerNav";
 import { getBattedBalls } from "@/lib/batting";
 import { getPlayer } from "@/lib/players";
 
+export const revalidate = 86400;
+
 export default async function BattingPage({
   params,
 }: {
