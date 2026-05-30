@@ -1,0 +1,66 @@
+# Daily ETL: refresh Statcast events, roster, and fielding leaderboards,
+# then poke the Vercel app's /api/revalidate so ISR caches drop.
+#
+# Cron: `0 13 * * *` (~09:00 ET; drifts an hour across DST — acceptable since
+# the job just needs to run after the previous night's games settle).
+#
+# NOTE re: conda env rule. CLAUDE.md mandates the local conda env `MLBxBaZi`
+# for any Python work and forbids creating a venv or `requirements.txt`. That
+# rule targets the developer machine where MLBxBaZi already exists. GitHub
+# Actions runners are ephemeral containers without conda, so we install the
+# Python deps inline with pip. This is a per-run install, not a long-lived
+# venv on the workstation; the spirit of the rule (single source of truth for
+# local deps) is preserved.
+name: daily-etl
+
+on:
+  schedule:
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      REVALIDATE_URL: ${{ secrets.REVALIDATE_URL }}
+      REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python deps (CI-only, see header note)
+        run: |
+          python -m pip install --upgrade pip
+          pip install \
+            "pybaseball==2.2.7" \
+            "psycopg[binary]==3.2.1" \
+            "python-dotenv==1.0.1" \
+            "pandas==2.2.3" \
+            "requests==2.32.3"
+
+      - name: Refresh 26-man roster
+        run: python etl/roster.py
+
+      # MVP runs the full season every night. The data set is small (~3k rows
+      # per player) and a full re-upsert sidesteps Statcast's retroactive
+      # pitch-classification edits. v2: narrow to `today - 7 days` once we
+      # extend coverage past a couple of players.
+      - name: Pull batter Statcast (Vladdy 2025)
+        run: python etl/pull_statcast.py
+
+      - name: Pull pitcher Statcast (Gausman 2025)
+        run: python etl/pull_pitcher.py
+
+      - name: Pull fielding OAA/FRV (2025 league-wide)
+        run: python etl/pull_fielding.py
+
+      - name: Revalidate Next.js ISR cache
+        run: |
+          curl --fail --silent --show-error -X POST \
+            "${REVALIDATE_URL}?secret=${REVALIDATE_SECRET}"
