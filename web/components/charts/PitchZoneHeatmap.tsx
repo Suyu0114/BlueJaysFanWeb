@@ -15,6 +15,10 @@ export type PitchZoneHeatmapLabels = {
 // Drawing window in FEET, in pitcher's-eye coordinates (after mirroring plate_x).
 const X_MIN = -2.0;
 const X_MAX = 2.0;
+// NOTE: A small number of extreme low pitches (plate_z < 0) are clipped here.
+// For Gausman 2025, z_min = -1.62 but p5 = 0.51, so roughly 2–3% of pitches
+// fall below this boundary and are excluded from the density calculation.
+// If the heatmap ever needs to show extreme low balls, lower this to -0.5.
 const Z_MIN = 0;
 const Z_MAX = 5;
 
@@ -130,30 +134,37 @@ export default function PitchZoneHeatmap({
     <div className="flex flex-col items-center">
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="block w-full max-w-[360px]"
+        className="block w-full max-w-[250px]"
         preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-label="Pitch location heatmap"
       >
+        <defs>
+          <filter id="heatblur" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" />
+          </filter>
+        </defs>
         <g transform={`translate(${PADDING.left} ${PADDING.top})`}>
-          {/* density cells */}
-          {cells.map((row, zi) =>
-            row.map((v, xi) => {
-              const t = max === 0 ? 0 : v / max;
-              if (t < 0.02) return null;
-              return (
-                <rect
-                  key={`c-${zi}-${xi}`}
-                  x={xi * cellW}
-                  y={(BINS_Z - 1 - zi) * cellH}
-                  width={cellW + 0.5}
-                  height={cellH + 0.5}
-                  fill={colorAt(t)}
-                  opacity={0.85}
-                />
-              );
-            }),
-          )}
+          {/* density cells (Gaussian-blurred for smoother appearance) */}
+          <g filter="url(#heatblur)">
+            {cells.map((row, zi) =>
+              row.map((v, xi) => {
+                const t = max === 0 ? 0 : v / max;
+                if (t < 0.02) return null;
+                return (
+                  <rect
+                    key={`c-${zi}-${xi}`}
+                    x={xi * cellW}
+                    y={(BINS_Z - 1 - zi) * cellH}
+                    width={cellW + 0.5}
+                    height={cellH + 0.5}
+                    fill={colorAt(t)}
+                    opacity={0.85}
+                  />
+                );
+              }),
+            )}
+          </g>
 
           {/* strike zone overlay */}
           <rect
