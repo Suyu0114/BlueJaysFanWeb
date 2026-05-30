@@ -2,7 +2,9 @@ import { revalidatePath } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Daily ETL cron calls this after a successful upsert so ISR caches drop
-// stale player data. Authenticated by a shared secret in the query string.
+// stale player data. Authenticated by a shared secret, preferred via the
+// x-revalidate-secret header (URL-safe regardless of secret characters);
+// the ?secret= query string is still accepted for ad-hoc curl testing.
 export async function POST(req: NextRequest) {
   const expected = process.env.REVALIDATE_SECRET;
   if (!expected) {
@@ -12,7 +14,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const secret = req.nextUrl.searchParams.get("secret");
+  const secret =
+    req.headers.get("x-revalidate-secret") ??
+    req.nextUrl.searchParams.get("secret");
   if (secret !== expected) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

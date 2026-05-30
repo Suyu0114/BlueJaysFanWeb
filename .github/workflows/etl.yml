@@ -65,4 +65,5 @@ jobs:
       - name: Revalidate Next.js ISR cache
         run: |
           curl --fail --silent --show-error -X POST \
-            "${REVALIDATE_URL}?secret=${REVALIDATE_SECRET}"
+            -H "x-revalidate-secret: ${REVALIDATE_SECRET}" \
+            "${REVALIDATE_URL}"
