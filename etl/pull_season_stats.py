@@ -1,0 +1,183 @@
+"""Load FanGraphs season aggregates (OPS / wRC+ / ERA / FIP / K-9 / WAR) for
+all Blue Jays in a given season from manually-exported CSVs and upsert into
+web_player_season_stats.
+
+Usage:
+    python pull_season_stats.py --season 2024
+    python pull_season_stats.py --season 2026
+
+CSVs are exported by hand from FanGraphs (paid membership) and dropped into
+etl/data/fangraphs/{batting,pitching}_{season}.csv. The directory is
+gitignored. pybaseball's batting_stats / pitching_stats are unusable -- they
+have been 403'd by FanGraphs indefinitely. See the plan file for download
+steps.
+
+The CSV exports already include an `MLBAMID` column, so the IDfg -> MLBAM
+hop through Chadwick (etl/idmap.py) is not needed here. Rows with a missing
+MLBAMID are skipped with a count in the logs.
+"""
+
+from __future__ import annotations
+
+import argparse
+import logging
+import sys
+from pathlib import Path
+from typing import Literal
+
+import pandas as pd
+from dotenv import load_dotenv
+
+_HERE = Path(__file__).resolve().parent
+load_dotenv(_HERE / ".env")
+load_dotenv(_HERE.parent / ".env")
+
+from db import connect  # noqa: E402
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s | %(message)s"
+)
+log = logging.getLogger("pull_season_stats")
+
+CSV_DIR = _HERE / "data" / "fangraphs"
+
+REQUIRED_COLS: dict[str, list[str]] = {
+    "batting":  ["MLBAMID", "OPS", "wRC+", "WAR"],
+    "pitching": ["MLBAMID", "ERA", "FIP", "K/9", "WAR"],
+}
+
+UPSERT_SQL = """
+    insert into web_player_season_stats
+      (mlbam_id, season, ops, wrc_plus, war, era, fip, k_per_9)
+    values
+      (%(mlbam_id)s, %(season)s, %(ops)s, %(wrc_plus)s, %(war)s,
+       %(era)s, %(fip)s, %(k_per_9)s)
+    on conflict (mlbam_id, season) do update set
+      ops        = coalesce(excluded.ops,        web_player_season_stats.ops),
+      wrc_plus   = coalesce(excluded.wrc_plus,   web_player_season_stats.wrc_plus),
+      war        = coalesce(excluded.war,        web_player_season_stats.war),
+      era        = coalesce(excluded.era,        web_player_season_stats.era),
+      fip        = coalesce(excluded.fip,        web_player_season_stats.fip),
+      k_per_9    = coalesce(excluded.k_per_9,    web_player_season_stats.k_per_9),
+      updated_at = now()
+"""
+
+
+def _num(v) -> float | None:
+    if v is None or pd.isna(v):
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _load_csv(kind: Literal["batting", "pitching"], season: int) -> pd.DataFrame:
+    """Read a manually-exported FanGraphs leaderboard CSV.
+
+    Path: etl/data/fangraphs/{kind}_{season}.csv
+
+    Missing file -> warning + empty DataFrame so backfill / nightly cron keep
+    going (matches the prior 403-fallback behavior; KPI cards just show "—"
+    until the user drops a fresh CSV in place).
+
+    Missing required column -> RuntimeError. Silently writing NULL OPS/WAR
+    because someone exported a stripped-down custom view would be worse than
+    a loud failure.
+    """
+    path = CSV_DIR / f"{kind}_{season}.csv"
+    if not path.exists():
+        log.warning(
+            "%s %s: %s not found; skipping season-stat ingest for this slice. "
+            "Drop a FanGraphs export there to populate KPI cards.",
+            kind, season, path,
+        )
+        return pd.DataFrame()
+
+    df = pd.read_csv(path)
+    missing = [c for c in REQUIRED_COLS[kind] if c not in df.columns]
+    if missing:
+        raise RuntimeError(
+            f"{path.name} missing required columns: {missing}. "
+            f"Re-export from FanGraphs using the default Dashboard view."
+        )
+    log.info("%s %s: loaded %d rows from %s", kind, season, len(df), path.name)
+    return df
+
+
+def _mlbam(row) -> int | None:
+    v = row.get("MLBAMID")
+    if v is None or pd.isna(v):
+        return None
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def run(season: int) -> None:
+    bat = _load_csv("batting", season)
+    pit = _load_csv("pitching", season)
+
+    if bat.empty and pit.empty:
+        log.warning("No FanGraphs CSV for %s; nothing to upsert.", season)
+        return
+
+    by_mlbam: dict[int, dict] = {}
+    skipped_bat = skipped_pit = 0
+
+    for _, r in bat.iterrows():
+        mlbam = _mlbam(r)
+        if mlbam is None:
+            skipped_bat += 1
+            continue
+        entry = by_mlbam.setdefault(mlbam, {"mlbam_id": mlbam, "season": season})
+        entry["ops"] = _num(r.get("OPS"))
+        entry["wrc_plus"] = _num(r.get("wRC+"))
+        entry["war"] = _num(r.get("WAR"))
+
+    for _, r in pit.iterrows():
+        mlbam = _mlbam(r)
+        if mlbam is None:
+            skipped_pit += 1
+            continue
+        entry = by_mlbam.setdefault(mlbam, {"mlbam_id": mlbam, "season": season})
+        entry["era"] = _num(r.get("ERA"))
+        entry["fip"] = _num(r.get("FIP"))
+        entry["k_per_9"] = _num(r.get("K/9"))
+        # Two-way players: WAR may already be set from batting; sum if both.
+        pit_war = _num(r.get("WAR"))
+        if pit_war is not None:
+            entry["war"] = (entry.get("war") or 0.0) + pit_war
+
+    if skipped_bat or skipped_pit:
+        log.warning("Skipped rows with missing MLBAMID: batting=%d pitching=%d",
+                    skipped_bat, skipped_pit)
+
+    rows = []
+    for mlbam, entry in by_mlbam.items():
+        entry.setdefault("ops", None)
+        entry.setdefault("wrc_plus", None)
+        entry.setdefault("war", None)
+        entry.setdefault("era", None)
+        entry.setdefault("fip", None)
+        entry.setdefault("k_per_9", None)
+        rows.append(entry)
+
+    log.info("Upserting %d season-stat rows for %s", len(rows), season)
+    with connect() as conn, conn.cursor() as cur:
+        cur.executemany(UPSERT_SQL, rows)
+        conn.commit()
+    log.info("Done.")
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--season", type=int, required=True, help="MLB season year")
+    args = ap.parse_args(argv)
+    run(args.season)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
