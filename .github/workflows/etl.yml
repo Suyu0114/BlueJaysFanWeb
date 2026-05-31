@@ -1,8 +1,15 @@
-# Daily ETL: refresh Statcast events, roster, and fielding leaderboards,
-# then poke the Vercel app's /api/revalidate so ISR caches drop.
+# Daily ETL: refresh Statcast events (rolling 7-day window for the current
+# season), roster, fielding/season aggregates, then poke /api/revalidate so
+# Vercel ISR caches drop.
 #
-# Cron: `0 13 * * *` (~09:00 ET; drifts an hour across DST — acceptable since
+# Cron: `0 13 * * *` (~09:00 ET; drifts an hour across DST -- acceptable since
 # the job just needs to run after the previous night's games settle).
+#
+# Why a rolling 7-day window: Savant retroactively re-classifies pitch types
+# days after the game (CLAUDE.md L53). Re-fetching only the last 7 days and
+# upserting handles that without re-pulling the entire season nightly.
+# Historical seasons (2024, 2025) are NOT in this cron -- they are filled by a
+# one-shot `python etl/backfill.py` run from a developer machine.
 #
 # NOTE re: conda env rule. CLAUDE.md mandates the local conda env `MLBxBaZi`
 # for any Python work and forbids creating a venv or `requirements.txt`. That
@@ -21,7 +28,7 @@ on:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       REVALIDATE_URL: ${{ secrets.REVALIDATE_URL }}
@@ -46,21 +53,39 @@ jobs:
             "pandas==2.2.3" \
             "requests==2.32.3"
 
+      - name: Determine current season window
+        run: |
+          echo "SEASON=$(date -u +%Y)" >> "$GITHUB_ENV"
+          echo "WINDOW_START=$(date -u -d '7 days ago' +%Y-%m-%d)" >> "$GITHUB_ENV"
+          echo "WINDOW_END=$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
+
       - name: Refresh 26-man roster
         run: python etl/roster.py
 
-      # MVP runs the full season every night. The data set is small (~3k rows
-      # per player) and a full re-upsert sidesteps Statcast's retroactive
-      # pitch-classification edits. v2: narrow to `today - 7 days` once we
-      # extend coverage past a couple of players.
-      - name: Pull batter Statcast (Vladdy 2025)
-        run: python etl/pull_statcast.py
+      - name: Refresh current-season participation table
+        run: python etl/pull_team_players.py --season "$SEASON"
 
-      - name: Pull pitcher Statcast (Gausman 2025)
-        run: python etl/pull_pitcher.py
+      - name: Pull batter Statcast (all current-season batters, 7-day window)
+        run: |
+          python etl/pull_statcast.py \
+            --all-batters \
+            --season "$SEASON" \
+            --start "$WINDOW_START" \
+            --end "$WINDOW_END"
 
-      - name: Pull fielding OAA/FRV (2025 league-wide)
-        run: python etl/pull_fielding.py
+      - name: Pull pitcher Statcast (all current-season pitchers, 7-day window)
+        run: |
+          python etl/pull_pitcher.py \
+            --all-pitchers \
+            --season "$SEASON" \
+            --start "$WINDOW_START" \
+            --end "$WINDOW_END"
+
+      - name: Pull fielding OAA/FRV (season-to-date aggregate)
+        run: python etl/pull_fielding.py --season "$SEASON"
+
+      - name: Pull season stats (OPS / wRC+ / ERA / FIP / WAR)
+        run: python etl/pull_season_stats.py --season "$SEASON"
 
       - name: Revalidate Next.js ISR cache
         run: |

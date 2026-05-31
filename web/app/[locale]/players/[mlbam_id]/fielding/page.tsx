@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import FieldingDiagram from "@/components/charts/FieldingDiagram";
 import PlayerNav from "@/components/PlayerNav";
 import { getFielding } from "@/lib/fielding";
-import { getPlayer } from "@/lib/players";
+import { getPlayer, getPlayerAvailability } from "@/lib/players";
 
 export const revalidate = 86400;
 
@@ -32,14 +32,46 @@ export default async function FieldingPage({
   if (!Number.isFinite(playerId)) notFound();
 
   const t = await getTranslations("Fielding");
-  const [player, seasons] = await Promise.all([
+  const [player, seasons, availability] = await Promise.all([
     getPlayer(playerId),
     getFielding(playerId),
+    getPlayerAvailability(playerId),
   ]);
 
   if (!player) notFound();
 
-  const primary = seasons[0] ?? null;
+  // Latest season is what the diagram + summary highlight.
+  const latestSeason = seasons[0]?.season ?? null;
+  const latestRows = latestSeason
+    ? seasons.filter((s) => s.season === latestSeason)
+    : [];
+
+  // Primary position prefers what the MLB Stats API thinks (web_players.position).
+  // Fall back to whichever latest-season row had the most attempts (proxied by
+  // absolute OAA — Savant doesn't expose the attempt count directly).
+  const primaryPosition =
+    (player.position && latestRows.some((r) => r.position === player.position)
+      ? player.position
+      : null) ??
+    [...latestRows]
+      .sort((a, b) => Math.abs(b.oaa ?? 0) - Math.abs(a.oaa ?? 0))[0]?.position ??
+    null;
+
+  const allPositions = latestRows.map((r) => r.position);
+  const secondaryPositions = allPositions.filter((p) => p !== primaryPosition);
+
+  // Plain-language runs-saved line for the latest season.
+  const latestFrvSum = latestRows.reduce(
+    (acc, r) => acc + (r.frv ?? 0),
+    0,
+  );
+  const runsSavedText =
+    latestRows.length > 0
+      ? t(latestFrvSum >= 0 ? "runsSavedPlain" : "runsCostPlain", {
+          n: Math.abs(latestFrvSum),
+          name: player.name,
+        })
+      : null;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
@@ -47,7 +79,7 @@ export default async function FieldingPage({
         <p className="text-sm text-navy/60">{player.name}</p>
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="mt-0.5 text-sm text-navy/60">{t("subtitle")}</p>
-        <PlayerNav mlbamId={playerId} active="fielding" />
+        <PlayerNav mlbamId={playerId} active="fielding" available={availability} />
       </div>
 
       {seasons.length === 0 ? (
@@ -55,6 +87,10 @@ export default async function FieldingPage({
       ) : (
         <div className="mt-6 grid gap-6 md:grid-cols-[1fr_auto] md:items-start">
           <section className="space-y-4">
+            {runsSavedText && (
+              <p className="text-sm text-navy">{runsSavedText}</p>
+            )}
+
             <table className="w-full text-sm">
               <thead className="text-[10px] uppercase tracking-wide text-navy/45">
                 <tr>
@@ -98,13 +134,22 @@ export default async function FieldingPage({
           </section>
 
           <section className="w-full max-w-[340px] justify-self-center">
-            <FieldingDiagram position={primary?.position ?? player.position} />
+            <FieldingDiagram
+              positions={allPositions}
+              primary={primaryPosition ?? undefined}
+            />
             <p className="mt-2 text-center text-xs text-navy/60">
-              {primary
-                ? t("diagramCaption", {
-                    position: primary.position,
-                    season: primary.season,
-                  })
+              {primaryPosition && latestSeason
+                ? secondaryPositions.length > 0
+                  ? t("diagramCaptionMulti", {
+                      primary: primaryPosition,
+                      season: latestSeason,
+                      others: secondaryPositions.join(" / "),
+                    })
+                  : t("diagramCaption", {
+                      position: primaryPosition,
+                      season: latestSeason,
+                    })
                 : t("diagramCaptionGeneric")}
             </p>
           </section>

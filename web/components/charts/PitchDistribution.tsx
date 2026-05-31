@@ -1,5 +1,14 @@
 // Framework-pure horizontal bars: pitch-type usage with avg release speed.
 // Receives plain JSON; no next-intl / Supabase here.
+//
+// NOTE on plate_x / plate_z (CLAUDE.md L52 + db/migrations/004): Savant
+// changed the plate coordinate reference frame in 2026 (front of plate ->
+// middle of plate). Every Statcast row carries a `plate_alignment` column
+// (`'front'` for <=2025, `'middle'` for >=2026). This chart MUST be fed rows
+// that share a single plate_alignment value — overlaying both conventions
+// would smear the heatmap by 1-3 inches. The current per-season filter in
+// the calling page is what enforces this; if you ever query across seasons
+// here, assert/group by plate_alignment first.
 
 export type PitchEvent = {
   id: string;

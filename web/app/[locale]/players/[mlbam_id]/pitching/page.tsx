@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import PitchingExplorer from "@/components/charts/PitchingExplorer";
 import PlayerNav from "@/components/PlayerNav";
 import { getPitches } from "@/lib/pitching";
-import { getPlayer } from "@/lib/players";
+import { getPlayer, getPlayerAvailability } from "@/lib/players";
 
 export const revalidate = 86400;
 
@@ -19,9 +19,10 @@ export default async function PitchingPage({
   if (!Number.isFinite(pitcherId)) notFound();
 
   const t = await getTranslations("Pitching");
-  const [player, pitches] = await Promise.all([
+  const [player, pitches, availability] = await Promise.all([
     getPlayer(pitcherId),
     getPitches(pitcherId),
+    getPlayerAvailability(pitcherId),
   ]);
 
   if (!player) notFound();
@@ -32,7 +33,7 @@ export default async function PitchingPage({
         <p className="text-sm text-navy/60">{player.name}</p>
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="mt-0.5 text-sm text-navy/60">{t("subtitle")}</p>
-        <PlayerNav mlbamId={pitcherId} active="pitching" />
+        <PlayerNav mlbamId={pitcherId} active="pitching" available={availability} />
       </div>
 
       <div className="mt-6">

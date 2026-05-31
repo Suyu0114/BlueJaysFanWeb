@@ -35,7 +35,7 @@ export const FIELD_HEIGHT_FT = FIELD.yMax - FIELD.yMin;
 const DEG = Math.PI / 180;
 
 // Azimuth measured from +y (dead center), positive toward right field.
-function polar(thetaDeg: number, dist: number): Point {
+export function polar(thetaDeg: number, dist: number): Point {
   const t = thetaDeg * DEG;
   return [dist * Math.sin(t), dist * Math.cos(t)];
 }

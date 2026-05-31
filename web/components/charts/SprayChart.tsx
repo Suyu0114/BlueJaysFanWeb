@@ -92,16 +92,23 @@ export default function SprayChart({
   events,
   labels,
   width = 640,
+  secondaryEvents,
+  secondaryColor = "var(--color-steel)",
 }: {
   events: BattedBallEvent[];
   labels: SprayChartLabels;
   width?: number;
+  // Optional comparison layer (used by /compare). Rendered under the primary
+  // markers at a fixed muted opacity; categorized + sized the same way as
+  // primary so the comparison stays apples-to-apples.
+  secondaryEvents?: BattedBallEvent[];
+  secondaryColor?: string;
 }) {
   const height = (width * FIELD_HEIGHT_FT) / FIELD_WIDTH_FT;
   const pxPerFoot = width / FIELD_WIDTH_FT;
   const [hovered, setHovered] = useState<PlacedEvent | null>(null);
 
-  const { project, placed, wallPath, fairPath, foulPath, dirtPath, warningPath } =
+  const { project, placed, placedSecondary, wallPath, fairPath, foulPath, dirtPath, warningPath } =
     useMemo(() => {
       const xScale = scaleLinear([FIELD.xMin, FIELD.xMax], [0, width]);
       const yScale = scaleLinear([FIELD.yMin, FIELD.yMax], [height, 0]);
@@ -110,25 +117,27 @@ export default function SprayChart({
       // Marker radius scales with exit velocity (60-115 mph -> 3-8 px).
       const rScale = scaleLinear([60, 115], [3, 8]).clamp(true);
 
-      const placed: PlacedEvent[] = events
-        .map((ev) => {
-          const [cx, cy] = project(ev.x_feet, ev.y_feet);
-          const category = categorize(ev.event);
-          const r = ev.launch_speed == null ? 3 : rScale(ev.launch_speed);
-          return { ev, cx, cy, r, category };
-        })
-        .sort((a, b) => CATEGORY_Z[a.category] - CATEGORY_Z[b.category]);
+      const place = (list: BattedBallEvent[]): PlacedEvent[] =>
+        list
+          .map((ev) => {
+            const [cx, cy] = project(ev.x_feet, ev.y_feet);
+            const category = categorize(ev.event);
+            const r = ev.launch_speed == null ? 3 : rScale(ev.launch_speed);
+            return { ev, cx, cy, r, category };
+          })
+          .sort((a, b) => CATEGORY_Z[a.category] - CATEGORY_Z[b.category]);
 
       return {
         project,
-        placed,
+        placed: place(events),
+        placedSecondary: secondaryEvents ? place(secondaryEvents) : [],
         wallPath: toPath(outfieldWallPoints(), project),
         fairPath: toPath(fairTerritoryPoints(), project, true),
         foulPath: toPath(foulGroundPoints(), project, true),
         dirtPath: toPath(infieldDirtPoints(), project, true),
         warningPath: toPath(warningTrackPoints(), project, true),
       };
-    }, [events, width, height]);
+    }, [events, secondaryEvents, width, height]);
 
   const baseSize = width * 0.014;
 
@@ -246,6 +255,18 @@ export default function SprayChart({
               </text>
             );
           })}
+          {/* secondary (comparison) batted balls — muted, drawn under primary */}
+          {placedSecondary.map((p) => (
+            <circle
+              key={`s-${p.ev.id}`}
+              cx={p.cx}
+              cy={p.cy}
+              r={p.r}
+              fill={secondaryColor}
+              fillOpacity={0.45}
+              stroke="none"
+            />
+          ))}
           {/* batted balls */}
           {placed.map((p) => (
             <circle

@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import SprayChartExplorer from "@/components/charts/SprayChartExplorer";
 import PlayerNav from "@/components/PlayerNav";
 import { getBattedBalls } from "@/lib/batting";
-import { getPlayer } from "@/lib/players";
+import { getPlayer, getPlayerAvailability } from "@/lib/players";
 
 export const revalidate = 86400;
 
@@ -19,9 +19,10 @@ export default async function BattingPage({
   if (!Number.isFinite(batterId)) notFound();
 
   const t = await getTranslations("Batting");
-  const [player, events] = await Promise.all([
+  const [player, events, availability] = await Promise.all([
     getPlayer(batterId),
     getBattedBalls(batterId),
+    getPlayerAvailability(batterId),
   ]);
 
   if (!player) notFound();
@@ -34,7 +35,7 @@ export default async function BattingPage({
           {t("sprayChart")}
         </h1>
         <p className="mt-0.5 text-sm text-navy/60">{t("subtitle")}</p>
-        <PlayerNav mlbamId={batterId} active="batting" />
+        <PlayerNav mlbamId={batterId} active="batting" available={availability} />
       </div>
 
       <div className="mt-3 min-h-0 flex-1">

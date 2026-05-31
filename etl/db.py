@@ -54,6 +54,113 @@ def upsert_players(conn, rows: Iterable[dict]) -> int:
         return cur.rowcount
 
 
+def upsert_players_full(conn, rows: Iterable[dict]) -> int:
+    """Upsert full player bio (used by roster.py and pull_team_players.py).
+
+    Each row must include: mlbam_id, name. Optional: position, bats, throws,
+    headshot_url, birthdate, birth_city, birth_state_province, birth_country.
+    Caller is responsible for setting is_active_26 separately if needed.
+    """
+    sql = """
+        insert into web_players
+          (mlbam_id, name, position, bats, throws,
+           headshot_url, birthdate,
+           birth_city, birth_state_province, birth_country)
+        values
+          (%(mlbam_id)s, %(name)s, %(position)s, %(bats)s, %(throws)s,
+           %(headshot_url)s, %(birthdate)s,
+           %(birth_city)s, %(birth_state_province)s, %(birth_country)s)
+        on conflict (mlbam_id) do update set
+          name                 = excluded.name,
+          position             = coalesce(excluded.position, web_players.position),
+          bats                 = coalesce(excluded.bats, web_players.bats),
+          throws               = coalesce(excluded.throws, web_players.throws),
+          headshot_url         = coalesce(excluded.headshot_url, web_players.headshot_url),
+          birthdate            = coalesce(excluded.birthdate, web_players.birthdate),
+          birth_city           = coalesce(excluded.birth_city, web_players.birth_city),
+          birth_state_province = coalesce(excluded.birth_state_province, web_players.birth_state_province),
+          birth_country        = coalesce(excluded.birth_country, web_players.birth_country)
+    """
+    rows = [_full_player_row(r) for r in rows]
+    if not rows:
+        return 0
+    with conn.cursor() as cur:
+        cur.executemany(sql, rows)
+        return cur.rowcount
+
+
+def _full_player_row(r: dict) -> dict:
+    return {
+        "mlbam_id": r["mlbam_id"],
+        "name": r["name"],
+        "position": r.get("position"),
+        "bats": r.get("bats"),
+        "throws": r.get("throws"),
+        "headshot_url": r.get("headshot_url"),
+        "birthdate": r.get("birthdate"),
+        "birth_city": r.get("birth_city"),
+        "birth_state_province": r.get("birth_state_province"),
+        "birth_country": r.get("birth_country"),
+    }
+
+
+def upsert_player_seasons(conn, rows: Iterable[dict]) -> int:
+    """Upsert into web_player_seasons.
+
+    Each row: mlbam_id, season, team_id (default 141),
+    appeared_as_batter, appeared_as_pitcher, is_active_26.
+    """
+    sql = """
+        insert into web_player_seasons
+          (mlbam_id, season, team_id,
+           appeared_as_batter, appeared_as_pitcher, is_active_26)
+        values
+          (%(mlbam_id)s, %(season)s, %(team_id)s,
+           %(appeared_as_batter)s, %(appeared_as_pitcher)s, %(is_active_26)s)
+        on conflict (mlbam_id, season, team_id) do update set
+          appeared_as_batter  = web_player_seasons.appeared_as_batter  or excluded.appeared_as_batter,
+          appeared_as_pitcher = web_player_seasons.appeared_as_pitcher or excluded.appeared_as_pitcher,
+          is_active_26        = web_player_seasons.is_active_26        or excluded.is_active_26,
+          updated_at          = now()
+    """
+    rows = [
+        {
+            "mlbam_id": r["mlbam_id"],
+            "season": r["season"],
+            "team_id": r.get("team_id", 141),
+            "appeared_as_batter": bool(r.get("appeared_as_batter", False)),
+            "appeared_as_pitcher": bool(r.get("appeared_as_pitcher", False)),
+            "is_active_26": bool(r.get("is_active_26", False)),
+        }
+        for r in rows
+    ]
+    if not rows:
+        return 0
+    with conn.cursor() as cur:
+        cur.executemany(sql, rows)
+        return cur.rowcount
+
+
+def upsert_id_map(conn, rows: Iterable[dict]) -> int:
+    """Upsert into web_id_map (Chadwick register cache)."""
+    sql = """
+        insert into web_id_map (key_mlbam, key_fangraphs, key_bbref, name_first, name_last)
+        values (%(key_mlbam)s, %(key_fangraphs)s, %(key_bbref)s, %(name_first)s, %(name_last)s)
+        on conflict (key_mlbam) do update set
+          key_fangraphs = excluded.key_fangraphs,
+          key_bbref     = excluded.key_bbref,
+          name_first    = excluded.name_first,
+          name_last     = excluded.name_last,
+          refreshed_at  = now()
+    """
+    rows = list(rows)
+    if not rows:
+        return 0
+    with conn.cursor() as cur:
+        cur.executemany(sql, rows)
+        return cur.rowcount
+
+
 # DataFrame columns expected after normalization.
 STATCAST_COLUMNS = [
     "game_pk", "game_date", "game_type",
@@ -61,7 +168,7 @@ STATCAST_COLUMNS = [
     "at_bat_number", "pitch_number",
     "event", "description",
     "pitch_type", "release_speed", "spin_rate",
-    "plate_x", "plate_z",
+    "plate_x", "plate_z", "plate_alignment",
     "hc_x_feet", "hc_y_feet",
     "launch_speed", "launch_angle",
     "stand", "p_throws", "zone",

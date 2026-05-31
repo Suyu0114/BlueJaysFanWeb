@@ -8,14 +8,33 @@
   "Home": {
     "title": "Toronto Blue Jays — Fan Hub",
     "subtitle": "Data visualizations and beginner-friendly player pages for Blue Jays fans.",
-    "viewRoster": "View the 26-man roster"
+    "viewRoster": "View the 26-man roster",
+    "todayTitle": "Today's Blue Jays",
+    "fromGame": "From the {date} game",
+    "hrHero": "{name} went deep — {n} home run{n, plural, one {} other {s}}.",
+    "hardestContact": "{name} crushed one at {mph} mph.",
+    "bestPitching": "{name} — {ip} IP, {k} K, {h} H.",
+    "seasonProgress": "{season} so far",
+    "vsLastYear": "vs {season} final",
+    "onPaceFor": "on pace for {pace}",
+    "progressDisclaimer": "Compared against last season's full-year WAR, not the same date last year."
   },
   "Roster": {
     "title": "Active Roster",
     "subtitle": "Current 26-man roster",
+    "subtitleAll": "Everyone who appeared for Toronto in 2024-2026",
+    "modeLabel": "Roster view",
+    "tabCurrent": "Current 26-man",
+    "tabAll": "All 2024-2026",
     "bats": "Bats",
     "throws": "Throws",
     "empty": "No players yet. Run the roster ETL to populate the table."
+  },
+  "Overview": {
+    "season": "Season",
+    "bats": "Bats",
+    "throws": "Throws",
+    "noStats": "No season stats yet for this player."
   },
   "Batting": {
     "sprayChart": "Spray Chart",
@@ -55,9 +74,11 @@
     "heatmapHigh": "More"
   },
   "PlayerNav": {
+    "overview": "Overview",
     "batting": "Batting",
     "pitching": "Pitching",
-    "fielding": "Fielding"
+    "fielding": "Fielding",
+    "bazi": "BaZi"
   },
   "Fielding": {
     "title": "Fielding",
@@ -69,7 +90,10 @@
     "explainBody": "FRV (Fielding Run Value) is how many runs the player saved or cost their team with their glove compared to a league-average fielder at the same position. +5 is excellent, 0 is average, −5 is poor. OAA (Outs Above Average) is the underlying count of plays made above the league rate.",
     "note": "Source: Baseball Savant via pybaseball. Catcher framing and pitcher PFP use different metrics and are not shown here.",
     "diagramCaption": "Primary position: {position} ({season})",
-    "diagramCaptionGeneric": "Field layout"
+    "diagramCaptionMulti": "Primary: {primary} ({season}) · Also played: {others}",
+    "diagramCaptionGeneric": "Field layout",
+    "runsSavedPlain": "{name} saved Toronto {n} runs this season with his glove.",
+    "runsCostPlain": "{name} cost Toronto {n} runs this season with his glove."
   },
   "About": {
     "title": "About",

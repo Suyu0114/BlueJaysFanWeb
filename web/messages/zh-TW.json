@@ -8,14 +8,33 @@
   "Home": {
     "title": "Toronto Blue Jays — 球迷中心",
     "subtitle": "給藍鳥球迷的數據視覺化與新手友善的球員頁面。",
-    "viewRoster": "查看 26 人現役名單"
+    "viewRoster": "查看 26 人現役名單",
+    "todayTitle": "今日藍鳥",
+    "fromGame": "取自 {date} 的比賽",
+    "hrHero": "{name} 開轟了 — {n} 發全壘打。",
+    "hardestContact": "{name} 把球扎扎實實打中，球速 {mph} mph。",
+    "bestPitching": "{name} — {ip} IP, {k} K, {h} H。",
+    "seasonProgress": "{season} 本季進度",
+    "vsLastYear": "相較 {season} 球季",
+    "onPaceFor": "預估全季 {pace}",
+    "progressDisclaimer": "與去年球季最終 WAR 相比，並非去年同期的數字。"
   },
   "Roster": {
     "title": "現役名單",
     "subtitle": "目前 26 人名單",
+    "subtitleAll": "2024-2026 期間曾為藍鳥出賽的球員",
+    "modeLabel": "名單檢視",
+    "tabCurrent": "現役 26 人",
+    "tabAll": "歷年陣容",
     "bats": "打擊",
     "throws": "投球",
     "empty": "尚無球員資料，請執行 roster ETL 匯入名單。"
+  },
+  "Overview": {
+    "season": "球季",
+    "bats": "打擊",
+    "throws": "投球",
+    "noStats": "尚無這位球員的單季成績。"
   },
   "Batting": {
     "sprayChart": "Spray Chart",
@@ -55,9 +74,11 @@
     "heatmapHigh": "多"
   },
   "PlayerNav": {
+    "overview": "總覽",
     "batting": "打擊",
     "pitching": "投球",
-    "fielding": "守備"
+    "fielding": "守備",
+    "bazi": "八字"
   },
   "Fielding": {
     "title": "Fielding",
@@ -69,7 +90,10 @@
     "explainBody": "FRV（Fielding Run Value）衡量這位球員在自己的守位上，相較於聯盟平均守備員，總共幫球隊省下或丟失了多少分。+5 算頂尖、0 是平均、−5 則偏弱。OAA（Outs Above Average）是更上游的指標，計算比平均多接到（或漏接）了幾顆球。",
     "note": "資料來源：Baseball Savant（透過 pybaseball）。捕手 framing 與投手 PFP 屬於另一套指標，這頁不列入。",
     "diagramCaption": "主要守位：{position}（{season}）",
-    "diagramCaptionGeneric": "球場示意"
+    "diagramCaptionMulti": "主要：{primary}（{season}）· 亦曾守備：{others}",
+    "diagramCaptionGeneric": "球場示意",
+    "runsSavedPlain": "{name} 今年靠守備幫多倫多守下 {n} 分。",
+    "runsCostPlain": "{name} 今年守備讓多倫多多丟了 {n} 分。"
   },
   "About": {
     "title": "關於",

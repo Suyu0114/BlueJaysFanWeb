@@ -1,9 +1,11 @@
-"""Pull a batter's Statcast for a date range and upsert into Postgres.
+"""Pull batter Statcast for a date range and upsert into Postgres.
 
 Default: Vladimir Guerrero Jr. (665489), full 2025 regular season.
 Usage:
     python pull_statcast.py
     python pull_statcast.py --player 665489 --start 2026-03-27 --end 2026-05-26
+    python pull_statcast.py --all-batters --season 2024 --start 2024-03-28 --end 2024-09-29
+    python pull_statcast.py --all-batters --season 2025 --start 2025-03-27 --end 2025-11-01 --include-postseason
 """
 
 from __future__ import annotations
@@ -23,7 +25,7 @@ load_dotenv(_HERE / ".env")
 load_dotenv(_HERE.parent / ".env")
 
 from db import connect, upsert_players, upsert_statcast_events  # noqa: E402
-from transform import regular_season_only, to_field_feet  # noqa: E402
+from transform import regular_season_only, tag_plate_alignment, to_field_feet  # noqa: E402
 
 from pybaseball import statcast_batter, playerid_reverse_lookup  # noqa: E402
 
@@ -50,9 +52,10 @@ def fetch(player_id: int, start: date, end: date) -> pd.DataFrame:
     return df
 
 
-def normalize(df: pd.DataFrame) -> pd.DataFrame:
-    df = regular_season_only(df)
+def normalize(df: pd.DataFrame, include_postseason: bool = False) -> pd.DataFrame:
+    df = regular_season_only(df, keep_postseason=include_postseason)
     df = to_field_feet(df)
+    df = tag_plate_alignment(df)
     df = df.rename(columns=COLUMN_RENAMES)
     # game_date arrives as object/string; coerce to date.
     df["game_date"] = pd.to_datetime(df["game_date"]).dt.date
@@ -93,10 +96,11 @@ def upsert_referenced_players(conn, df: pd.DataFrame, primary: tuple[int, str]) 
     log.info("Upserted %d player rows (referenced by these events)", n)
 
 
-def run(player_id: int, start: date, end: date) -> None:
+def run(player_id: int, start: date, end: date, include_postseason: bool = False) -> None:
     raw = fetch(player_id, start, end)
-    df = normalize(raw)
-    log.info("After regular-season filter + cleanup: %d rows", len(df))
+    df = normalize(raw, include_postseason=include_postseason)
+    log.info("After filter + cleanup: %d rows (include_postseason=%s)",
+             len(df), include_postseason)
 
     pname = KNOWN_NAMES.get(player_id) or f"MLBAM-{player_id}"
 
@@ -108,6 +112,29 @@ def run(player_id: int, start: date, end: date) -> None:
     log.info("Done.")
 
 
+def batter_ids_for_season(conn, season: int) -> list[int]:
+    with conn.cursor() as cur:
+        cur.execute(
+            "select mlbam_id from web_player_seasons "
+            "where season = %s and appeared_as_batter = true "
+            "order by mlbam_id",
+            (season,),
+        )
+        return [row[0] for row in cur.fetchall()]
+
+
+def run_all(season: int, start: date, end: date, include_postseason: bool = False) -> None:
+    with connect() as conn:
+        ids = batter_ids_for_season(conn, season)
+    log.info("--all-batters: %d batters appeared for the Jays in %s", len(ids), season)
+    for i, pid in enumerate(ids, 1):
+        log.info("[%d/%d] Pulling batter %s", i, len(ids), pid)
+        try:
+            run(pid, start, end, include_postseason=include_postseason)
+        except Exception as exc:  # noqa: BLE001 -- keep loop running
+            log.exception("Failed to pull batter %s: %s -- continuing", pid, exc)
+
+
 def parse_date(s: str) -> date:
     return datetime.strptime(s, "%Y-%m-%d").date()
 
@@ -115,13 +142,27 @@ def parse_date(s: str) -> date:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--player", type=int, default=VLADDY_MLBAM,
-                    help=f"MLBAM player ID (default {VLADDY_MLBAM} = Vladdy)")
+                    help=f"MLBAM player ID (default {VLADDY_MLBAM} = Vladdy). Ignored when --all-batters is set.")
     ap.add_argument("--start", type=parse_date, default=date(2025, 3, 27),
                     help="Season start YYYY-MM-DD (default 2025-03-27)")
     ap.add_argument("--end", type=parse_date, default=date(2025, 9, 28),
                     help="Season end YYYY-MM-DD (default 2025-09-28)")
+    ap.add_argument("--all-batters", action="store_true",
+                    help="Loop over every batter in web_player_seasons for --season")
+    ap.add_argument("--season", type=int, default=None,
+                    help="Required with --all-batters; the season to enumerate")
+    ap.add_argument("--include-postseason", action="store_true",
+                    help="Keep playoff game_types (F/D/L/W) in addition to regular season")
     args = ap.parse_args(argv)
-    run(args.player, args.start, args.end)
+
+    if args.all_batters:
+        if args.season is None:
+            ap.error("--all-batters requires --season")
+        run_all(args.season, args.start, args.end,
+                include_postseason=args.include_postseason)
+    else:
+        run(args.player, args.start, args.end,
+            include_postseason=args.include_postseason)
     return 0
 
 
