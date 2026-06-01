@@ -6,16 +6,22 @@
 
 ---
 
-## MVP features
+## Features
 
-1. **Data visualizations**
-   - Spray chart (batted-ball locations, colored by outcome, sized by exit velocity)
-   - Pitching distribution (pitch types, zone heatmap)
-   - Fielding heatmap with FRV
-   - Filters: this season / this month / pitch type / vs LHP / vs RHP
-2. **Player pages** — beginner-friendly overview for the 26-man active roster
+1. **Data visualizations** (per player, filterable by season / month / pitch type)
+   - Spray chart — batted-ball locations, colored by outcome, sized by exit velocity
+   - Pitching distribution — pitch types, zone heatmap
+   - Fielding diagram + FRV table — primary position in brick, secondary positions in steel (so multi-position guys like Ernie Clement read at a glance)
+2. **Player pages**
+   - Overview with KPI cards (OPS / wRC+ / ERA / FIP / WAR) and a season-progress bar (pace projection for batters; current-vs-prior for pitchers, because `162/games` is meaningless for either starters or relievers)
+   - Sub-tabs auto-hide for roles a player didn't appear in
+3. **Roster**
+   - Current 26-man (default) / All 2024-2026 toggle
+4. **"Today's Blue Jays" home module**
+   - HR hero from the most recent game, with a hardest-contact fallback when nobody homered
+   - Best pitching line (IP / K / H, no fake ERA)
 
-**v2 (not in this milestone):** BaZi personality analysis, matchup predictions, injury-risk beta, BaZi-based cheer guides.
+**v2 (not in this milestone):** BaZi personality analysis, matchup predictions, injury-risk beta, daily WAR snapshots, `/compare` page (the underlying SprayChart `secondaryEvents` prop is already in place).
 
 ---
 
@@ -34,19 +40,35 @@
 
 ```
 .
-├── etl/                          # Python ETL: pybaseball → Supabase
-│   ├── pull_statcast.py
-│   ├── transform.py
-│   ├── roster.py
-│   └── requirements.txt
+├── etl/                          # Python ETL (conda env MLBxBaZi)
+│   ├── mlb_api.py                # MLB Stats API: active + fullSeason rosters, /people bio
+│   ├── idmap.py                  # Chadwick register → MLBAM cache
+│   ├── transform.py              # hc_x/y → feet; postseason flag; plate_alignment tag
+│   ├── db.py                     # psycopg3 connection + upserts
+│   ├── roster.py                 # 26-man active roster (sets is_active_26)
+│   ├── pull_team_players.py      # full-season Jays enumeration
+│   ├── pull_statcast.py          # batter Statcast (single or --all-batters)
+│   ├── pull_pitcher.py           # pitcher Statcast (single or --all-pitchers)
+│   ├── pull_fielding.py          # OAA / FRV per position
+│   ├── pull_season_stats.py      # OPS / wRC+ / ERA / FIP / WAR from manual CSVs
+│   ├── backfill.py               # one-shot orchestrator
+│   └── data/fangraphs/           # gitignored manual CSV drop zone
+├── db/migrations/                # plain SQL: 001 → 005
 ├── web/                          # Next.js app
 │   ├── app/[locale]/
-│   ├── components/charts/
-│   ├── lib/
-│   └── messages/
-│       ├── en.json               # source of truth
-│       └── zh-TW.json            # translation
-├── .github/workflows/etl.yml     # daily cron (09:00 ET)
+│   │   ├── page.tsx              # Home + "Today's Blue Jays"
+│   │   └── players/
+│   │       ├── page.tsx          # Roster (Current 26-man / All 2024-2026)
+│   │       └── [mlbam_id]/       # Overview + batting / pitching / fielding tabs
+│   ├── components/
+│   │   ├── PlayerNav.tsx
+│   │   ├── SeasonProgressBar.tsx
+│   │   └── charts/               # SprayChart, PitchDistribution, FieldingDiagram
+│   ├── lib/                      # db, players, batting/pitching/fielding,
+│   │                             # season-stats, recent-game, field-geometry
+│   └── messages/{en,zh-TW}.json
+├── .github/workflows/etl.yml     # daily cron (rolling 7-day window for current season)
+├── ETL_update_flow.md            # backfill + FanGraphs CSV download steps
 ├── CLAUDE.md                     # guidance for AI coding agents
 ├── .env.example                  # template for env vars
 └── README.md
@@ -100,6 +122,20 @@ python etl/pull_statcast.py
 python etl/pull_statcast.py --player 665489 --start 2025-03-27 --end 2025-09-28
 ```
 
+### Backfill a whole season
+
+`etl/backfill.py` runs the full chain in order (roster → Statcast for every
+player → fielding → season-stat CSV ingest). Idempotent; re-run as needed.
+
+```powershell
+python etl/backfill.py --season 2026
+python etl/backfill.py                              # default = 2024 + 2025
+```
+
+Season stats (OPS / wRC+ / ERA / FIP / WAR) require a manual FanGraphs CSV
+download — pybaseball's FanGraphs scrapers are 403'd indefinitely. Step-by-step
+in **[ETL_update_flow.md](ETL_update_flow.md)**.
+
 The cron version runs in GitHub Actions; see `.github/workflows/etl.yml`.
 
 ---
@@ -147,20 +183,27 @@ What stays English in zh-TW (do **not** translate):
 
 ## Data sources
 
-- **[pybaseball](https://github.com/jldbc/pybaseball)** — free wrapper around Baseball Savant / Statcast. Covers batting (spray data), pitching (location, velocity, spin), and fielding (FRV via `statcast_outs_above_average`, which returns `fielding_runs_prevented`).
-- **Baseball Savant** is the upstream source; data updates within minutes of game end.
-- **FanGraphs paid** — not used in MVP. Reconsider in v2 if vs-LHP/RHP splits or DRS become must-haves.
+- **[pybaseball](https://github.com/jldbc/pybaseball)** — wrapper around Baseball Savant. Covers batting (spray data), pitching (location, velocity, spin), and fielding (FRV via `statcast_outs_above_average`, which returns `fielding_runs_prevented`). **Savant pulls work; FanGraphs scrapers do not** — see workaround below.
+- **MLB Stats API** (`statsapi.mlb.com`) — player bio (incl. birth city/country), full-season roster enumeration, primary position.
+- **FanGraphs (manual CSV export)** — only source of OPS / wRC+ / ERA / FIP / WAR; requires a paid membership and human-in-the-loop download. See [ETL_update_flow.md](ETL_update_flow.md).
 
 ### Important Statcast gotchas
 
-- Pybaseball **includes playoffs by default.** Filter `game_type == 'R'` for regular season.
-- 2026 changed `plate_x`/`plate_z` to middle-of-plate alignment.
-- Pitch classifications can be retroactively edited → daily ETL re-pulls the last 7 days.
+- Pybaseball **includes playoffs by default.** Filter `game_type == 'R'` for regular season; `transform.regular_season_only(df, keep_postseason=True)` opts in (used for the 2025 playoff backfill).
+- 2026 changed `plate_x`/`plate_z` from front-of-plate to middle-of-plate alignment. `transform.tag_plate_alignment()` writes `'front'` (≤2025) or `'middle'` (≥2026) to `web_statcast_events.plate_alignment`. PitchDistribution must filter to a single alignment value at a time.
+- Pitch classifications can be retroactively edited → daily ETL re-pulls the last 7 days (current season only). Historical seasons stay static after `etl/backfill.py`.
 - Spray-chart coordinate transform:
   ```
   x_feet = 2.5 * (hc_x - 125.42)
   y_feet = 2.5 * (198.27 - hc_y)
   ```
+
+### FanGraphs scraper is dead
+
+`pybaseball.team_batting` / `team_pitching` / `batting_stats` / `pitching_stats` return HTTP 403 (server-side block; upgrading pybaseball won't help). Two workarounds in place:
+
+- **Player enumeration** ("who appeared for the Jays in season X") uses MLB Stats API `rosterType=fullSeason` in `etl/mlb_api.py`. Includes a few 40-man members who never actually debuted — acceptable; their Statcast pulls just return zero rows.
+- **Season stats** load from manually-exported FanGraphs CSVs in `etl/data/fangraphs/{batting,pitching}_{season}.csv` (directory gitignored). Missing file → warning + skip, not a hard failure.
 
 ---
 
@@ -174,6 +217,7 @@ What stays English in zh-TW (do **not** translate):
 | P3 | SprayChart + Supabase + filters | done |
 | P4 | Pitch distribution + fielding pages | done |
 | P5 | Cron ETL + Vercel deploy | done |
+| P6 | 2024-2026 backfill, multi-position fielding, player overview, Today's Blue Jays, BaZi v2 prep | done |
 
 ---
 

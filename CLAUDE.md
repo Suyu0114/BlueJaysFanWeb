@@ -27,8 +27,9 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 
 ### Supabase tables are shared — prefix everything with `web_`
 - This Supabase project is **shared with other projects** that already have a `players` table.
-- **Every table for this app is prefixed `web_`**: `web_players`, `web_statcast_events`, `web_player_season_stats`.
+- **Every table for this app is prefixed `web_`**: `web_players`, `web_statcast_events`, `web_player_season_stats`, `web_player_seasons`, `web_fielding_frv`, `web_id_map`.
 - Never create an unprefixed table here; it will collide.
+- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6). One concern per migration file.
 
 ### Audience & language
 - **Primary audience: English-speaking Toronto locals**, including non-Chinese speakers curious about BaZi. Chinese (TW/HK) fans are secondary.
@@ -49,15 +50,21 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 - BaZi tables live in Supabase but are v2 scope — do not query them yet.
 
 ### ETL gotchas (will silently produce wrong data if missed)
-- pybaseball returns playoffs by default. Filter `game_type == 'R'` for regular season.
-- 2026 season changed Savant's `plate_x` / `plate_z` to middle-of-plate alignment. Beware when mixing seasons.
-- Pitch classifications get retroactively corrected → daily ETL must re-pull the last 7 days and upsert.
+- pybaseball returns playoffs by default. Filter `game_type == 'R'` for regular season; `transform.regular_season_only(df, keep_postseason=True)` opts in (used for 2025 playoff backfill).
+- 2026 season changed Savant's `plate_x` / `plate_z` from front-of-plate to middle-of-plate alignment. `transform.tag_plate_alignment()` writes `'front'` (≤2025) or `'middle'` (≥2026) to `web_statcast_events.plate_alignment`. `PitchDistribution` must render rows from a single alignment value at a time — overlaying both would mis-align the zone by 1–3 inches.
+- Pitch classifications get retroactively corrected → daily ETL re-pulls the last 7 days and upserts (current season only). Historical seasons are static after `etl/backfill.py`.
 - Spray chart coordinate transform (must apply in ETL, not in the chart component):
   ```
   x_feet = 2.5 * (hc_x - 125.42)
   y_feet = 2.5 * (198.27 - hc_y)
   ```
 - Upsert key for `web_statcast_events`: `(game_pk, batter_id, pitcher_id, at_bat_number, pitch_number)`.
+
+### FanGraphs scraping is dead — use these workarounds
+- `pybaseball.team_batting` / `team_pitching` / `batting_stats` / `pitching_stats` return **HTTP 403**. The block is server-side; updating pybaseball won't help.
+- **Player enumeration** for "who appeared for the Jays in season X" now uses MLB Stats API `rosterType=fullSeason` (`etl/mlb_api.py::fetch_full_season_roster`). It includes 40-man members who never debuted — accept the small over-inclusion. Run via `python etl/pull_team_players.py --season YEAR`.
+- **Season stats** (OPS / wRC+ / ERA / FIP / K/9 / WAR) load from **manually-exported FanGraphs CSVs** dropped into `etl/data/fangraphs/{batting,pitching}_{season}.csv` (directory gitignored, requires a paid FanGraphs membership). `etl/pull_season_stats.py` reads them; missing files log a warning, do not fail. Full step-by-step in `ETL_update_flow.md`.
+- Statcast event pulls (`statcast_batter` / `statcast_pitcher`) and fielding leaderboard (`statcast_outs_above_average`) hit Baseball Savant directly — these are **unaffected**.
 
 ---
 
@@ -82,42 +89,60 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
 
 ```
 /etl/                          # Python (conda env MLBxBaZi): pybaseball → Supabase
-  pull_statcast.py
-  transform.py                 # hc_x/y → feet, game_type filter
-  db.py                        # psycopg3 connection + upserts
-  roster.py                    # 26-man maintenance (not built yet)
+  mlb_api.py                   # MLB Stats API helpers (active + fullSeason roster, /people bio)
+  idmap.py                     # Chadwick register → MLBAM lookup (web_id_map cache)
+  transform.py                 # hc_x/y → feet, postseason flag, tag_plate_alignment
+  db.py                        # psycopg3 connection + upserts (incl. player_seasons, id_map)
+  roster.py                    # 26-man active roster (sets is_active_26)
+  pull_team_players.py         # full-season Jays enumeration (MLB Stats API)
+  pull_statcast.py             # batter Statcast; --all-batters / --include-postseason
+  pull_pitcher.py              # pitcher Statcast; --all-pitchers / --include-postseason
+  pull_fielding.py             # OAA / FRV per position (Savant leaderboard)
+  pull_season_stats.py         # OPS/wRC+/ERA/FIP/WAR from FanGraphs CSV exports
+  backfill.py                  # one-shot orchestrator for 2024 + 2025 (and optional 2026)
+  data/fangraphs/              # gitignored manual CSV drop zone for season stats
 /db/migrations/                # plain SQL, apply via psql or Supabase Studio
-  001_initial_schema.sql
-/.github/workflows/etl.yml     # daily cron
+  001_initial_schema.sql       # web_players, web_statcast_events, web_player_season_stats
+  002_fielding_frv.sql         # web_fielding_frv
+  003_player_seasons.sql       # web_player_seasons + birth_city/state/country on web_players
+  004_plate_alignment.sql      # web_statcast_events.plate_alignment column
+  005_id_map.sql               # web_id_map (Chadwick register cache)
+/.github/workflows/etl.yml     # daily cron (rolling 7-day window for current season)
+/ETL_update_flow.md            # backfill + FanGraphs CSV download steps
 /web/                          # Next.js app
   app/[locale]/
-    page.tsx                   # team home
-    players/page.tsx           # roster list
+    page.tsx                   # team home + "Today's Blue Jays" module
+    players/page.tsx           # roster list with Current 26-man / All 2024-2026 toggle
     players/[mlbam_id]/
-      page.tsx                 # overview
+      page.tsx                 # overview (KPI cards + SeasonProgressBar)
       batting/page.tsx         # spray chart
       pitching/page.tsx        # pitch distribution
-      fielding/page.tsx        # heatmap + FRV
+      fielding/page.tsx        # FRV table + multi-position diagram
     about/page.tsx
-  components/charts/
-    SprayChart.tsx
-    PitchDistribution.tsx
-    FieldingHeatmap.tsx
+  components/
+    PlayerNav.tsx              # tabs with `available` prop (bazi slot reserved for v2)
+    SeasonProgressBar.tsx      # batter pace projection / pitcher current-vs-prior
+    charts/
+      SprayChart.tsx           # optional secondaryEvents prop for /compare
+      PitchDistribution.tsx
+      FieldingDiagram.tsx      # primary chip (brick) + secondary chips (steel)
   lib/
-    supabase.ts                # server client
-    field-geometry.ts          # Rogers Centre SVG paths
+    db.ts                      # postgres.js client (PgBouncer-safe: prepare: false)
+    players.ts                 # roster modes + getPlayerAvailability
+    batting.ts / pitching.ts / fielding.ts
+    season-stats.ts            # web_player_season_stats + batter games-played
+    recent-game.ts             # Today's Blue Jays helpers (HR hero, hardest contact, IP/K/H)
+    field-geometry.ts          # Rogers Centre SVG paths (exports polar())
   messages/
     en.json                    # source of truth
     zh-TW.json                 # translation
 ```
 
-v2 routes to leave room for but not implement: `/[locale]/players/[id]/bazi/`, `/[locale]/predictions/`.
+v2 routes to leave room for but not implement: `/[locale]/players/[id]/bazi/`, `/[locale]/predictions/`, `/[locale]/compare/`. The BaZi tab slot already exists in `PlayerNav` (passed `available.bazi: false` everywhere in P6); the SprayChart already accepts a `secondaryEvents` prop ready for the compare page.
 
 ---
 
 ## How to run things
-
-Nothing is scaffolded yet. When initialized:
 
 ```powershell
 # Web (needs DATABASE_URL in web/.env.local — Next.js does not read the repo-root .env)
@@ -127,9 +152,21 @@ pnpm dev                       # http://localhost:3000  (locale routing via prox
 
 # ETL (one-shot, local) — uses the existing conda env, NOT a venv
 conda activate MLBxBaZi
+
+# A) Ad-hoc single-player pull (debugging)
 python etl/pull_statcast.py                         # defaults to Vladdy 2025
 python etl/pull_statcast.py --player 665489 --start 2026-03-27 --end 2026-05-26
+
+# B) Full backfill for a season (2024/2025/2026): roster -> statcast (all players)
+#    -> fielding -> season stats. Idempotent; re-run as needed.
+python etl/backfill.py --season 2026
+python etl/backfill.py                              # default = 2024 + 2025
+
+# C) Just season stats (after dropping FanGraphs CSVs into etl/data/fangraphs/):
+python etl/pull_season_stats.py --season 2026
 ```
+
+Full update flow (incl. the manual FanGraphs CSV step) lives in `ETL_update_flow.md`.
 
 Env vars live in `.env` at the repo root (single `DATABASE_URL`). The ETL loads
 `.env` from the repo root or `etl/`, whichever exists. See `.env.example`.
@@ -163,7 +200,7 @@ Reuse these tokens — don't introduce ad-hoc hex. The brand 5 (`papaya`/`navy`/
 
 ---
 
-## Phases (current = maintenance; MVP shipped)
+## Phases (current = maintenance; MVP + P6 shipped)
 
 | Phase | Status | Done when |
 |---|---|---|
@@ -173,3 +210,6 @@ Reuse these tokens — don't introduce ad-hoc hex. The brand 5 (`papaya`/`navy`/
 | P3 | done | SprayChart wired to Supabase + filters work client-side |
 | P4 | done | Pitch distribution + fielding FRV pages live (en + zh-TW), PlayerNav links the three sub-pages |
 | P5 | done | GitHub Actions cron + Vercel deploy; data refreshes overnight |
+| P6 | done | 2024 + 2025 (incl. playoffs) + 2026-to-date backfilled for every 40-man Jay; multi-position fielding diagram (RF chip stays inside the wall); player overview page with KPI cards + SeasonProgressBar; "Today's Blue Jays" home module; Current 26-man / All 2024-2026 roster toggle; PlayerNav reserves the BaZi tab slot for v2 |
+
+v2 (deferred): BaZi personality / fortune / matchup-prediction / injury-risk; daily WAR snapshots for strict same-date pace comparisons; `/compare` page (SprayChart `secondaryEvents` prop is already wired).
