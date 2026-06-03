@@ -161,6 +161,87 @@ def upsert_id_map(conn, rows: Iterable[dict]) -> int:
         return cur.rowcount
 
 
+# --- P7: schedule + per-game box score -------------------------------------
+
+def upsert_games(conn, rows: Iterable[dict]) -> int:
+    """Upsert into web_games keyed on game_pk.
+
+    Each row: game_pk, season, game_date, first_pitch_utc, game_number,
+    doubleheader, is_home, opponent_id, opponent_name, jays_score, opp_score,
+    status, is_final, result, venue. (pull_schedule.py builds these.)
+    """
+    sql = """
+        insert into web_games
+          (game_pk, season, game_date, first_pitch_utc, game_number,
+           doubleheader, is_home, opponent_id, opponent_name,
+           jays_score, opp_score, status, is_final, result, venue)
+        values
+          (%(game_pk)s, %(season)s, %(game_date)s, %(first_pitch_utc)s, %(game_number)s,
+           %(doubleheader)s, %(is_home)s, %(opponent_id)s, %(opponent_name)s,
+           %(jays_score)s, %(opp_score)s, %(status)s, %(is_final)s, %(result)s, %(venue)s)
+        on conflict (game_pk) do update set
+          season          = excluded.season,
+          game_date       = excluded.game_date,
+          first_pitch_utc = excluded.first_pitch_utc,
+          game_number     = excluded.game_number,
+          doubleheader    = excluded.doubleheader,
+          is_home         = excluded.is_home,
+          opponent_id     = excluded.opponent_id,
+          opponent_name   = excluded.opponent_name,
+          jays_score      = excluded.jays_score,
+          opp_score       = excluded.opp_score,
+          status          = excluded.status,
+          is_final        = excluded.is_final,
+          result          = excluded.result,
+          venue           = excluded.venue,
+          updated_at      = now()
+    """
+    rows = list(rows)
+    if not rows:
+        return 0
+    with conn.cursor() as cur:
+        cur.executemany(sql, rows)
+        return cur.rowcount
+
+
+# All non-key columns; callers pass partial dicts (a batting row leaves the p_*
+# columns absent and vice-versa) and the normalizer fills the rest with None.
+PLAYER_GAME_STAT_COLUMNS = [
+    "game_pk", "mlbam_id", "stat_group",
+    "pa", "ab", "r", "h", "doubles", "triples", "hr", "rbi", "bb", "so", "sb", "hbp",
+    "outs_recorded", "bf", "p_h", "p_r", "er", "p_bb", "p_so", "p_hr",
+    "pitches", "strikes", "decision",
+]
+
+
+def upsert_player_game_stats(conn, rows: Iterable[dict]) -> int:
+    """Upsert into web_player_game_stats keyed on (game_pk, mlbam_id, stat_group).
+
+    Rows may be partial (batting rows omit p_* columns and vice-versa); missing
+    columns are stored as NULL.
+    """
+    rows = list(rows)
+    if not rows:
+        return 0
+    cols = ", ".join(PLAYER_GAME_STAT_COLUMNS)
+    placeholders = ", ".join(f"%({c})s" for c in PLAYER_GAME_STAT_COLUMNS)
+    key_cols = {"game_pk", "mlbam_id", "stat_group"}
+    set_clause = ", ".join(
+        f"{c} = excluded.{c}" for c in PLAYER_GAME_STAT_COLUMNS if c not in key_cols
+    )
+    sql = f"""
+        insert into web_player_game_stats ({cols}, updated_at)
+        values ({placeholders}, now())
+        on conflict (game_pk, mlbam_id, stat_group) do update set
+          {set_clause},
+          updated_at = now()
+    """
+    norm = [{c: r.get(c) for c in PLAYER_GAME_STAT_COLUMNS} for r in rows]
+    with conn.cursor() as cur:
+        cur.executemany(sql, norm)
+        return cur.rowcount
+
+
 # DataFrame columns expected after normalization.
 STATCAST_COLUMNS = [
     "game_pk", "game_date", "game_type",

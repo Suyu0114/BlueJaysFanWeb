@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import ScheduleCalendar from "@/components/ScheduleCalendar";
+import { getSchedule, type ScheduleGame } from "@/lib/games";
 import {
   formatInningsPitched,
   getBestPitchingLine,
@@ -11,6 +13,23 @@ import {
 
 export const revalidate = 3600;
 
+// The current / most-recent game day to highlight: the latest game on or before
+// today, else the season's first game (before opening day).
+function pickHighlightDate(
+  games: ScheduleGame[],
+  today: string,
+): string | null {
+  let latestPast: string | null = null;
+  let earliest: string | null = null;
+  for (const g of games) {
+    if (earliest === null || g.game_date < earliest) earliest = g.game_date;
+    if (g.game_date <= today && (latestPast === null || g.game_date > latestPast)) {
+      latestPast = g.game_date;
+    }
+  }
+  return latestPast ?? earliest;
+}
+
 export default async function HomePage({
   params,
 }: {
@@ -19,6 +38,19 @@ export default async function HomePage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Home");
+
+  // Schedule calendar: current season, falling back to last season in the
+  // offseason (before the new schedule is published).
+  const todayET = new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/New_York",
+  });
+  let season = Number(todayET.slice(0, 4));
+  let games = await getSchedule(season);
+  if (games.length === 0) {
+    season -= 1;
+    games = await getSchedule(season);
+  }
+  const highlightDate = pickHighlightDate(games, todayET);
 
   const recent = await getMostRecentGame();
   const [hrHero, pitchingLine] = recent
@@ -31,19 +63,8 @@ export default async function HomePage({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
-      <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-        {t("title")}
-      </h1>
-      <p className="mt-4 max-w-prose text-lg text-navy/70">{t("subtitle")}</p>
-      <Link
-        href="/players"
-        className="mt-6 inline-flex items-center rounded-full bg-brick px-5 py-2.5 text-sm font-medium text-papaya transition-colors hover:bg-lava"
-      >
-        {t("viewRoster")}
-      </Link>
-
       {recent && (hrHero || contact || pitchingLine) && (
-        <section className="mt-10">
+        <section>
           <h2 className="text-lg font-semibold text-navy">
             {t("todayTitle")}
           </h2>
@@ -85,6 +106,14 @@ export default async function HomePage({
             )}
           </div>
         </section>
+      )}
+
+      {games.length > 0 && (
+        <ScheduleCalendar
+          games={games}
+          highlightDate={highlightDate}
+          season={season}
+        />
       )}
     </div>
   );

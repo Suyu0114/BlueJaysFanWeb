@@ -115,9 +115,6 @@ export async function getBestPitchingLine(
   return rows[0] ?? null;
 }
 
-// Baseball "innings pitched" convention: 5 outs = 1.2 (1 and 2/3), 6 = 2.0.
-export function formatInningsPitched(outs: number): string {
-  const whole = Math.floor(outs / 3);
-  const frac = outs % 3;
-  return `${whole}.${frac}`;
-}
+// Innings-pitched conversion now lives in lib/games.ts (single source of
+// truth); re-exported here so existing importers (home page) keep working.
+export { formatInningsPitched } from "./games";

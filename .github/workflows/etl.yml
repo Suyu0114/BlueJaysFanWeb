@@ -1,15 +1,19 @@
-# Daily ETL: refresh Statcast events (rolling 7-day window for the current
-# season), roster, fielding/season aggregates, then poke /api/revalidate so
-# Vercel ISR caches drop.
+# Daily ETL. Two scheduled runs (P7):
 #
-# Cron: `0 13 * * *` (~09:00 ET; drifts an hour across DST -- acceptable since
-# the job just needs to run after the previous night's games settle).
+#   * `0 13 * * *`  (~09:00 ET): the FULL refresh -- Statcast (rolling 7-day
+#     window), roster/participation, fielding, season stats, THEN a current-
+#     season schedule refresh + a 3-day box-score re-pull. The box-score re-pull
+#     is the West-Coast / late-final backfill: games still in progress at the
+#     11:30 PM ET run get completed here.
+#   * `30 3 * * *` (~11:30 PM ET): a LIGHT freshness run -- today's schedule
+#     refresh + today's final box scores only. No Statcast / roster work.
 #
-# Why a rolling 7-day window: Savant retroactively re-classifies pitch types
-# days after the game (CLAUDE.md L53). Re-fetching only the last 7 days and
-# upserting handles that without re-pulling the entire season nightly.
-# Historical seasons (2024, 2025) are NOT in this cron -- they are filled by a
-# one-shot `python etl/backfill.py` run from a developer machine.
+# Per-run order is always schedule -> boxscore -> revalidate: pull_boxscore's
+# final-game guard reads web_games.is_final, which pull_schedule populates.
+#
+# Both crons drift ~1h across DST (acceptable). GitHub cron is best-effort and
+# can lag 10-15+ min; West-Coast road games (~10 PM - 1 AM ET) are intentionally
+# left for the 09:00 ET backfill rather than chased at 11:30 PM.
 #
 # NOTE re: conda env rule. CLAUDE.md mandates the local conda env `MLBxBaZi`
 # for any Python work and forbids creating a venv or `requirements.txt`. That
@@ -22,11 +26,14 @@ name: daily-etl
 
 on:
   schedule:
-    - cron: "0 13 * * *"
+    - cron: "0 13 * * *"    # ~09:00 ET -- full refresh
+    - cron: "30 3 * * *"    # ~11:30 PM ET -- today's finals only
   workflow_dispatch:
 
 jobs:
   refresh:
+    # ~09:00 ET full refresh (and any manual dispatch -- it is the superset).
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 13 * * *'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -84,8 +91,65 @@ jobs:
       - name: Pull fielding OAA/FRV (season-to-date aggregate)
         run: python etl/pull_fielding.py --season "$SEASON"
 
-      - name: Pull season stats (OPS / wRC+ / ERA / FIP / WAR)
+      - name: Pull season stats (OPS / wRC+ / ERA / FIP / WAR + Value components)
         run: python etl/pull_season_stats.py --season "$SEASON"
+
+      # P7: schedule -> boxscore must run before revalidate. pull_boxscore guards
+      # on web_games.is_final, so pull_schedule has to populate it first.
+      # --recent 3 backfills West-Coast / late finals that were still in progress
+      # at the 11:30 PM ET run.
+      - name: Refresh schedule (web_games, current season)
+        run: python etl/pull_schedule.py --season "$SEASON"
+
+      - name: Pull box scores (last 3 days of finals)
+        run: python etl/pull_boxscore.py --recent 3
+
+      - name: Revalidate Next.js ISR cache
+        run: |
+          curl --fail --silent --show-error -X POST \
+            -H "x-revalidate-secret: ${REVALIDATE_SECRET}" \
+            "${REVALIDATE_URL}"
+
+  nightly-finals:
+    # ~11:30 PM ET freshness run: today's schedule + today's finals only.
+    # No roster / Statcast work -- pull_boxscore self-heals unknown call-ups by
+    # inserting their bio into web_players before the FK insert.
+    if: github.event.schedule == '30 3 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      REVALIDATE_URL: ${{ secrets.REVALIDATE_URL }}
+      REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      # Lighter dep set than the full refresh: schedule + boxscore need
+      # requests (MLB API), psycopg (DB) and pandas (imported by etl/db.py);
+      # pybaseball is not used here.
+      - name: Install Python deps (CI-only, see header note)
+        run: |
+          python -m pip install --upgrade pip
+          pip install \
+            "psycopg[binary]==3.2.1" \
+            "python-dotenv==1.0.1" \
+            "pandas==2.2.3" \
+            "requests==2.32.3"
+
+      - name: Determine current season
+        run: echo "SEASON=$(date -u +%Y)" >> "$GITHUB_ENV"
+
+      # P7: schedule -> boxscore -> revalidate.
+      - name: Refresh schedule (web_games, current season)
+        run: python etl/pull_schedule.py --season "$SEASON"
+
+      - name: Pull box scores (today's finals)
+        run: python etl/pull_boxscore.py --recent 1
 
       - name: Revalidate Next.js ISR cache
         run: |

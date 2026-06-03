@@ -9,6 +9,16 @@ export type SeasonStats = {
   era: number | null;
   fip: number | null;
   k_per_9: number | null;
+  // P7: FanGraphs Value components (batter-only) + season WPA. Null for
+  // pitchers / seasons without a Value-preset CSV.
+  war_batting: number | null;
+  war_baserunning: number | null;
+  war_fielding: number | null;
+  war_positional: number | null;
+  war_league: number | null;
+  war_replacement: number | null;
+  rar: number | null;
+  wpa: number | null;
 };
 
 export async function getSeasonStats(mlbamId: number): Promise<SeasonStats[]> {
@@ -20,7 +30,15 @@ export async function getSeasonStats(mlbamId: number): Promise<SeasonStats[]> {
       war::float8 as war,
       era::float8 as era,
       fip::float8 as fip,
-      k_per_9::float8 as k_per_9
+      k_per_9::float8 as k_per_9,
+      war_batting::float8 as war_batting,
+      war_baserunning::float8 as war_baserunning,
+      war_fielding::float8 as war_fielding,
+      war_positional::float8 as war_positional,
+      war_league::float8 as war_league,
+      war_replacement::float8 as war_replacement,
+      rar::float8 as rar,
+      wpa::float8 as wpa
     from web_player_season_stats
     where mlbam_id = ${mlbamId}
     order by season desc

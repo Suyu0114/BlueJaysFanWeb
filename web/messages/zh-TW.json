@@ -19,6 +19,40 @@
     "onPaceFor": "預估全季 {pace}",
     "progressDisclaimer": "與去年球季最終 WAR 相比，並非去年同期的數字。"
   },
+  "Calendar": {
+    "title": "賽程",
+    "vs": "vs",
+    "at": "@",
+    "prevMonth": "上個月",
+    "nextMonth": "下個月",
+    "noGames": "本月沒有比賽。",
+    "postponed": "延賽",
+    "suspended": "保留比賽",
+    "canceled": "取消",
+    "delayed": "延遲",
+    "live": "比賽進行中",
+    "tbd": "待定"
+  },
+  "Game": {
+    "battingTitle": "打擊",
+    "pitchingTitle": "投球",
+    "player": "球員",
+    "final": "終場",
+    "noBoxscore": "尚無這場比賽的 box score。"
+  },
+  "WarBreakdown": {
+    "title": "WAR 的組成",
+    "warLabel": "WAR",
+    "rarLabel": "RAR",
+    "perWin": "{rar} RAR ÷ {rpw} runs/win",
+    "compBatting": "打擊",
+    "compBaserunning": "跑壘",
+    "compFielding": "守備",
+    "compPositional": "守位調整",
+    "compLeague": "聯盟調整",
+    "compReplacement": "replacement",
+    "methodology": "WAR 由六項 run value 組成——打擊、跑壘、守備、守位調整、聯盟調整、replacement——加總為 Runs Above Replacement (RAR);RAR 除以當季的 runs-per-win (約 10)即得 WAR。此處守備與守位調整分開呈現,因此 DH 的負守位值會單獨顯示在自己那根 bar 上。"
+  },
   "Roster": {
     "title": "現役名單",
     "subtitle": "目前 26 人名單",

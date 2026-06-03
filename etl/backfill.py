@@ -10,10 +10,12 @@ Usage:
 
 Order matters per season:
   1. pull_team_players   -> populates web_player_seasons (everyone needed below)
-  2. pull_statcast       --all-batters   (regular season + 2025 postseason)
-  3. pull_pitcher        --all-pitchers  (regular season + 2025 postseason)
-  4. pull_fielding       -> season-aggregate OAA/FRV per position
-  5. pull_season_stats   -> OPS/wRC+/ERA/FIP/WAR
+  2. pull_schedule       -> web_games (must precede boxscore: it owns is_final)
+  3. pull_statcast       --all-batters   (regular season + 2025 postseason)
+  4. pull_pitcher        --all-pitchers  (regular season + 2025 postseason)
+  5. pull_fielding       -> season-aggregate OAA/FRV per position
+  6. pull_season_stats   -> OPS/wRC+/ERA/FIP/WAR + Value components (war_*, rar, wpa)
+  7. pull_boxscore       -> web_player_game_stats for every final game
 """
 
 from __future__ import annotations
@@ -30,8 +32,10 @@ _HERE = Path(__file__).resolve().parent
 load_dotenv(_HERE / ".env")
 load_dotenv(_HERE.parent / ".env")
 
+import pull_boxscore  # noqa: E402
 import pull_fielding  # noqa: E402
 import pull_pitcher  # noqa: E402
+import pull_schedule  # noqa: E402
 import pull_season_stats  # noqa: E402
 import pull_statcast  # noqa: E402
 import pull_team_players  # noqa: E402
@@ -58,20 +62,26 @@ def run_season(season: int) -> None:
     log.info("==== BACKFILL %s (%s -> %s, postseason=%s) ====",
              season, start, end, include_postseason)
 
-    log.info("Step 1/5: pull_team_players")
+    log.info("Step 1/7: pull_team_players")
     pull_team_players.run(season)
 
-    log.info("Step 2/5: pull_statcast --all-batters")
+    log.info("Step 2/7: pull_schedule")
+    pull_schedule.run(season)
+
+    log.info("Step 3/7: pull_statcast --all-batters")
     pull_statcast.run_all(season, start, end, include_postseason=include_postseason)
 
-    log.info("Step 3/5: pull_pitcher --all-pitchers")
+    log.info("Step 4/7: pull_pitcher --all-pitchers")
     pull_pitcher.run_all(season, start, end, include_postseason=include_postseason)
 
-    log.info("Step 4/5: pull_fielding")
+    log.info("Step 5/7: pull_fielding")
     pull_fielding.run(season)
 
-    log.info("Step 5/5: pull_season_stats")
+    log.info("Step 6/7: pull_season_stats")
     pull_season_stats.run(season)
+
+    log.info("Step 7/7: pull_boxscore (all finals)")
+    pull_boxscore.run(season=season)
 
     log.info("==== BACKFILL %s COMPLETE ====", season)
 

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import PlayerNav from "@/components/PlayerNav";
 import SeasonProgressBar from "@/components/SeasonProgressBar";
+import WarBreakdown from "@/components/charts/WarBreakdown";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
 import {
   getBatterGamesPlayed,
@@ -74,6 +75,11 @@ export default async function PlayerOverviewPage({
   const canShowProgress =
     latest?.war != null && prior?.war != null && latest.season > prior.season;
 
+  // WAR breakdown is batter-only (pitcher WAR is FIP-based and doesn't
+  // decompose into Bat/Fld/BsR) and needs the FanGraphs Value components.
+  const canShowWar =
+    role === "batter" && latest?.rar != null && latest?.war != null;
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
       <div className="flex items-start gap-4">
@@ -138,6 +144,19 @@ export default async function PlayerOverviewPage({
                 gamesPlayed={gamesPlayed}
               />
             </div>
+          )}
+
+          {canShowWar && (
+            <WarBreakdown
+              batting={latest!.war_batting ?? 0}
+              baserunning={latest!.war_baserunning ?? 0}
+              fielding={latest!.war_fielding ?? 0}
+              positional={latest!.war_positional ?? 0}
+              league={latest!.war_league ?? 0}
+              replacement={latest!.war_replacement ?? 0}
+              rar={latest!.rar!}
+              war={latest!.war!}
+            />
           )}
         </section>
       ) : (

@@ -19,6 +19,40 @@
     "onPaceFor": "on pace for {pace}",
     "progressDisclaimer": "Compared against last season's full-year WAR, not the same date last year."
   },
+  "Calendar": {
+    "title": "Schedule",
+    "vs": "vs",
+    "at": "@",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "noGames": "No games this month.",
+    "postponed": "Postponed",
+    "suspended": "Suspended",
+    "canceled": "Canceled",
+    "delayed": "Delayed",
+    "live": "In Progress",
+    "tbd": "TBD"
+  },
+  "Game": {
+    "battingTitle": "Batting",
+    "pitchingTitle": "Pitching",
+    "player": "Player",
+    "final": "Final",
+    "noBoxscore": "Box score isn't available for this game yet."
+  },
+  "WarBreakdown": {
+    "title": "How WAR is built",
+    "warLabel": "WAR",
+    "rarLabel": "RAR",
+    "perWin": "{rar} RAR ÷ {rpw} runs/win",
+    "compBatting": "Batting",
+    "compBaserunning": "Base Running",
+    "compFielding": "Fielding",
+    "compPositional": "Positional",
+    "compLeague": "League",
+    "compReplacement": "Replacement",
+    "methodology": "WAR is built from six run-value components — batting, base running, fielding, positional adjustment, league adjustment, and replacement level — that add up to Runs Above Replacement (RAR). Dividing RAR by the season's runs-per-win (~10) gives WAR. Fielding here is shown separately from the positional adjustment, so a designated hitter's negative positional value is visible on its own bar."
+  },
   "Roster": {
     "title": "Active Roster",
     "subtitle": "Current 26-man roster",

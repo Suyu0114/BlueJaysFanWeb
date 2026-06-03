@@ -46,19 +46,46 @@ REQUIRED_COLS: dict[str, list[str]] = {
     "pitching": ["MLBAMID", "ERA", "FIP", "K/9", "WAR"],
 }
 
+# P7: FanGraphs Value 細項 -> web_player_season_stats (header 已對照確認).
+# Batter-only and OPTIONAL: unlike REQUIRED_COLS these warn + skip (store NULL)
+# if absent, so an older batting CSV without the Value preset won't hard-fail.
+WAR_COMPONENT_COLS = {
+    "Bat": "war_batting",
+    "BsR": "war_baserunning",
+    "Fld": "war_fielding",
+    "Pos": "war_positional",
+    "Lg":  "war_league",
+    "Rep": "war_replacement",
+    "RAR": "rar",
+    "WPA": "wpa",
+}
+# join / identity: MLBAMID -> mlbam_id
+
 UPSERT_SQL = """
     insert into web_player_season_stats
-      (mlbam_id, season, ops, wrc_plus, war, era, fip, k_per_9)
+      (mlbam_id, season, ops, wrc_plus, war, era, fip, k_per_9,
+       war_batting, war_baserunning, war_fielding, war_positional,
+       war_league, war_replacement, rar, wpa)
     values
       (%(mlbam_id)s, %(season)s, %(ops)s, %(wrc_plus)s, %(war)s,
-       %(era)s, %(fip)s, %(k_per_9)s)
+       %(era)s, %(fip)s, %(k_per_9)s,
+       %(war_batting)s, %(war_baserunning)s, %(war_fielding)s, %(war_positional)s,
+       %(war_league)s, %(war_replacement)s, %(rar)s, %(wpa)s)
     on conflict (mlbam_id, season) do update set
-      ops        = coalesce(excluded.ops,        web_player_season_stats.ops),
-      wrc_plus   = coalesce(excluded.wrc_plus,   web_player_season_stats.wrc_plus),
-      war        = coalesce(excluded.war,        web_player_season_stats.war),
-      era        = coalesce(excluded.era,        web_player_season_stats.era),
-      fip        = coalesce(excluded.fip,        web_player_season_stats.fip),
-      k_per_9    = coalesce(excluded.k_per_9,    web_player_season_stats.k_per_9),
+      ops             = coalesce(excluded.ops,             web_player_season_stats.ops),
+      wrc_plus        = coalesce(excluded.wrc_plus,        web_player_season_stats.wrc_plus),
+      war             = coalesce(excluded.war,             web_player_season_stats.war),
+      era             = coalesce(excluded.era,             web_player_season_stats.era),
+      fip             = coalesce(excluded.fip,             web_player_season_stats.fip),
+      k_per_9         = coalesce(excluded.k_per_9,         web_player_season_stats.k_per_9),
+      war_batting     = coalesce(excluded.war_batting,     web_player_season_stats.war_batting),
+      war_baserunning = coalesce(excluded.war_baserunning, web_player_season_stats.war_baserunning),
+      war_fielding    = coalesce(excluded.war_fielding,    web_player_season_stats.war_fielding),
+      war_positional  = coalesce(excluded.war_positional,  web_player_season_stats.war_positional),
+      war_league      = coalesce(excluded.war_league,      web_player_season_stats.war_league),
+      war_replacement = coalesce(excluded.war_replacement, web_player_season_stats.war_replacement),
+      rar             = coalesce(excluded.rar,             web_player_season_stats.rar),
+      wpa             = coalesce(excluded.wpa,             web_player_season_stats.wpa),
       updated_at = now()
 """
 
@@ -115,6 +142,21 @@ def _mlbam(row) -> int | None:
         return None
 
 
+def _warn_duplicate_value_headers(df: pd.DataFrame, season: int) -> None:
+    """Spec §3 dedup guard. A clean Custom Report has no duplicate headers, but
+    if one reappears pandas auto-suffixes the twin ('Bat.1'). We always read the
+    canonical name ('Bat'); warn loudly if a suffixed twin shows up so the
+    export can be fixed at source rather than silently grabbing the wrong column.
+    """
+    for header in WAR_COMPONENT_COLS:
+        if f"{header}.1" in df.columns:
+            log.warning(
+                "batting %s: duplicate header %r detected (pandas suffixed a twin "
+                "as %r); using canonical %r. Re-export as a single Custom Report.",
+                season, header, f"{header}.1", header,
+            )
+
+
 def run(season: int) -> None:
     bat = _load_csv("batting", season)
     pit = _load_csv("pitching", season)
@@ -122,6 +164,18 @@ def run(season: int) -> None:
     if bat.empty and pit.empty:
         log.warning("No FanGraphs CSV for %s; nothing to upsert.", season)
         return
+
+    # P7 Value columns (batter-only, optional). Determine which are present once;
+    # warn for any absent / duplicated header rather than hard-failing.
+    value_present = [h for h in WAR_COMPONENT_COLS if h in bat.columns]
+    value_missing = [h for h in WAR_COMPONENT_COLS if h not in bat.columns]
+    if not bat.empty:
+        _warn_duplicate_value_headers(bat, season)
+        if value_missing:
+            log.warning(
+                "batting %s: Value column(s) absent, storing NULL: %s",
+                season, value_missing,
+            )
 
     by_mlbam: dict[int, dict] = {}
     skipped_bat = skipped_pit = 0
@@ -135,6 +189,8 @@ def run(season: int) -> None:
         entry["ops"] = _num(r.get("OPS"))
         entry["wrc_plus"] = _num(r.get("wRC+"))
         entry["war"] = _num(r.get("WAR"))
+        for header in value_present:
+            entry[WAR_COMPONENT_COLS[header]] = _num(r.get(header))
 
     for _, r in pit.iterrows():
         mlbam = _mlbam(r)
@@ -162,6 +218,8 @@ def run(season: int) -> None:
         entry.setdefault("era", None)
         entry.setdefault("fip", None)
         entry.setdefault("k_per_9", None)
+        for target in WAR_COMPONENT_COLS.values():
+            entry.setdefault(target, None)
         rows.append(entry)
 
     log.info("Upserting %d season-stat rows for %s", len(rows), season)
