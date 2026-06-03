@@ -72,7 +72,7 @@
   },
   "Batting": {
     "sprayChart": "Spray Chart",
-    "subtitle": "Every batted ball from the 2025 regular season.",
+    "subtitle": "Every regular-season batted ball on file.",
     "noData": "No batted-ball data yet.",
     "showing": "Showing {shown} of {total} batted balls",
     "filterMonth": "Month",
@@ -92,7 +92,7 @@
   },
   "Pitching": {
     "title": "Pitch Mix",
-    "subtitle": "Every pitch thrown in the 2025 regular season.",
+    "subtitle": "Every regular-season pitch on file.",
     "noData": "No pitch data yet.",
     "showing": "Showing {shown} of {total} pitches",
     "filterMonth": "Month",
@@ -105,7 +105,12 @@
     "colCount": "Pitches",
     "colAvgVelo": "Avg Velo",
     "heatmapLow": "Less",
-    "heatmapHigh": "More"
+    "heatmapHigh": "More",
+    "zoneFrame": "Zone coords",
+    "alignFront": "≤ 2025",
+    "alignMiddle": "2026+",
+    "zoneEraNote": "Savant moved its plate-coordinate origin in 2026, so the location heatmap shows one era at a time.",
+    "zoneShowing": "{n} pitches · {era}"
   },
   "PlayerNav": {
     "overview": "Overview",

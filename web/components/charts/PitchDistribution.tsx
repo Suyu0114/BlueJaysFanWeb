@@ -1,14 +1,14 @@
 // Framework-pure horizontal bars: pitch-type usage with avg release speed.
 // Receives plain JSON; no next-intl / Supabase here.
 //
-// NOTE on plate_x / plate_z (CLAUDE.md L52 + db/migrations/004): Savant
-// changed the plate coordinate reference frame in 2026 (front of plate ->
-// middle of plate). Every Statcast row carries a `plate_alignment` column
-// (`'front'` for <=2025, `'middle'` for >=2026). This chart MUST be fed rows
-// that share a single plate_alignment value — overlaying both conventions
-// would smear the heatmap by 1-3 inches. The current per-season filter in
-// the calling page is what enforces this; if you ever query across seasons
-// here, assert/group by plate_alignment first.
+// NOTE on plate_alignment (db/migrations/004 + docs/DATA_MODEL.md): Savant moved
+// the plate-coordinate origin in 2026 (front -> middle of plate), so every row
+// carries `plate_alignment` ('front' <=2025 | 'middle' >=2026). THIS usage chart
+// reads only pitch_type + release_speed, so it is alignment-agnostic and safe
+// across seasons. The caveat applies to the sibling PitchZoneHeatmap, which reads
+// plate_x/plate_z and must see ONE alignment at a time (else the zone smears by
+// 1-3 inches). That is enforced in PitchingExplorer via the "Zone coords" filter,
+// not here.
 
 export type PitchEvent = {
   id: string;
@@ -17,6 +17,7 @@ export type PitchEvent = {
   plate_x: number | null;
   plate_z: number | null;
   stand: string | null; // batter handedness: "L" | "R"
+  plate_alignment: string | null; // 'front' (<=2025) | 'middle' (>=2026)
   game_date: string; // YYYY-MM-DD
 };
 

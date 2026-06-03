@@ -10,6 +10,7 @@ export async function getPitches(pitcherId: number): Promise<PitchEvent[]> {
       plate_x::float8 as plate_x,
       plate_z::float8 as plate_z,
       stand,
+      plate_alignment,
       to_char(game_date, 'YYYY-MM-DD') as game_date
     from web_statcast_events
     where pitcher_id = ${pitcherId}

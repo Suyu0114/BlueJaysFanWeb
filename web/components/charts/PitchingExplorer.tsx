@@ -59,6 +59,7 @@ export default function PitchingExplorer({
   const [month, setMonth] = useState("all"); // "all" | "YYYY-MM"
   const [pitchTypes, setPitchTypes] = useState<Set<string>>(new Set());
   const [batterHand, setBatterHand] = useState<BatterHand>("all");
+  const [zoneAlignment, setZoneAlignment] = useState<string | null>(null);
 
   const { months, pitchOptions } = useMemo(() => {
     const m = new Set<string>();
@@ -84,6 +85,33 @@ export default function PitchingExplorer({
       }),
     [pitches, month, pitchTypes, batterHand],
   );
+
+  // The location heatmap reads plate_x/plate_z, which changed reference frame in
+  // 2026 ('front' <=2025 -> 'middle' >=2026). Feed it a SINGLE alignment so the
+  // zone doesn't smear by 1-3 inches; the usage bars above are alignment-agnostic
+  // and keep every row. See docs/DATA_MODEL.md (plate_alignment invariant).
+  const zoneAlignments = useMemo(() => {
+    const present = new Set<string>();
+    for (const p of filtered) if (p.plate_alignment) present.add(p.plate_alignment);
+    // newest era first: 'middle' (2026+) before 'front' (<=2025)
+    return [...present].sort((a, b) => (a === b ? 0 : a === "middle" ? -1 : 1));
+  }, [filtered]);
+
+  const activeAlignment =
+    zoneAlignment && zoneAlignments.includes(zoneAlignment)
+      ? zoneAlignment
+      : (zoneAlignments[0] ?? null);
+
+  const zonePitches = useMemo(
+    () =>
+      activeAlignment
+        ? filtered.filter((p) => p.plate_alignment === activeAlignment)
+        : filtered,
+    [filtered, activeAlignment],
+  );
+
+  const alignLabel = (a: string) =>
+    a === "middle" ? t("alignMiddle") : t("alignFront");
 
   const distLabels = {
     pitches: t("colCount"),
@@ -177,7 +205,31 @@ export default function PitchingExplorer({
           <h2 className="mb-2 text-sm font-semibold text-navy">
             {t("locationTitle")}
           </h2>
-          <PitchZoneHeatmap pitches={filtered} labels={zoneLabels} />
+          {zoneAlignments.length > 1 && (
+            <div className="mb-2 space-y-1">
+              <FilterGroup label={t("zoneFrame")}>
+                {zoneAlignments.map((a) => (
+                  <Chip
+                    key={a}
+                    active={activeAlignment === a}
+                    onClick={() => setZoneAlignment(a)}
+                  >
+                    {alignLabel(a)}
+                  </Chip>
+                ))}
+              </FilterGroup>
+              <p className="text-[11px] text-navy/45">{t("zoneEraNote")}</p>
+            </div>
+          )}
+          <PitchZoneHeatmap pitches={zonePitches} labels={zoneLabels} />
+          {activeAlignment && (
+            <p className="mt-1 text-center text-[11px] text-navy/50">
+              {t("zoneShowing", {
+                n: zonePitches.length,
+                era: alignLabel(activeAlignment),
+              })}
+            </p>
+          )}
         </section>
       </div>
     </div>

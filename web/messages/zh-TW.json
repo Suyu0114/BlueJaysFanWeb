@@ -72,7 +72,7 @@
   },
   "Batting": {
     "sprayChart": "Spray Chart",
-    "subtitle": "2025 例行賽的每一顆擊球。",
+    "subtitle": "球員所有例行賽擊球紀錄。",
     "noData": "尚無擊球資料。",
     "showing": "共 {total} 顆擊球，顯示 {shown} 顆",
     "filterMonth": "月份",
@@ -92,7 +92,7 @@
   },
   "Pitching": {
     "title": "Pitch Mix",
-    "subtitle": "2025 例行賽投出的每一顆球。",
+    "subtitle": "球員所有例行賽投球紀錄。",
     "noData": "尚無投球資料。",
     "showing": "共 {total} 球，顯示 {shown} 球",
     "filterMonth": "月份",
@@ -105,7 +105,12 @@
     "colCount": "球數",
     "colAvgVelo": "平均球速",
     "heatmapLow": "少",
-    "heatmapHigh": "多"
+    "heatmapHigh": "多",
+    "zoneFrame": "座標版本",
+    "alignFront": "≤ 2025",
+    "alignMiddle": "2026+",
+    "zoneEraNote": "Savant 在 2026 年移動了 plate 座標原點，因此落點熱區一次只顯示一個年代。",
+    "zoneShowing": "{n} 球 · {era}"
   },
   "PlayerNav": {
     "overview": "總覽",
