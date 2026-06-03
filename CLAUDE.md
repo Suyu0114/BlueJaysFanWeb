@@ -3,6 +3,8 @@
 This file gives Claude (and other AI coding agents) the project context that isn't obvious from the code alone. Read this before suggesting changes.
 
 > 詳細設計與技術選型理由在 `C:\Users\jing8\.claude\plans\blue-jays-fan-piped-kurzweil.md`，這份 CLAUDE.md 只列出實作時最常踩到的規則。
+>
+> **Reference docs** — schema dictionary (every `web_*` table, the invariants the ETL relies on, and the "columns that don't exist" anti-index): `docs/DATA_MODEL.md`. Per-feature handoff specs: `docs/Pn_spec.md` (e.g. `P7_spec.md`, `P8_spec.md`).
 
 ---
 
@@ -51,7 +53,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 
 ### ETL gotchas (will silently produce wrong data if missed)
 - pybaseball returns playoffs by default. Filter `game_type == 'R'` for regular season; `transform.regular_season_only(df, keep_postseason=True)` opts in (used for 2025 playoff backfill).
-- 2026 season changed Savant's `plate_x` / `plate_z` from front-of-plate to middle-of-plate alignment. `transform.tag_plate_alignment()` writes `'front'` (≤2025) or `'middle'` (≥2026) to `web_statcast_events.plate_alignment`. `PitchDistribution` must render rows from a single alignment value at a time — overlaying both would mis-align the zone by 1–3 inches.
+- 2026 season changed Savant's `plate_x` / `plate_z` from front-of-plate to middle-of-plate alignment. `transform.tag_plate_alignment()` writes `'front'` (≤2025) or `'middle'` (≥2026) to `web_statcast_events.plate_alignment`. `PitchZoneHeatmap` must render rows from a single alignment value at a time — overlaying both mis-aligns the zone by 1–3 inches. Enforced in `PitchingExplorer` via the "Zone coords" filter (the heatmap is scoped to one alignment; the usage bars stay cross-season). `getPitches` still fetches all seasons, so any **new** plate-coordinate consumer must filter alignment itself. See `docs/DATA_MODEL.md` → plate_alignment invariant.
 - Pitch classifications get retroactively corrected → daily ETL re-pulls the last 7 days and upserts (current season only). Historical seasons are static after `etl/backfill.py`.
 - Spray chart coordinate transform (must apply in ETL, not in the chart component):
   ```
@@ -85,7 +87,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
 
 ---
 
-## Folder layout (target — not all exist yet)
+## Folder layout (current — post-P7)
 
 ```
 /etl/                          # Python (conda env MLBxBaZi): pybaseball → Supabase
@@ -107,6 +109,9 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   003_player_seasons.sql       # web_player_seasons + birth_city/state/country on web_players
   004_plate_alignment.sql      # web_statcast_events.plate_alignment column
   005_id_map.sql               # web_id_map (Chadwick register cache)
+  006_games.sql                # web_games (schedule + results)
+  007_player_game_stats.sql    # web_player_game_stats (per-game box score)
+  008_war_components.sql       # web_player_season_stats: war_*/rar/wpa (batter WAR breakdown)
 /.github/workflows/etl.yml     # daily cron (rolling 7-day window for current season)
 /ETL_update_flow.md            # backfill + FanGraphs CSV download steps
 /web/                          # Next.js app
@@ -124,8 +129,12 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     SeasonProgressBar.tsx      # batter pace projection / pitcher current-vs-prior
     charts/
       SprayChart.tsx           # optional secondaryEvents prop for /compare
+      SprayChartExplorer.tsx   # client filter wrapper around SprayChart (month/pitch/outcome/hand)
       PitchDistribution.tsx
+      PitchingExplorer.tsx     # client filter wrapper: PitchDistribution + PitchZoneHeatmap
+      PitchZoneHeatmap.tsx     # pitch-location heatmap (16x20 grid + Gaussian kernel + SVG blur)
       FieldingDiagram.tsx      # primary chip (brick) + secondary chips (steel)
+      WarBreakdown.tsx         # batter WAR diverging stacked bar (P7)
   lib/
     db.ts                      # postgres.js client (PgBouncer-safe: prepare: false)
     players.ts                 # roster modes + getPlayerAvailability
