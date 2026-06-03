@@ -4,7 +4,7 @@ This file gives Claude (and other AI coding agents) the project context that isn
 
 > 詳細設計與技術選型理由在 `C:\Users\jing8\.claude\plans\blue-jays-fan-piped-kurzweil.md`，這份 CLAUDE.md 只列出實作時最常踩到的規則。
 >
-> **Reference docs** — schema dictionary (every `web_*` table, the invariants the ETL relies on, and the "columns that don't exist" anti-index): `docs/DATA_MODEL.md`. Per-feature handoff specs: `docs/Pn_spec.md` (e.g. `P7_spec.md`, `P8_spec.md`).
+> **Reference docs** — schema dictionary (every `web_*` table, the invariants the ETL relies on, and the "columns that don't exist" anti-index): `docs/DATA_MODEL.md`. Per-feature handoff specs: `docs/Pn_spec.md` (e.g. `P7_spec.md`, `P8_spec.md`). After any change, reconcile the docs via `docs/DOC_MAINTENANCE.md` (trigger → which docs to update).
 
 ---
 
