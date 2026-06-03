@@ -200,7 +200,7 @@ Reuse these tokens — don't introduce ad-hoc hex. The brand 5 (`papaya`/`navy`/
 
 ---
 
-## Phases (current = maintenance; MVP + P6 shipped)
+## Phases (current = maintenance; MVP + P7 shipped)
 
 | Phase | Status | Done when |
 |---|---|---|
@@ -211,5 +211,6 @@ Reuse these tokens — don't introduce ad-hoc hex. The brand 5 (`papaya`/`navy`/
 | P4 | done | Pitch distribution + fielding FRV pages live (en + zh-TW), PlayerNav links the three sub-pages |
 | P5 | done | GitHub Actions cron + Vercel deploy; data refreshes overnight |
 | P6 | done | 2024 + 2025 (incl. playoffs) + 2026-to-date backfilled for every 40-man Jay; multi-position fielding diagram (RF chip stays inside the wall); player overview page with KPI cards + SeasonProgressBar; "Today's Blue Jays" home module; Current 26-man / All 2024-2026 roster toggle; PlayerNav reserves the BaZi tab slot for v2 |
+| P7 | done | Schedule calendar on home page (en + zh-TW); per-game box score detail page; nightly cron two-job refresh; WAR breakdown chart (batter-only, diverging stacked bar, RAR reconcile) on player overview; WPA stored |
 
 v2 (deferred): BaZi personality / fortune / matchup-prediction / injury-risk; daily WAR snapshots for strict same-date pace comparisons; `/compare` page (SprayChart `secondaryEvents` prop is already wired).
