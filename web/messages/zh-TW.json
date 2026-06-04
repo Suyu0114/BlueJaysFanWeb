@@ -88,7 +88,15 @@
     "tipDate": "日期",
     "tipPitch": "球種",
     "tipExitVelo": "Exit Velocity",
-    "tipLaunchAngle": "Launch Angle"
+    "tipLaunchAngle": "Launch Angle",
+    "exitVeloTitle": "Exit Velocity vs Launch Angle",
+    "evSubtitle": "共 {total} 顆擊球（{withEV} 顆有 Exit Velocity）",
+    "avgEV": "Avg EV",
+    "maxEV": "Max EV",
+    "hardHitPct": "Hard-Hit%",
+    "barrelZone": "Barrel Zone",
+    "axisEV": "Exit Velocity (mph)",
+    "axisLA": "Launch Angle (°)"
   },
   "Pitching": {
     "title": "Pitch Mix",

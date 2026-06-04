@@ -28,8 +28,8 @@ export default async function BattingPage({
   if (!player) notFound();
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-64px)] max-w-3xl flex-col px-4 pt-4 pb-2">
-      <div className="shrink-0">
+    <div className="mx-auto max-w-3xl px-4 pt-4 pb-8">
+      <div>
         <p className="text-sm text-navy/60">{player.name}</p>
         <h1 className="text-2xl font-semibold tracking-tight">
           {t("sprayChart")}
@@ -38,7 +38,7 @@ export default async function BattingPage({
         <PlayerNav mlbamId={batterId} active="batting" available={availability} />
       </div>
 
-      <div className="mt-3 min-h-0 flex-1">
+      <div className="mt-4">
         {events.length === 0 ? (
           <p className="text-navy/60">{t("noData")}</p>
         ) : (

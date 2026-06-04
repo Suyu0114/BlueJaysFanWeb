@@ -3,6 +3,8 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import SprayChart, { type BattedBallEvent } from "@/components/charts/SprayChart";
+import ExitVeloChart from "@/components/charts/ExitVeloChart";
+import { computeExitVeloStats } from "@/lib/exit-velo-stats";
 
 type Outcome = "all" | "hit" | "xbh" | "hr";
 type Hand = "all" | "L" | "R";
@@ -104,6 +106,8 @@ export default function SprayChartExplorer({
     [events, month, pitchTypes, outcome, hand],
   );
 
+  const evStats = useMemo(() => computeExitVeloStats(filtered), [filtered]);
+
   const labels = {
     homeRun: t("legendHomeRun"),
     extraBase: t("legendExtraBase"),
@@ -114,6 +118,16 @@ export default function SprayChartExplorer({
     exitVelo: t("tipExitVelo"),
     launchAngle: t("tipLaunchAngle"),
   };
+
+  const evLabels = {
+    ...labels,
+    axisEV: t("axisEV"),
+    axisLA: t("axisLA"),
+    barrelZone: t("barrelZone"),
+  };
+
+  const fmt1 = (n: number | null) => (n == null ? "—" : n.toFixed(1));
+  const fmtPct = (n: number | null) => (n == null ? "—" : `${n.toFixed(1)}%`);
 
   const monthFmt = new Intl.DateTimeFormat(locale, {
     month: "short",
@@ -133,8 +147,8 @@ export default function SprayChartExplorer({
     });
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="mb-2 shrink-0 space-y-1.5">
+    <div className="space-y-6">
+      <div className="space-y-1.5">
         <FilterGroup label={t("filterMonth")}>
           <Chip active={month === "all"} onClick={() => setMonth("all")}>
             {t("filterFullSeason")}
@@ -192,8 +206,55 @@ export default function SprayChartExplorer({
         </p>
       </div>
 
-      <div className="min-h-0 flex-1">
+      <div className="mx-auto h-[60vh] max-h-[560px] min-h-[320px] w-full max-w-xl">
         <SprayChart events={filtered} labels={labels} />
+      </div>
+
+      <section className="border-t border-navy/10 pt-4">
+        <h2 className="text-lg font-semibold tracking-tight text-navy">
+          {t("exitVeloTitle")}
+        </h2>
+
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Kpi label={t("avgEV")} value={fmt1(evStats.avgEV)} unit="mph" />
+          <Kpi label={t("maxEV")} value={fmt1(evStats.maxEV)} unit="mph" />
+          <Kpi label={t("hardHitPct")} value={fmtPct(evStats.hardHitPct)} />
+        </div>
+
+        <p className="mt-2 text-xs text-navy/50">
+          {t("evSubtitle", {
+            total: evStats.totalBattedBalls,
+            withEV: evStats.withEV,
+          })}
+        </p>
+
+        <div className="mt-3">
+          <ExitVeloChart events={filtered} labels={evLabels} />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function Kpi({
+  label,
+  value,
+  unit,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+}) {
+  return (
+    <div className="rounded-lg border border-steel/30 bg-white/40 px-3 py-1.5">
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-navy/45">
+        {label}
+      </div>
+      <div className="text-base font-semibold text-navy">
+        {value}
+        {unit && value !== "—" && (
+          <span className="ml-1 text-xs font-normal text-navy/50">{unit}</span>
+        )}
       </div>
     </div>
   );

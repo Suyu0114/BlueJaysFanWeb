@@ -88,7 +88,15 @@
     "tipDate": "Date",
     "tipPitch": "Pitch",
     "tipExitVelo": "Exit Velocity",
-    "tipLaunchAngle": "Launch Angle"
+    "tipLaunchAngle": "Launch Angle",
+    "exitVeloTitle": "Exit Velocity vs Launch Angle",
+    "evSubtitle": "{total} batted balls ({withEV} with Exit Velocity)",
+    "avgEV": "Avg EV",
+    "maxEV": "Max EV",
+    "hardHitPct": "Hard-Hit%",
+    "barrelZone": "Barrel Zone",
+    "axisEV": "Exit Velocity (mph)",
+    "axisLA": "Launch Angle (°)"
   },
   "Pitching": {
     "title": "Pitch Mix",

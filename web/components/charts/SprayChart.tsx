@@ -20,6 +20,12 @@ import {
   type Point,
   type Project,
 } from "@/lib/field-geometry";
+import {
+  CATEGORY_COLOR,
+  CATEGORY_Z,
+  categorize,
+  type Category,
+} from "@/lib/batted-ball-categories";
 
 export type BattedBallEvent = {
   id: string;
@@ -44,32 +50,6 @@ export type SprayChartLabels = {
   exitVelo: string;
   launchAngle: string;
 };
-
-type Category = "hr" | "xbh" | "single" | "out";
-
-const CATEGORY_COLOR: Record<Category, string> = {
-  hr: "var(--color-brick)",
-  xbh: "var(--color-lava)",
-  single: "var(--color-navy)",
-  out: "var(--color-steel)",
-};
-
-// Draw order: outs at the back, home runs on top.
-const CATEGORY_Z: Record<Category, number> = { out: 0, single: 1, xbh: 2, hr: 3 };
-
-function categorize(event: string | null): Category {
-  switch (event) {
-    case "home_run":
-      return "hr";
-    case "double":
-    case "triple":
-      return "xbh";
-    case "single":
-      return "single";
-    default:
-      return "out";
-  }
-}
 
 // Human-readable outcome (baseball jargon stays English in every locale).
 function resultLabel(event: string | null): string {
