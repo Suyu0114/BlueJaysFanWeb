@@ -77,7 +77,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 | Frontend | Next.js 16 App Router + TypeScript |
 | Styling | Tailwind CSS + shadcn/ui |
 | i18n | `next-intl` with `[locale]` route segments |
-| Charts | D3.js (spray / pitch zone / fielding heatmap) + Recharts (KPI bars / lines) |
+| Charts | D3.js (spray / pitch zone / fielding heatmap) + Recharts (KPI bars / lines) + rough.js (hand-drawn schedule calendar) |
 | Database | Supabase Postgres |
 | ETL | Python + pybaseball + Supabase Python client |
 | Cron | GitHub Actions (`0 13 * * *` = 09:00 ET daily) |
@@ -127,6 +127,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   components/
     PlayerNav.tsx              # tabs with `available` prop (bazi slot reserved for v2)
     SeasonProgressBar.tsx      # batter pace projection / pitcher current-vs-prior
+    ScheduleCalendar.tsx       # home schedule (rough.js hand-drawn parchment scorecard)
+    HeroCard.tsx               # "Today's Blue Jays" cards (same rough.js scorecard treatment)
     charts/
       SprayChart.tsx           # optional secondaryEvents prop for /compare
       SprayChartExplorer.tsx   # client filter wrapper around SprayChart (month/pitch/outcome/hand)
@@ -203,7 +205,13 @@ Light/warm theme (no dark mode). Palette is defined as Tailwind v4 `@theme` toke
 | `grass` | `#84934D` | field surface fill (SprayChart fair/foul grass) |
 | `dirt` | `#DAB681` | field surface fill (SprayChart warning track + infield dirt) |
 
-Reuse these tokens — don't introduce ad-hoc hex. The brand 5 (`papaya`/`navy`/`steel`/`lava`/`brick`) are for chrome and data marks; `grass`/`dirt` are *only* for the realistic ballpark surfaces in the SprayChart (applied via `var(--color-grass)` / `var(--color-dirt)` with per-layer `fillOpacity`, not as utility classes). SprayChart batted-ball markers use the brand tokens (HR=brick, single=navy, XBH=lava, out=steel).
+Reuse these tokens — don't introduce ad-hoc hex. The brand 5 (`papaya`/`navy`/`steel`/`lava`/`brick`) are for chrome and data marks; `grass`/`dirt` are primarily for the realistic ballpark surfaces in the SprayChart (applied via `var(--color-grass)` / `var(--color-dirt)` with per-layer `fillOpacity`, not as utility classes). SprayChart batted-ball markers use the brand tokens (HR=brick, single=navy, XBH=lava, out=steel).
+
+The home **schedule calendar** (`ScheduleCalendar.tsx`) and the **home hero cards** (`HeroCard.tsx`, "Today's Blue Jays") share one hand-drawn "scorecard" treatment and are the one piece of chrome allowed to use `grass`/`dirt`: `grass` for the Win badge (vs `brick` for Loss), and `dirt` as the warm "parchment" surface (`bg-dirt/40`) so empty days read as paper (not white) and game days float as lighter `papaya` cards. The "today" highlight (cell border + `TODAY` badge) is **`steel`** — deliberately *not* `brick`/`grass`, which already mean loss/win. The rough.js frame is navy outer + a faint-navy inner rule (`INK_FAINT`). Both are rendered with a retro hand-drawn look via **rough.js** (an SVG overlay sized to the element by a `ResizeObserver`, with a stable per-date/per-href `seed` so the wobble doesn't shimmer on redraw). rough.js needs literal hex strings, so each component re-declares the token hexes as `const NAVY/STEEL/PAPAYA` — keep those in sync with the `@theme` block above. The `bg-dirt/40` surface is duplicated in both files; change both together (or extract a shared constant).
+
+Typography pairs two Eduardo Tunni faces, both loaded in `app/[locale]/layout.tsx` via next/font. The retro varsity **display** face **Graduate** (`font-display` → `--font-display`) is the **heading layer**: the nav brand wordmark (`Header.tsx`), section headings (`Today's Blue Jays`, `Schedule`), and the calendar chrome (month label / weekday row / day numbers). The serif **Gabriela** (`--font-gabriela`) is everything else — it is the body default (`globals.css`) and is mapped to **both** `--font-sans` and `--font-mono` because Gabriela ships a single 400 style with **no Sans/Mono variants**. So `font-mono` + `tabular-nums` no longer give true monospaced/tabular digits (kept on data cells as a no-op in case a mono is reintroduced); `font-semibold`/`font-bold` render as synthesized faux-bold (Gabriela has only weight 400).
+
+Graduate is an **all-caps slab display face with no true lowercase** — use it only for headings/labels (apply `uppercase`). Never put it on body prose, player names, or paragraph text (they'd render all-caps and tank readability), and never put a hand-drawn font into the calendar cells — 30+ wobbly cells become unreadable; the hand-drawn motif lives in the rough.js lines only.
 
 > Turbopack gotcha: after changing `@theme` in `globals.css`, custom color utilities may not regenerate. Stop dev, delete `web/.next`, restart.
 

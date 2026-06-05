@@ -8,7 +8,10 @@ export function Header() {
   return (
     <header className="border-b-2 border-brick bg-navy text-papaya">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
-        <Link href="/" className="font-semibold tracking-tight">
+        <Link
+          href="/"
+          className="font-display text-lg uppercase tracking-wide"
+        >
           {t("brand")}
         </Link>
         <nav className="flex items-center gap-4 text-sm">

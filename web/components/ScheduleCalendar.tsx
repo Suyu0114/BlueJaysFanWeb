@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
+import rough from "roughjs";
 import { Link } from "@/i18n/navigation";
 import type { ScheduleGame } from "@/lib/games";
 import { teamAbbr } from "@/lib/team-abbr";
@@ -12,8 +13,23 @@ type Props = {
   season: number;
 };
 
+// rough.js paints to raw SVG and needs literal color strings, so these mirror
+// the @theme brand tokens in app/globals.css (papaya / navy / steel).
+const NAVY = "#003049";
+const STEEL = "#669bbc"; // "today" accent — deliberately not brick/grass (those mean loss/win)
+const PAPAYA = "#fdf0d5";
+const INK_FAINT = "rgba(0, 48, 73, 0.28)"; // faint navy inset rule on the parchment panel
+
 function pad2(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
+}
+
+// Stable per-date seed so the hand-drawn wobble is identical across redraws
+// (resize / month change) instead of shimmering on every paint.
+function seedFromDate(d: string): number {
+  let h = 0;
+  for (let i = 0; i < d.length; i++) h = (h * 31 + d.charCodeAt(i)) >>> 0;
+  return h % 100000;
 }
 
 // Weeks (Sun..Sat) of `month` (1-12). Cells are 'YYYY-MM-DD' or null (padding /
@@ -89,10 +105,93 @@ export default function ScheduleCalendar({ games, highlightDate, season }: Props
     year: "numeric",
   });
 
+  // --- rough.js hand-drawn overlay -----------------------------------------
+  // The CSS grid below owns layout + content (and is the no-JS fallback). One
+  // absolutely-positioned SVG sits behind it (-z-10) and draws the scorecard
+  // frame + a filled box behind every game-day cell, measured from the live DOM
+  // so it stays aligned when the grid reflows.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const cellEls = useRef(new Map<string, HTMLDivElement>());
+
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    const svg = svgRef.current;
+    if (!panel || !svg) return;
+
+    let raf = 0;
+    const draw = () => {
+      const w = panel.clientWidth;
+      const h = panel.clientHeight;
+      if (w === 0 || h === 0) return;
+      svg.setAttribute("width", String(w));
+      svg.setAttribute("height", String(h));
+      svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      const rc = rough.svg(svg);
+
+      // Double-line scorecard frame: navy outer + a faint navy inner rule.
+      const inset = 5;
+      svg.appendChild(
+        rc.rectangle(inset, inset, w - 2 * inset, h - 2 * inset, {
+          stroke: NAVY,
+          strokeWidth: 2.5,
+          roughness: 1.4,
+          seed: 11,
+        }),
+      );
+      const inset2 = inset + 4;
+      svg.appendChild(
+        rc.rectangle(inset2, inset2, w - 2 * inset2, h - 2 * inset2, {
+          stroke: INK_FAINT,
+          strokeWidth: 1,
+          roughness: 2,
+          seed: 12,
+        }),
+      );
+
+      // Filled "stamp" behind each game day; highlight day gets a thicker brick edge.
+      for (const [date, el] of cellEls.current) {
+        const isHi = date === highlightDate;
+        const p = 2.5;
+        svg.appendChild(
+          rc.rectangle(
+            el.offsetLeft + p,
+            el.offsetTop + p,
+            el.offsetWidth - 2 * p,
+            el.offsetHeight - 2 * p,
+            {
+              stroke: isHi ? STEEL : NAVY,
+              strokeWidth: isHi ? 2.6 : 1.4,
+              roughness: 1.6,
+              fill: PAPAYA,
+              fillStyle: "solid",
+              seed: seedFromDate(date),
+            },
+          ),
+        );
+      }
+    };
+
+    const schedule = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(draw);
+    };
+    schedule();
+    const ro = new ResizeObserver(schedule);
+    ro.observe(panel);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [weeks, highlightDate, byDate]);
+
   return (
     <section className="mt-8">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-navy">{t("title")}</h2>
+        <h2 className="font-display text-xl uppercase tracking-wide text-navy">
+          {t("title")}
+        </h2>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -103,7 +202,7 @@ export default function ScheduleCalendar({ games, highlightDate, season }: Props
           >
             ‹
           </button>
-          <span className="min-w-[9rem] text-center text-sm font-medium text-navy">
+          <span className="min-w-[9rem] text-center font-display text-base uppercase tracking-wide text-navy">
             {monthLabel}
           </span>
           <button
@@ -118,39 +217,76 @@ export default function ScheduleCalendar({ games, highlightDate, season }: Props
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-navy/10 bg-papaya text-xs">
-        {weekdays.map((w, i) => (
-          <div
-            key={i}
-            className="bg-papaya py-1.5 text-center font-medium uppercase tracking-wide text-navy/50"
-          >
-            {w}
-          </div>
-        ))}
+      <div
+        ref={panelRef}
+        className="relative isolate rounded-lg bg-dirt/40 p-2 shadow-[5px_5px_0_0_#00304933] sm:p-3"
+      >
+        <svg
+          ref={svgRef}
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 h-full w-full"
+        />
 
-        {weeks.flat().map((date, i) => {
-          if (date === null) {
-            return <div key={i} className="min-h-[64px] bg-papaya" />;
-          }
-          const dayNum = Number(date.slice(8, 10));
-          const dayGames = byDate.get(date) ?? [];
-          const isHighlight = date === highlightDate;
-          return (
+        <div className="grid grid-cols-7 overflow-hidden rounded-md bg-navy text-papaya">
+          {weekdays.map((w, i) => (
             <div
               key={i}
-              className={`min-h-[64px] bg-papaya p-1 ${
-                isHighlight ? "ring-2 ring-inset ring-brick" : ""
-              }`}
+              className="py-2 text-center font-display text-xs uppercase tracking-wider"
             >
-              <div className="text-right text-[10px] text-navy/40">{dayNum}</div>
-              <div className="space-y-0.5">
-                {dayGames.map((g) => (
-                  <GameCell key={g.game_pk} game={g} t={t} />
-                ))}
-              </div>
+              {w}
             </div>
-          );
-        })}
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7">
+          {weeks.flat().map((date, i) => {
+            if (date === null) {
+              return <div key={i} className="min-h-[76px]" />;
+            }
+            const dayNum = Number(date.slice(8, 10));
+            const dayGames = byDate.get(date) ?? [];
+            const hasGame = dayGames.length > 0;
+            const isHighlight = date === highlightDate;
+            return (
+              <div
+                key={i}
+                ref={
+                  hasGame
+                    ? (el) => {
+                        if (el) cellEls.current.set(date, el);
+                        else cellEls.current.delete(date);
+                      }
+                    : undefined
+                }
+                className="min-h-[76px] p-2"
+              >
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between">
+                    {isHighlight ? (
+                      <span className="rounded-sm bg-steel px-1 py-px text-[11px] font-bold uppercase tracking-wide text-papaya">
+                        {t("today")}
+                      </span>
+                    ) : (
+                      <span />
+                    )}
+                    <span
+                      className={`font-display text-xs ${
+                        hasGame ? "text-navy" : "text-navy/45"
+                      }`}
+                    >
+                      {dayNum}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 space-y-1">
+                    {dayGames.map((g) => (
+                      <GameCell key={g.game_pk} game={g} t={t} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
@@ -174,12 +310,16 @@ function GameCell({
       <Link
         href={`/games/${g.game_pk}`}
         title={title}
-        className="block rounded bg-papaya px-1 py-0.5 leading-tight transition-colors hover:bg-steel/15"
+        className="block rounded leading-tight transition-colors hover:bg-navy/5"
       >
-        <div className="font-medium text-navy">{head}</div>
-        <div className={won ? "text-steel" : "text-brick"}>
+        <div className="font-mono text-xs font-semibold text-navy">{head}</div>
+        <span
+          className={`mt-0.5 inline-block rounded-sm px-1 py-px font-mono text-[11px] font-bold tabular-nums text-papaya ${
+            won ? "bg-grass" : "bg-brick"
+          }`}
+        >
           {g.result} {g.jays_score}-{g.opp_score}
-        </div>
+        </span>
       </Link>
     );
   }
@@ -187,12 +327,15 @@ function GameCell({
   const key = abnormalStatusKey(g.status);
   const sub = key ? t(key) : g.first_pitch_et ?? t("tbd");
   return (
-    <div
-      title={title}
-      className="rounded bg-papaya px-1 py-0.5 leading-tight text-navy/60"
-    >
-      <div className="font-medium text-navy/80">{head}</div>
-      <div>{sub}</div>
+    <div title={title} className="leading-tight">
+      <div className="font-mono text-sm font-semibold text-navy/85">{head}</div>
+      <div
+        className={`font-mono text-sm tabular-nums ${
+          key ? "font-medium text-lava" : "text-navy/80"
+        }`}
+      >
+        {sub}
+      </div>
     </div>
   );
 }

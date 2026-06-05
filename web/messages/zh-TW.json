@@ -31,7 +31,8 @@
     "canceled": "取消",
     "delayed": "延遲",
     "live": "比賽進行中",
-    "tbd": "待定"
+    "tbd": "待定",
+    "today": "今天"
   },
   "Game": {
     "battingTitle": "打擊",

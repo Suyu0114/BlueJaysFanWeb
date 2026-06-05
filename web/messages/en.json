@@ -31,7 +31,8 @@
     "canceled": "Canceled",
     "delayed": "Delayed",
     "live": "In Progress",
-    "tbd": "TBD"
+    "tbd": "TBD",
+    "today": "Today"
   },
   "Game": {
     "battingTitle": "Batting",

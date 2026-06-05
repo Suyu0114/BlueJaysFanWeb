@@ -32,7 +32,7 @@
 
 - **Frontend:** Next.js 16 (App Router) + TypeScript + Tailwind + shadcn/ui
 - **i18n:** `next-intl` — default `en`, optional `zh-TW`
-- **Charts:** D3.js (spray / pitch zone / fielding) + Recharts (WAR breakdown diverging stacked bar)
+- **Charts:** D3.js (spray / pitch zone / fielding) + Recharts (WAR breakdown diverging stacked bar) + rough.js (hand-drawn schedule calendar)
 - **Database:** Supabase Postgres
 - **ETL:** Python + pybaseball, scheduled via GitHub Actions (daily)
 - **Deploy:** Vercel
@@ -69,7 +69,8 @@
 │   ├── components/
 │   │   ├── PlayerNav.tsx
 │   │   ├── SeasonProgressBar.tsx
-│   │   ├── ScheduleCalendar.tsx
+│   │   ├── ScheduleCalendar.tsx  # rough.js hand-drawn parchment scorecard
+│   │   ├── HeroCard.tsx          # "Today's Blue Jays" cards (same scorecard treatment)
 │   │   └── charts/               # SprayChart, PitchDistribution, FieldingDiagram, WarBreakdown
 │   ├── lib/                      # db, players, batting/pitching/fielding, season-stats,
 │   │                             # recent-game, field-geometry, games, team-abbr

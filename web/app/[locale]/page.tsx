@@ -1,6 +1,5 @@
-import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Link } from "@/i18n/navigation";
+import HeroCard from "@/components/HeroCard";
 import ScheduleCalendar from "@/components/ScheduleCalendar";
 import { getSchedule, type ScheduleGame } from "@/lib/games";
 import {
@@ -65,7 +64,7 @@ export default async function HomePage({
     <div className="mx-auto max-w-5xl px-4 py-12">
       {recent && (hrHero || contact || pitchingLine) && (
         <section>
-          <h2 className="text-lg font-semibold text-navy">
+          <h2 className="font-display text-xl uppercase tracking-wide text-navy">
             {t("todayTitle")}
           </h2>
           <p className="mt-0.5 text-xs text-navy/55">
@@ -119,33 +118,3 @@ export default async function HomePage({
   );
 }
 
-function HeroCard({
-  href,
-  headshot,
-  name,
-  headline,
-}: {
-  href: string;
-  headshot: string | null;
-  name: string;
-  headline: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-3 rounded-xl border border-brick/20 bg-white/70 p-4 transition-shadow hover:border-brick hover:shadow-md"
-    >
-      {headshot && (
-        <Image
-          src={headshot}
-          alt={name}
-          width={56}
-          height={56}
-          unoptimized
-          className="rounded-full bg-papaya"
-        />
-      )}
-      <p className="text-sm font-medium leading-snug text-navy">{headline}</p>
-    </Link>
-  );
-}

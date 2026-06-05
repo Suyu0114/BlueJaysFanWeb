@@ -12,12 +12,13 @@
   --color-grass: #84934D;
   --color-dirt: #DAB681;
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-gabriela);
+  --font-mono: var(--font-gabriela); /* Gabriela has no mono variant — single serif everywhere */
+  --font-display: var(--font-graduate); /* retro varsity — heading layer */
 }
 
 body {
   background-color: var(--color-papaya);
   color: var(--color-navy);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-gabriela), Georgia, "Times New Roman", serif;
 }

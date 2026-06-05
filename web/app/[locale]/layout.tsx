@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Gabriela, Graduate } from "next/font/google";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
@@ -7,8 +7,20 @@ import { routing } from "@/i18n/routing";
 import { Header } from "@/components/Header";
 import "../globals.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+// Body / UI / data face (Gabriela has a single 400 style — no Sans/Mono variants).
+const gabriela = Gabriela({
+  weight: "400",
+  variable: "--font-gabriela",
+  subsets: ["latin"],
+  display: "swap",
+});
+// Retro varsity display face — heading layer (nav brand, section titles, calendar chrome).
+const graduate = Graduate({
+  weight: "400",
+  variable: "--font-graduate",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Blue Jays Fan Hub",
@@ -36,7 +48,7 @@ export default async function LocaleLayout({
   return (
     <html
       lang={locale}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${gabriela.variable} ${graduate.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-papaya text-navy">
         <NextIntlClientProvider>
