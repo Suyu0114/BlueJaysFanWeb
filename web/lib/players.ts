@@ -7,6 +7,12 @@ export type RosterPlayer = {
   bats: string | null;
   throws: string | null;
   headshot_url: string | null;
+  // Most-recent Jays season in range; populated by the roster-list queries only
+  // (drives the all-time grouping).
+  last_season?: number | null;
+  // On the current 26-man? The all-time view puts these in a "Still on the
+  // roster" group, separate from departed players bucketed by last_season.
+  is_active_26?: boolean | null;
 };
 
 export type RosterMode = "current" | "all-time";
@@ -21,23 +27,31 @@ export type PlayerAvailability = {
 // "Current 26-man" view (default).
 export async function getRoster(): Promise<RosterPlayer[]> {
   return sql<RosterPlayer[]>`
-    select mlbam_id, name, position, bats, throws, headshot_url
-    from web_players
-    where is_active_26 = true
-    order by position nulls last, name
+    select p.mlbam_id, p.name, p.position, p.bats, p.throws, p.headshot_url,
+      p.is_active_26,
+      (select max(s.season) from web_player_seasons s
+        where s.mlbam_id = p.mlbam_id and s.team_id = 141) as last_season
+    from web_players p
+    where p.is_active_26 = true
+    order by p.position nulls last, p.name
   `;
 }
 
-// "Anyone who appeared for the Jays in 2024-2026" view. Distinct on mlbam_id
-// so a player who appeared in multiple seasons shows up once.
+// "Anyone who appeared for the Jays in 2024-2026" view. One row per player with
+// their most-recent Jays season. Ordered so current 26-man players come first,
+// then departed players by last season descending (2026, 2025, 2024); name
+// breaks ties. The page groups on `is_active_26` then `last_season`.
 export async function getRosterAllTime(): Promise<RosterPlayer[]> {
   return sql<RosterPlayer[]>`
-    select distinct on (p.mlbam_id)
-      p.mlbam_id, p.name, p.position, p.bats, p.throws, p.headshot_url
+    select p.mlbam_id, p.name, p.position, p.bats, p.throws, p.headshot_url,
+      coalesce(p.is_active_26, false) as is_active_26,
+      max(s.season) as last_season
     from web_players p
     join web_player_seasons s on s.mlbam_id = p.mlbam_id
     where s.season in (2024, 2025, 2026) and s.team_id = 141
-    order by p.mlbam_id, p.name
+    group by p.mlbam_id, p.name, p.position, p.bats, p.throws, p.headshot_url,
+      p.is_active_26
+    order by coalesce(p.is_active_26, false) desc, max(s.season) desc, p.name
   `;
 }
 

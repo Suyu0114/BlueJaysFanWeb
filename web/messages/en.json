@@ -63,6 +63,13 @@
     "tabAll": "All 2024-2026",
     "bats": "Bats",
     "throws": "Throws",
+    "filterLabel": "Filter by type",
+    "filterAll": "All",
+    "filterPitchers": "Pitchers",
+    "filterBatters": "Batters",
+    "emptyFilter": "No players match this filter.",
+    "sectionActive": "Still on the roster",
+    "sectionPast": "Last played {season}",
     "empty": "No players yet. Run the roster ETL to populate the table."
   },
   "Overview": {

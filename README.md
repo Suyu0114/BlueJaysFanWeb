@@ -70,7 +70,9 @@
 │   │   ├── PlayerNav.tsx
 │   │   ├── SeasonProgressBar.tsx
 │   │   ├── ScheduleCalendar.tsx  # rough.js hand-drawn parchment scorecard
-│   │   ├── HeroCard.tsx          # "Today's Blue Jays" cards (same scorecard treatment)
+│   │   ├── ScorecardFrame.tsx    # reusable rough.js parchment frame (hero + roster cards)
+│   │   ├── HeroCard.tsx          # "Today's Blue Jays" cards (wraps ScorecardFrame)
+│   │   ├── RosterExplorer.tsx    # roster filter (All/Pitchers/Batters) + all-time season grouping
 │   │   └── charts/               # SprayChart, PitchDistribution, FieldingDiagram, WarBreakdown
 │   ├── lib/                      # db, players, batting/pitching/fielding, season-stats,
 │   │                             # recent-game, field-geometry, games, team-abbr

@@ -63,6 +63,13 @@
     "tabAll": "歷年陣容",
     "bats": "打擊",
     "throws": "投球",
+    "filterLabel": "依類型篩選",
+    "filterAll": "全部",
+    "filterPitchers": "投手",
+    "filterBatters": "打者",
+    "emptyFilter": "沒有符合此篩選的球員。",
+    "sectionActive": "目前仍在現役名單",
+    "sectionPast": "最後出賽 {season}",
     "empty": "尚無球員資料，請執行 roster ETL 匯入名單。"
   },
   "Overview": {
