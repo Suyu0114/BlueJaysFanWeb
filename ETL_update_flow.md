@@ -47,15 +47,19 @@ view — 那是先前產生重複 `wRC+` / `ISO` / `SLG` / `BsR` 欄位的原因
 
 | 檔案 | 設定 |
 |---|---|
-| `batting_2026.csv` | **Batting** 分頁 / Blue Jays / 2026 / Min PA: 1 / Regular Season / **不勾 Split Seasons** / 用 **Custom Report**：保留現有 dashboard 欄位，**再加上 Value 區** `Bat`、`BsR`、`Fld`、`Pos`、`Lg`、`Rep`、`RAR`、`WPA` |
+| `batting_2026.csv` | **Batting** 分頁 / Blue Jays / 2026 / Min PA: 1 / Regular Season / **不勾 Split Seasons** / 用 **Custom Report**：保留現有 dashboard 欄位（已含 P9 逐年表用的 `AVG`/`OBP`/`SLG`/`HR`/`RBI`/`SB`/`PA`），**再加上 Value 區** `Bat`、`BsR`、`Fld`、`Pos`、`Lg`、`Rep`、`RAR`、`WPA` |
 | `pitching_2026.csv` | **Pitching** 分頁 / Blue Jays / 2026 / Min IP: 1 / Regular Season / **不勾 Split Seasons**（維持原樣 — P7 的 WAR 細項只做打者，投手不需要 Value 匯出） |
 
 > - 兩個檔都必須含 identity 欄位 `Name` 與 `MLBAMID`（`MLBAMID` 是 join 到
 >   `web_players` 的鍵）。
 > - 8 個 Value 欄位全部在 Batting 分頁的 Value 區，**單檔即可**，不需另開
 >   fielding CSV 來 join。
-> - header 字串已對照確認（見 `pull_season_stats.py` 的 `WAR_COMPONENT_COLS`）；
->   `pull_season_stats.py` 會在欄位重複或缺漏時 warning，不會 hard-fail。
+> - header 字串已對照確認（見 `pull_season_stats.py` 的 `WAR_COMPONENT_COLS`
+>   與 P9 的 `BASIC_STAT_COLS`）；`pull_season_stats.py` 會在欄位重複或缺漏時
+>   warning，不會 hard-fail。
+> - **P9 basic line**：`AVG`/`OBP`/`SLG`/`HR`/`RBI`/`SB`/`PA` 是 Dashboard preset
+>   既有欄位，照上面「保留現有 dashboard 欄位」匯出即可，逐年表會自動帶入；
+>   舊 CSV 只要含這些欄位，重跑 `pull_season_stats.py` 就會補寫（不必重新匯出）。
 
 **Step 4：單獨補寫 KPI（只有在 backfill 之後又更新了 CSV 才需要）**
 ```powershell

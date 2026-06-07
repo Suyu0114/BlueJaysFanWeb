@@ -15,6 +15,7 @@
 2. **Player pages**
    - Overview with KPI cards (OPS / wRC+ / ERA / FIP / WAR) and a season-progress bar (pace projection for batters; current-vs-prior for pitchers, because `162/games` is meaningless for either starters or relievers)
    - WAR breakdown chart (batter-only) — a diverging stacked bar of the six FanGraphs run-value components (Bat / BsR / Fld / Pos / Lg / Rep) reconciling to RAR, with an on-page methodology note
+   - Batter deep-dive (batter-only) — year-by-year table (AVG / OBP / SLG / OPS / HR / RBI / SB / wRC+ / WAR), Recent Form (Last 7 / Last 30 / Season slash lines), last-10 game log, a 15-game rolling-OPS sparkline, and a Statcast contact-quality card (Avg / Max EV, Hard-Hit%)
    - Sub-tabs auto-hide for roles a player didn't appear in
 3. **Roster**
    - Current 26-man (default) / All 2024-2026 toggle
@@ -55,10 +56,10 @@
 │   ├── pull_fielding.py          # OAA / FRV per position
 │   ├── pull_schedule.py          # season schedule + results → web_games
 │   ├── pull_boxscore.py          # per-game box scores → web_player_game_stats
-│   ├── pull_season_stats.py      # OPS / wRC+ / ERA / FIP / WAR + WAR value components (CSV)
+│   ├── pull_season_stats.py      # OPS / wRC+ / ERA / FIP / WAR + value components + basic line (CSV)
 │   ├── backfill.py               # one-shot orchestrator
 │   └── data/fangraphs/           # gitignored manual CSV drop zone
-├── db/migrations/                # plain SQL: 001 → 008
+├── db/migrations/                # plain SQL: 001 → 009
 ├── web/                          # Next.js app
 │   ├── app/[locale]/
 │   │   ├── page.tsx              # Home: schedule calendar + "Today's Blue Jays"
@@ -73,9 +74,11 @@
 │   │   ├── ScorecardFrame.tsx    # reusable rough.js parchment frame (hero + roster cards)
 │   │   ├── HeroCard.tsx          # "Today's Blue Jays" cards (wraps ScorecardFrame)
 │   │   ├── RosterExplorer.tsx    # roster filter (All/Pitchers/Batters) + all-time season grouping
-│   │   └── charts/               # SprayChart, PitchDistribution, FieldingDiagram, WarBreakdown
+│   │   ├── SeasonStatTable / RecentForm / GameLog / ContactQualityCard  # batter overview modules
+│   │   └── charts/               # SprayChart, PitchDistribution, FieldingDiagram, WarBreakdown, ExitVeloChart, RollingOpsSparkline
 │   ├── lib/                      # db, players, batting/pitching/fielding, season-stats,
-│   │                             # recent-game, field-geometry, games, team-abbr
+│   │                             # recent-game, field-geometry, games, team-abbr,
+│   │                             # batter-game-log, batting-form, exit-velo-stats
 │   └── messages/{en,zh-TW}.json
 ├── .github/workflows/etl.yml     # two-job cron: ~09:00 ET full refresh + ~11:30 PM ET finals
 ├── ETL_update_flow.md            # backfill + FanGraphs CSV download steps
@@ -196,7 +199,7 @@ What stays English in zh-TW (do **not** translate):
 
 - **[pybaseball](https://github.com/jldbc/pybaseball)** — wrapper around Baseball Savant. Covers batting (spray data), pitching (location, velocity, spin), and fielding (FRV via `statcast_outs_above_average`, which returns `fielding_runs_prevented`). **Savant pulls work; FanGraphs scrapers do not** — see workaround below.
 - **MLB Stats API** (`statsapi.mlb.com`) — player bio (incl. birth city/country), full-season roster enumeration, primary position.
-- **FanGraphs (manual CSV export)** — only source of OPS / wRC+ / ERA / FIP / WAR plus the WAR value components (Bat / BsR / Fld / Pos / Lg / Rep / RAR) and season WPA; requires a paid membership and human-in-the-loop download. See [ETL_update_flow.md](ETL_update_flow.md).
+- **FanGraphs (manual CSV export)** — only source of OPS / wRC+ / ERA / FIP / WAR, the WAR value components (Bat / BsR / Fld / Pos / Lg / Rep / RAR), season WPA, and the basic slash line (AVG / OBP / SLG / HR / RBI / SB / PA); requires a paid membership and human-in-the-loop download. See [ETL_update_flow.md](ETL_update_flow.md).
 
 ### Important Statcast gotchas
 
@@ -230,6 +233,8 @@ What stays English in zh-TW (do **not** translate):
 | P5 | Cron ETL + Vercel deploy | done |
 | P6 | 2024-2026 backfill, multi-position fielding, player overview, Today's Blue Jays, BaZi v2 prep | done |
 | P7 | Schedule calendar + per-game box scores + batter WAR breakdown + season WPA | done |
+| P8 | EV/LA scatter + KPI chips on batting page | done |
+| P9 | Batter overview deep-dive: year-by-year table + recent form + game log + rolling OPS + contact quality | done |
 
 ---
 

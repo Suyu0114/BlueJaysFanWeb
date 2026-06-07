@@ -59,18 +59,34 @@ WAR_COMPONENT_COLS = {
     "RAR": "rar",
     "WPA": "wpa",
 }
+
+# P9: basic batting stats (slash line + counting) for the year-by-year table on
+# the player overview. Batter-only and OPTIONAL, same warn-if-absent handling as
+# WAR_COMPONENT_COLS so an older Dashboard-only CSV won't hard-fail. From the
+# FanGraphs Dashboard/Standard preset; OPS is already in REQUIRED_COLS.
+BASIC_STAT_COLS = {
+    "AVG": "avg",
+    "OBP": "obp",
+    "SLG": "slg",
+    "HR":  "hr",
+    "RBI": "rbi",
+    "SB":  "sb",
+    "PA":  "pa",
+}
 # join / identity: MLBAMID -> mlbam_id
 
 UPSERT_SQL = """
     insert into web_player_season_stats
       (mlbam_id, season, ops, wrc_plus, war, era, fip, k_per_9,
        war_batting, war_baserunning, war_fielding, war_positional,
-       war_league, war_replacement, rar, wpa)
+       war_league, war_replacement, rar, wpa,
+       avg, obp, slg, hr, rbi, sb, pa)
     values
       (%(mlbam_id)s, %(season)s, %(ops)s, %(wrc_plus)s, %(war)s,
        %(era)s, %(fip)s, %(k_per_9)s,
        %(war_batting)s, %(war_baserunning)s, %(war_fielding)s, %(war_positional)s,
-       %(war_league)s, %(war_replacement)s, %(rar)s, %(wpa)s)
+       %(war_league)s, %(war_replacement)s, %(rar)s, %(wpa)s,
+       %(avg)s, %(obp)s, %(slg)s, %(hr)s, %(rbi)s, %(sb)s, %(pa)s)
     on conflict (mlbam_id, season) do update set
       ops             = coalesce(excluded.ops,             web_player_season_stats.ops),
       wrc_plus        = coalesce(excluded.wrc_plus,        web_player_season_stats.wrc_plus),
@@ -86,6 +102,13 @@ UPSERT_SQL = """
       war_replacement = coalesce(excluded.war_replacement, web_player_season_stats.war_replacement),
       rar             = coalesce(excluded.rar,             web_player_season_stats.rar),
       wpa             = coalesce(excluded.wpa,             web_player_season_stats.wpa),
+      avg             = coalesce(excluded.avg,             web_player_season_stats.avg),
+      obp             = coalesce(excluded.obp,             web_player_season_stats.obp),
+      slg             = coalesce(excluded.slg,             web_player_season_stats.slg),
+      hr              = coalesce(excluded.hr,              web_player_season_stats.hr),
+      rbi             = coalesce(excluded.rbi,             web_player_season_stats.rbi),
+      sb              = coalesce(excluded.sb,              web_player_season_stats.sb),
+      pa              = coalesce(excluded.pa,              web_player_season_stats.pa),
       updated_at = now()
 """
 
@@ -169,12 +192,19 @@ def run(season: int) -> None:
     # warn for any absent / duplicated header rather than hard-failing.
     value_present = [h for h in WAR_COMPONENT_COLS if h in bat.columns]
     value_missing = [h for h in WAR_COMPONENT_COLS if h not in bat.columns]
+    basic_present = [h for h in BASIC_STAT_COLS if h in bat.columns]
+    basic_missing = [h for h in BASIC_STAT_COLS if h not in bat.columns]
     if not bat.empty:
         _warn_duplicate_value_headers(bat, season)
         if value_missing:
             log.warning(
                 "batting %s: Value column(s) absent, storing NULL: %s",
                 season, value_missing,
+            )
+        if basic_missing:
+            log.warning(
+                "batting %s: basic stat column(s) absent, storing NULL: %s",
+                season, basic_missing,
             )
 
     by_mlbam: dict[int, dict] = {}
@@ -191,6 +221,8 @@ def run(season: int) -> None:
         entry["war"] = _num(r.get("WAR"))
         for header in value_present:
             entry[WAR_COMPONENT_COLS[header]] = _num(r.get(header))
+        for header in basic_present:
+            entry[BASIC_STAT_COLS[header]] = _num(r.get(header))
 
     for _, r in pit.iterrows():
         mlbam = _mlbam(r)
@@ -219,6 +251,8 @@ def run(season: int) -> None:
         entry.setdefault("fip", None)
         entry.setdefault("k_per_9", None)
         for target in WAR_COMPONENT_COLS.values():
+            entry.setdefault(target, None)
+        for target in BASIC_STAT_COLS.values():
             entry.setdefault(target, None)
         rows.append(entry)
 

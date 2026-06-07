@@ -10,7 +10,8 @@ the columns that **don't** exist so nobody assumes them.
 > update this file in the same change.** To re-verify, dump the columns for every
 > table below and diff — the verification recipe is at the bottom.
 >
-> **Verified against live DB: 2026-06-03** (migrations `001`–`008` applied).
+> **Verified against live DB: 2026-06-05** (migrations `001`–`009` applied;
+> `web_player_season_stats` re-confirmed at 24 columns).
 >
 > This Supabase project is **shared** with other projects, so every table here is
 > prefixed `web_`. See CLAUDE.md → "Supabase tables are shared — prefix everything
@@ -111,13 +112,16 @@ written until that list is also updated.
 ---
 
 ## `web_player_season_stats`
-*Migration: `001` (+ `008` added `war_*` / `rar` / `wpa`). Writer:
+*Migration: `001` (+ `008` added `war_*` / `rar` / `wpa`; + `009` added the
+`avg`/`obp`/`slg`/`hr`/`rbi`/`sb`/`pa` basic line). Writer:
 [`etl/pull_season_stats.py`](../etl/pull_season_stats.py). Conflict key: `(mlbam_id, season)`.*
 
 Pre-aggregated season lines from **manually-exported FanGraphs CSVs** (the
 scraper is dead — see CLAUDE.md → "FanGraphs scraping is dead"). Missing CSVs warn
 and skip (leave NULLs), never hard-fail. The `war_*` block is **batter-only**
-(from the FanGraphs "Value" preset).
+(from the FanGraphs "Value" preset); the P9 basic line (`avg`…`pa`) is also
+batter-only and comes from the standard Dashboard columns of the same CSV — both
+are OPTIONAL (warn + NULL if the export lacks them, `coalesce` on upsert).
 
 | Column | Type | Null | Meaning |
 |---|---|---|---|
@@ -138,6 +142,13 @@ and skip (leave NULLs), never hard-fail. The `war_*` block is **batter-only**
 | `war_replacement` | numeric | yes | Rep. |
 | `rar` | numeric | yes | Runs above replacement = Bat+BsR+Fld+Pos+Lg+Rep (checksum for the WAR breakdown chart). |
 | `wpa` | numeric | yes | Season Win Probability Added. |
+| `avg` | numeric | yes | Batting average (H/AB). Batter-only (`009`). |
+| `obp` | numeric | yes | On-base percentage. |
+| `slg` | numeric | yes | Slugging (`ops` = `obp` + `slg`). |
+| `hr` | numeric | yes | Home runs (stored numeric to dodge psycopg float→int). |
+| `rbi` | numeric | yes | Runs batted in. |
+| `sb` | numeric | yes | Stolen bases. |
+| `pa` | numeric | yes | Plate appearances (volume context for the year-by-year table). |
 
 ---
 
@@ -333,5 +344,5 @@ with psycopg.connect(os.environ["DATABASE_URL"], prepare_threshold=None) as c:
 ```
 
 Run: `conda run -n MLBxBaZi python <script>.py`. Expect the column counts in the
-table index above (11 / 23 / 17 / 7 / 12 / 6 / 16 / 27). Re-confirm the anti-index
+table index above (11 / 23 / 24 / 7 / 12 / 6 / 16 / 27). Re-confirm the anti-index
 holds (`bb_type`, `launch_speed_angle` still absent).

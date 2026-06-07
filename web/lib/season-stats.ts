@@ -19,6 +19,15 @@ export type SeasonStats = {
   war_replacement: number | null;
   rar: number | null;
   wpa: number | null;
+  // P9: basic batting line (slash + counting) for the year-by-year table.
+  // Batter-only; null for pitchers / seasons without a Dashboard-preset CSV.
+  avg: number | null;
+  obp: number | null;
+  slg: number | null;
+  hr: number | null;
+  rbi: number | null;
+  sb: number | null;
+  pa: number | null;
 };
 
 export async function getSeasonStats(mlbamId: number): Promise<SeasonStats[]> {
@@ -38,7 +47,14 @@ export async function getSeasonStats(mlbamId: number): Promise<SeasonStats[]> {
       war_league::float8 as war_league,
       war_replacement::float8 as war_replacement,
       rar::float8 as rar,
-      wpa::float8 as wpa
+      wpa::float8 as wpa,
+      avg::float8 as avg,
+      obp::float8 as obp,
+      slg::float8 as slg,
+      hr::int as hr,
+      rbi::int as rbi,
+      sb::int as sb,
+      pa::int as pa
     from web_player_season_stats
     where mlbam_id = ${mlbamId}
     order by season desc

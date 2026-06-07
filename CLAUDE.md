@@ -31,7 +31,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 - This Supabase project is **shared with other projects** that already have a `players` table.
 - **Every table for this app is prefixed `web_`**: `web_players`, `web_statcast_events`, `web_player_season_stats`, `web_player_seasons`, `web_fielding_frv`, `web_id_map`.
 - Never create an unprefixed table here; it will collide.
-- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6). One concern per migration file.
+- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6) → `006_games.sql` + `007_player_game_stats.sql` + `008_war_components.sql` (P7) → `009_basic_season_stats.sql` (P9). One concern per migration file.
 
 ### Audience & language
 - **Primary audience: English-speaking Toronto locals**, including non-Chinese speakers curious about BaZi. Chinese (TW/HK) fans are secondary.
@@ -100,7 +100,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   pull_statcast.py             # batter Statcast; --all-batters / --include-postseason
   pull_pitcher.py              # pitcher Statcast; --all-pitchers / --include-postseason
   pull_fielding.py             # OAA / FRV per position (Savant leaderboard)
-  pull_season_stats.py         # OPS/wRC+/ERA/FIP/WAR from FanGraphs CSV exports
+  pull_season_stats.py         # OPS/wRC+/ERA/FIP/WAR + basic line (avg/obp/slg/hr/rbi/sb/pa) from FanGraphs CSV exports
   backfill.py                  # one-shot orchestrator for 2024 + 2025 (and optional 2026)
   data/fangraphs/              # gitignored manual CSV drop zone for season stats
 /db/migrations/                # plain SQL, apply via psql or Supabase Studio
@@ -112,6 +112,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   006_games.sql                # web_games (schedule + results)
   007_player_game_stats.sql    # web_player_game_stats (per-game box score)
   008_war_components.sql       # web_player_season_stats: war_*/rar/wpa (batter WAR breakdown)
+  009_basic_season_stats.sql   # web_player_season_stats: avg/obp/slg/hr/rbi/sb/pa (batter basic line, P9)
 /.github/workflows/etl.yml     # daily cron (rolling 7-day window for current season)
 /ETL_update_flow.md            # backfill + FanGraphs CSV download steps
 /web/                          # Next.js app
@@ -119,7 +120,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     page.tsx                   # team home + "Today's Blue Jays" module
     players/page.tsx           # roster list with Current 26-man / All 2024-2026 toggle
     players/[mlbam_id]/
-      page.tsx                 # overview (KPI cards + SeasonProgressBar)
+      page.tsx                 # overview: KPI + RecentForm + RollingOpsSparkline + SeasonProgressBar + SeasonStatTable + ContactQualityCard + WarBreakdown + GameLog (batter modules are batter-only)
       batting/page.tsx         # spray chart
       pitching/page.tsx        # pitch distribution
       fielding/page.tsx        # FRV table + multi-position diagram
@@ -131,6 +132,10 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     ScorecardFrame.tsx         # reusable rough.js parchment frame (hero + roster cards)
     HeroCard.tsx               # "Today's Blue Jays" cards (wraps ScorecardFrame)
     RosterExplorer.tsx         # client roster filter (All/Pitchers/Batters) + all-time active/departed grouping
+    SeasonStatTable.tsx        # P9 year-by-year basic+advanced table (overview, batter-only)
+    RecentForm.tsx             # P9 Last 7 / Last 30 / Season slash lines (overview)
+    GameLog.tsx                # P9 last-10 game log (overview)
+    ContactQualityCard.tsx     # P9 Avg/Max EV + Hard-Hit% (reuses computeExitVeloStats)
     charts/
       SprayChart.tsx           # optional secondaryEvents prop for /compare
       SprayChartExplorer.tsx   # client filter wrapper around SprayChart (month/pitch/outcome/hand)
@@ -139,11 +144,14 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       PitchZoneHeatmap.tsx     # pitch-location heatmap (16x20 grid + Gaussian kernel + SVG blur)
       FieldingDiagram.tsx      # primary chip (brick) + secondary chips (steel)
       WarBreakdown.tsx         # batter WAR diverging stacked bar (P7)
+      RollingOpsSparkline.tsx  # P9 15-game rolling-OPS trend (Recharts line)
   lib/
     db.ts                      # postgres.js client (PgBouncer-safe: prepare: false)
     players.ts                 # roster modes + getPlayerAvailability
     batting.ts / pitching.ts / fielding.ts
-    season-stats.ts            # web_player_season_stats + batter games-played
+    season-stats.ts            # web_player_season_stats (incl. P9 basic line) + batter games-played
+    batter-game-log.ts         # P9 per-game batting log (web_player_game_stats + web_games), current season
+    batting-form.ts            # P9 pure helpers: summarize / windowByDays / rollingOps
     recent-game.ts             # Today's Blue Jays helpers (HR hero, hardest contact, IP/K/H)
     field-geometry.ts          # Rogers Centre SVG paths (exports polar())
   messages/
@@ -231,5 +239,7 @@ Graduate is an **all-caps slab display face with no true lowercase** — use it 
 | P5 | done | GitHub Actions cron + Vercel deploy; data refreshes overnight |
 | P6 | done | 2024 + 2025 (incl. playoffs) + 2026-to-date backfilled for every 40-man Jay; multi-position fielding diagram (RF chip stays inside the wall); player overview page with KPI cards + SeasonProgressBar; "Today's Blue Jays" home module; Current 26-man / All 2024-2026 roster toggle; PlayerNav reserves the BaZi tab slot for v2 |
 | P7 | done | Schedule calendar on home page (en + zh-TW); per-game box score detail page; nightly cron two-job refresh; WAR breakdown chart (batter-only, diverging stacked bar, RAR reconcile) on player overview; WPA stored |
+| P8 | done | EV/LA scatter + KPI chips on batting page |
+| P9 | done | Batter overview deep-dive (en + zh-TW): year-by-year basic+advanced table (migration `009` adds avg/obp/slg/hr/rbi/sb/pa, ingested from FanGraphs Dashboard CSV); Recent Form (Last 7/30/Season slash lines) + last-10 game log + 15-game rolling-OPS sparkline (from `web_player_game_stats`, current season); contact-quality card (reuses `computeExitVeloStats`). Pitcher overview unchanged. |
 
 v2 (deferred): BaZi personality / fortune / matchup-prediction / injury-risk; daily WAR snapshots for strict same-date pace comparisons; `/compare` page (SprayChart `secondaryEvents` prop is already wired).

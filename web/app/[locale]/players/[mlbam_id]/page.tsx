@@ -4,12 +4,21 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import PlayerNav from "@/components/PlayerNav";
 import SeasonProgressBar from "@/components/SeasonProgressBar";
 import WarBreakdown from "@/components/charts/WarBreakdown";
+import SeasonStatTable from "@/components/SeasonStatTable";
+import RecentForm from "@/components/RecentForm";
+import GameLog from "@/components/GameLog";
+import ContactQualityCard from "@/components/ContactQualityCard";
+import RollingOpsSparkline from "@/components/charts/RollingOpsSparkline";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
 import {
   getBatterGamesPlayed,
   getSeasonStats,
   type SeasonStats,
 } from "@/lib/season-stats";
+import { getBatterGameLog } from "@/lib/batter-game-log";
+import { rollingOps, summarize, windowByDays } from "@/lib/batting-form";
+import { getBattedBalls } from "@/lib/batting";
+import { computeExitVeloStats } from "@/lib/exit-velo-stats";
 
 export const revalidate = 86400;
 
@@ -80,6 +89,29 @@ export default async function PlayerOverviewPage({
   const canShowWar =
     role === "batter" && latest?.rar != null && latest?.war != null;
 
+  // P9: batter-only deep-dive modules. The per-game log (current season only)
+  // drives Recent Form, the game log, and the rolling-OPS sparkline; the batted
+  // balls drive the contact-quality card. Pitchers skip all of this.
+  const isBatter = role === "batter" && latest != null;
+  const today = new Date().toISOString().slice(0, 10);
+  const [gameLog, battedBalls] = isBatter
+    ? await Promise.all([
+        getBatterGameLog(playerId, latest!.season),
+        getBattedBalls(playerId),
+      ])
+    : [[], []];
+
+  const last7 = summarize(windowByDays(gameLog, 7, today));
+  const last30 = summarize(windowByDays(gameLog, 30, today));
+  const seasonSplit = summarize(gameLog);
+  const rolling = rollingOps(gameLog, 15);
+  const recentGames = [...gameLog].reverse().slice(0, 10);
+  const evStats = computeExitVeloStats(
+    battedBalls.filter(
+      (e) => e.game_date.slice(0, 4) === String(latest?.season),
+    ),
+  );
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
       <div className="flex items-start gap-4">
@@ -133,6 +165,12 @@ export default async function PlayerOverviewPage({
             )}
           </div>
 
+          {isBatter && gameLog.length > 0 && (
+            <RecentForm last7={last7} last30={last30} season={seasonSplit} />
+          )}
+
+          {isBatter && <RollingOpsSparkline data={rolling} />}
+
           {canShowProgress && (
             <div className="rounded-lg border border-navy/10 bg-white/50 p-4">
               <SeasonProgressBar
@@ -144,6 +182,12 @@ export default async function PlayerOverviewPage({
                 gamesPlayed={gamesPlayed}
               />
             </div>
+          )}
+
+          {isBatter && <SeasonStatTable stats={stats} />}
+
+          {isBatter && (
+            <ContactQualityCard stats={evStats} season={latest!.season} />
           )}
 
           {canShowWar && (
@@ -158,6 +202,8 @@ export default async function PlayerOverviewPage({
               war={latest!.war!}
             />
           )}
+
+          {isBatter && <GameLog games={recentGames} />}
         </section>
       ) : (
         <p className="mt-6 text-navy/60">{t("noStats")}</p>

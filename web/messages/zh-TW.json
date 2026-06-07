@@ -76,7 +76,20 @@
     "season": "球季",
     "bats": "打擊",
     "throws": "投球",
-    "noStats": "尚無這位球員的單季成績。"
+    "noStats": "尚無這位球員的單季成績。",
+    "statTableTitle": "逐年成績",
+    "recentFormTitle": "近期狀態",
+    "last7": "近 7 天",
+    "last30": "近 30 天",
+    "noRecentGames": "此區間沒有出賽。",
+    "obpApproxNote": "短區間 OBP 未計入高飛犧牲打（box score 資料未提供）。",
+    "rollingOpsTitle": "滾動 OPS（近 15 場）",
+    "contactTitle": "擊球品質",
+    "contactSubtitle": "{withEV} 顆有 Exit Velocity 的擊球",
+    "gameLogTitle": "近期出賽",
+    "colDate": "日期",
+    "colOpp": "對手",
+    "colResult": "結果"
   },
   "Batting": {
     "sprayChart": "Spray Chart",

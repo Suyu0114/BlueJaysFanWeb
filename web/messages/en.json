@@ -76,7 +76,20 @@
     "season": "Season",
     "bats": "Bats",
     "throws": "Throws",
-    "noStats": "No season stats yet for this player."
+    "noStats": "No season stats yet for this player.",
+    "statTableTitle": "Year-by-Year",
+    "recentFormTitle": "Recent Form",
+    "last7": "Last 7 Days",
+    "last30": "Last 30 Days",
+    "noRecentGames": "No games in this window.",
+    "obpApproxNote": "Short-window OBP excludes sacrifice flies (not in the box-score feed).",
+    "rollingOpsTitle": "Rolling OPS (15-game)",
+    "contactTitle": "Contact Quality",
+    "contactSubtitle": "{withEV} batted balls with Exit Velocity",
+    "gameLogTitle": "Recent Games",
+    "colDate": "Date",
+    "colOpp": "Opp",
+    "colResult": "Result"
   },
   "Batting": {
     "sprayChart": "Spray Chart",
