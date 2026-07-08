@@ -74,25 +74,45 @@ export default function SprayChartExplorer({
   const t = useTranslations("Batting");
   const locale = useLocale();
 
+  const [season, setSeason] = useState("all"); // "all" | "YYYY"
   const [month, setMonth] = useState("all"); // "all" | "YYYY-MM"
   const [pitchTypes, setPitchTypes] = useState<Set<string>>(new Set());
   const [outcome, setOutcome] = useState<Outcome>("all");
   const [hand, setHand] = useState<Hand>("all");
 
-  // Distinct months and pitch types actually present in the data.
+  // Changing season resets the month (months cascade off the selected season).
+  const handleSeasonChange = (s: string) => {
+    setSeason(s);
+    setMonth("all");
+  };
+
+  // Distinct seasons present in the data, newest first.
+  const seasons = useMemo(() => {
+    const s = new Set<string>();
+    for (const e of events) if (e.game_date) s.add(e.game_date.slice(0, 4));
+    return [...s].sort().reverse();
+  }, [events]);
+
+  // Distinct months and pitch types actually present in the data, scoped to the
+  // selected season so the month chips don't show duplicate Mar/Apr/... .
   const { months, pitchOptions } = useMemo(() => {
+    const pool =
+      season === "all"
+        ? events
+        : events.filter((e) => e.game_date.slice(0, 4) === season);
     const m = new Set<string>();
     const p = new Set<string>();
-    for (const e of events) {
+    for (const e of pool) {
       if (e.game_date) m.add(e.game_date.slice(0, 7));
       if (e.pitch_type) p.add(e.pitch_type);
     }
     return { months: [...m].sort(), pitchOptions: [...p].sort() };
-  }, [events]);
+  }, [events, season]);
 
   const filtered = useMemo(
     () =>
       events.filter((e) => {
+        if (season !== "all" && e.game_date.slice(0, 4) !== season) return false;
         if (month !== "all" && e.game_date.slice(0, 7) !== month) return false;
         if (
           pitchTypes.size > 0 &&
@@ -103,7 +123,7 @@ export default function SprayChartExplorer({
         if (hand !== "all" && e.p_throws !== hand) return false;
         return true;
       }),
-    [events, month, pitchTypes, outcome, hand],
+    [events, season, month, pitchTypes, outcome, hand],
   );
 
   const evStats = useMemo(() => computeExitVeloStats(filtered), [filtered]);
@@ -149,16 +169,38 @@ export default function SprayChartExplorer({
   return (
     <div className="space-y-6">
       <div className="space-y-1.5">
-        <FilterGroup label={t("filterMonth")}>
-          <Chip active={month === "all"} onClick={() => setMonth("all")}>
-            {t("filterFullSeason")}
-          </Chip>
-          {months.map((m) => (
-            <Chip key={m} active={month === m} onClick={() => setMonth(m)}>
-              {monthLabel(m)}
+        {seasons.length > 1 && (
+          <FilterGroup label={t("filterSeason")}>
+            <Chip
+              active={season === "all"}
+              onClick={() => handleSeasonChange("all")}
+            >
+              {t("filterAll")}
             </Chip>
-          ))}
-        </FilterGroup>
+            {seasons.map((s) => (
+              <Chip
+                key={s}
+                active={season === s}
+                onClick={() => handleSeasonChange(s)}
+              >
+                {s}
+              </Chip>
+            ))}
+          </FilterGroup>
+        )}
+
+        {season !== "all" && (
+          <FilterGroup label={t("filterMonth")}>
+            <Chip active={month === "all"} onClick={() => setMonth("all")}>
+              {t("filterFullSeason")}
+            </Chip>
+            {months.map((m) => (
+              <Chip key={m} active={month === m} onClick={() => setMonth(m)}>
+                {monthLabel(m)}
+              </Chip>
+            ))}
+          </FilterGroup>
+        )}
 
         {pitchOptions.length > 0 && (
           <FilterGroup label={t("filterPitchType")}>

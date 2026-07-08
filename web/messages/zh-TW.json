@@ -96,6 +96,7 @@
     "subtitle": "球員所有例行賽擊球紀錄。",
     "noData": "尚無擊球資料。",
     "showing": "共 {total} 顆擊球，顯示 {shown} 顆",
+    "filterSeason": "賽季",
     "filterMonth": "月份",
     "filterFullSeason": "整季",
     "filterPitchType": "球種",

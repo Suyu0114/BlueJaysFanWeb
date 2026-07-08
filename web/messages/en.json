@@ -96,6 +96,7 @@
     "subtitle": "Every regular-season batted ball on file.",
     "noData": "No batted-ball data yet.",
     "showing": "Showing {shown} of {total} batted balls",
+    "filterSeason": "Season",
     "filterMonth": "Month",
     "filterFullSeason": "Full season",
     "filterPitchType": "Pitch type",
