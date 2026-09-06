@@ -28,6 +28,18 @@ export type SeasonStats = {
   rbi: number | null;
   sb: number | null;
   pa: number | null;
+  // P10: pitcher season line. Pitcher-only; whip/k_pct/bb_pct stay null until
+  // the FanGraphs Custom Report re-export (Dashboard preset lacks them).
+  // `ip` is FanGraphs baseball notation (170.1 = 170 1/3) — display only,
+  // never do arithmetic on it. k_pct/bb_pct are raw fractions (0.245).
+  w: number | null;
+  l: number | null;
+  sv: number | null;
+  gs: number | null;
+  ip: number | null;
+  whip: number | null;
+  k_pct: number | null;
+  bb_pct: number | null;
 };
 
 export async function getSeasonStats(mlbamId: number): Promise<SeasonStats[]> {
@@ -54,7 +66,15 @@ export async function getSeasonStats(mlbamId: number): Promise<SeasonStats[]> {
       hr::int as hr,
       rbi::int as rbi,
       sb::int as sb,
-      pa::int as pa
+      pa::int as pa,
+      w::int as w,
+      l::int as l,
+      sv::int as sv,
+      gs::int as gs,
+      ip::float8 as ip,
+      whip::float8 as whip,
+      k_pct::float8 as k_pct,
+      bb_pct::float8 as bb_pct
     from web_player_season_stats
     where mlbam_id = ${mlbamId}
     order by season desc

@@ -42,6 +42,8 @@ COLUMN_RENAMES = {
     "pitcher": "pitcher_id",
     "events": "event",
     "release_spin_rate": "spin_rate",
+    # P10: pfx_x / pfx_z / release_extension / balls / strikes keep their raw names.
+    "estimated_woba_using_speedangle": "estimated_woba",
 }
 
 
@@ -57,6 +59,11 @@ def normalize(df: pd.DataFrame, include_postseason: bool = False) -> pd.DataFram
     df = to_field_feet(df)
     df = tag_plate_alignment(df)
     df = df.rename(columns=COLUMN_RENAMES)
+    # P10 columns are standard Savant fields, but guard so an unexpected payload
+    # can't KeyError the df[STATCAST_COLUMNS] subset in upsert_statcast_events.
+    for col in ("pfx_x", "pfx_z", "release_extension", "estimated_woba", "balls", "strikes"):
+        if col not in df.columns:
+            df[col] = pd.NA
     # game_date arrives as object/string; coerce to date.
     df["game_date"] = pd.to_datetime(df["game_date"]).dt.date
     # Required-NOT-NULL keys should never be missing for valid Statcast rows,
@@ -67,7 +74,8 @@ def normalize(df: pd.DataFrame, include_postseason: bool = False) -> pd.DataFram
     if len(df) != before:
         log.warning("Dropped %d rows missing required key columns", before - len(df))
     # Cast IDs/integers to int (pybaseball returns float when NaNs are present).
-    for col in ("game_pk", "batter_id", "pitcher_id", "at_bat_number", "pitch_number", "zone"):
+    for col in ("game_pk", "batter_id", "pitcher_id", "at_bat_number", "pitch_number",
+                "zone", "balls", "strikes"):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
     return df

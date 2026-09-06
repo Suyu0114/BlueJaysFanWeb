@@ -9,6 +9,10 @@ import RecentForm from "@/components/RecentForm";
 import GameLog from "@/components/GameLog";
 import ContactQualityCard from "@/components/ContactQualityCard";
 import RollingOpsSparkline from "@/components/charts/RollingOpsSparkline";
+import PitcherSeasonStatTable from "@/components/PitcherSeasonStatTable";
+import PitcherRecentForm from "@/components/PitcherRecentForm";
+import PitcherGameLog from "@/components/PitcherGameLog";
+import RollingEraSparkline from "@/components/charts/RollingEraSparkline";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
 import {
   getBatterGamesPlayed,
@@ -19,6 +23,12 @@ import { getBatterGameLog } from "@/lib/batter-game-log";
 import { rollingOps, summarize, windowByDays } from "@/lib/batting-form";
 import { getBattedBalls } from "@/lib/batting";
 import { computeExitVeloStats } from "@/lib/exit-velo-stats";
+import { getPitcherGameLog } from "@/lib/pitcher-game-log";
+import {
+  lastNAppearances,
+  rollingEra,
+  summarizePitching,
+} from "@/lib/pitching-form";
 
 export const revalidate = 86400;
 
@@ -27,11 +37,26 @@ function fmt(v: number | null, digits = 3): string {
   return v.toFixed(digits);
 }
 
-function KpiCard({ label, value }: { label: string; value: string }) {
+// k_pct/bb_pct arrive as raw fractions (0.245) from the FanGraphs export.
+function pct1(v: number | null): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  return `${(v * 100).toFixed(1)}%`;
+}
+
+function KpiCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
   return (
     <div className="rounded-lg border border-brick/20 bg-white/70 px-3 py-2">
       <div className="text-[10px] uppercase tracking-wide text-navy/55">{label}</div>
       <div className="mt-0.5 text-lg font-semibold tabular-nums text-navy">{value}</div>
+      {hint && <div className="mt-0.5 text-[10px] leading-tight text-navy/45">{hint}</div>}
     </div>
   );
 }
@@ -112,6 +137,20 @@ export default async function PlayerOverviewPage({
     ),
   );
 
+  // P10: pitcher deep-dive mirror. One per-appearance log fetch (current
+  // season only, like the batter's) derives Recent Form, the rolling-ERA
+  // sparkline, and the last-10 log. The year-by-year table reads the same
+  // season stats already fetched above.
+  const isPitcher = role === "pitcher" && latest != null;
+  const pitcherLog = isPitcher
+    ? await getPitcherGameLog(playerId, latest!.season)
+    : [];
+  const pitcherLast5 = summarizePitching(lastNAppearances(pitcherLog, 5));
+  const pitcherLast30 = summarizePitching(windowByDays(pitcherLog, 30, today));
+  const pitcherSeason = summarizePitching(pitcherLog);
+  const eraTrend = rollingEra(pitcherLog, 5);
+  const recentApps = [...pitcherLog].reverse().slice(0, 10);
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
       <div className="flex items-start gap-4">
@@ -156,11 +195,34 @@ export default async function PlayerOverviewPage({
                 <KpiCard label="WAR" value={fmt(latest.war, 1)} />
               </>
             ) : (
+              // P10: fan-first KPI set with plain-language hints. FIP lives in
+              // the year-by-year table below; SV only shows when he has one.
               <>
-                <KpiCard label="ERA" value={fmt(latest.era, 2)} />
-                <KpiCard label="FIP" value={fmt(latest.fip, 2)} />
-                <KpiCard label="K/9" value={fmt(latest.k_per_9, 1)} />
-                <KpiCard label="WAR" value={fmt(latest.war, 1)} />
+                <KpiCard
+                  label="W-L"
+                  value={
+                    latest.w == null && latest.l == null
+                      ? "—"
+                      : `${fmt(latest.w, 0)}-${fmt(latest.l, 0)}`
+                  }
+                  hint={t("kpiHintWl")}
+                />
+                {latest.sv != null && latest.sv > 0 && (
+                  <KpiCard
+                    label="SV"
+                    value={fmt(latest.sv, 0)}
+                    hint={t("kpiHintSv")}
+                  />
+                )}
+                <KpiCard
+                  label="IP"
+                  value={latest.ip == null ? "—" : latest.ip.toFixed(1)}
+                  hint={t("kpiHintIp")}
+                />
+                <KpiCard label="ERA" value={fmt(latest.era, 2)} hint={t("kpiHintEra")} />
+                <KpiCard label="WHIP" value={fmt(latest.whip, 2)} hint={t("kpiHintWhip")} />
+                <KpiCard label="K%" value={pct1(latest.k_pct)} hint={t("kpiHintKPct")} />
+                <KpiCard label="WAR" value={fmt(latest.war, 1)} hint={t("kpiHintWar")} />
               </>
             )}
           </div>
@@ -170,6 +232,16 @@ export default async function PlayerOverviewPage({
           )}
 
           {isBatter && <RollingOpsSparkline data={rolling} />}
+
+          {isPitcher && pitcherLog.length > 0 && (
+            <PitcherRecentForm
+              last5={pitcherLast5}
+              last30={pitcherLast30}
+              season={pitcherSeason}
+            />
+          )}
+
+          {isPitcher && <RollingEraSparkline data={eraTrend} />}
 
           {canShowProgress && (
             <div className="rounded-lg border border-navy/10 bg-white/50 p-4">
@@ -185,6 +257,8 @@ export default async function PlayerOverviewPage({
           )}
 
           {isBatter && <SeasonStatTable stats={stats} />}
+
+          {isPitcher && <PitcherSeasonStatTable stats={stats} />}
 
           {isBatter && (
             <ContactQualityCard stats={evStats} season={latest!.season} />
@@ -204,6 +278,8 @@ export default async function PlayerOverviewPage({
           )}
 
           {isBatter && <GameLog games={recentGames} />}
+
+          {isPitcher && <PitcherGameLog games={recentApps} />}
         </section>
       ) : (
         <p className="mt-6 text-navy/60">{t("noStats")}</p>

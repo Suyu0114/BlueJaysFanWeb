@@ -5,7 +5,7 @@
 // Receives plain JSON; no next-intl / Supabase here.
 
 import { scaleLinear } from "d3-scale";
-import type { PitchEvent } from "@/components/charts/PitchDistribution";
+import type { PitchEvent } from "@/lib/pitch-arsenal";
 
 export type PitchZoneHeatmapLabels = {
   legendLow: string;

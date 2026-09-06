@@ -73,6 +73,23 @@ BASIC_STAT_COLS = {
     "SB":  "sb",
     "PA":  "pa",
 }
+
+# P10: pitcher season line (W-L/SV/GS/IP + WHIP/K%/BB%) for the pitcher overview.
+# Pitcher-only and OPTIONAL, same warn-if-absent handling. The plain Dashboard
+# preset lacks WHIP/K%/BB% — those need a Custom Report re-export (Dashboard +
+# WHIP + K% + BB%); W/L/SV/GS/IP are in every Dashboard export. K%/BB% arrive as
+# raw fractions (0.245) and IP as baseball notation (170.1 = 170 1/3) — stored
+# verbatim; the web layer formats them.
+PITCHING_STAT_COLS = {
+    "W":    "w",
+    "L":    "l",
+    "SV":   "sv",
+    "GS":   "gs",
+    "IP":   "ip",
+    "WHIP": "whip",
+    "K%":   "k_pct",
+    "BB%":  "bb_pct",
+}
 # join / identity: MLBAMID -> mlbam_id
 
 UPSERT_SQL = """
@@ -80,13 +97,15 @@ UPSERT_SQL = """
       (mlbam_id, season, ops, wrc_plus, war, era, fip, k_per_9,
        war_batting, war_baserunning, war_fielding, war_positional,
        war_league, war_replacement, rar, wpa,
-       avg, obp, slg, hr, rbi, sb, pa)
+       avg, obp, slg, hr, rbi, sb, pa,
+       w, l, sv, gs, ip, whip, k_pct, bb_pct)
     values
       (%(mlbam_id)s, %(season)s, %(ops)s, %(wrc_plus)s, %(war)s,
        %(era)s, %(fip)s, %(k_per_9)s,
        %(war_batting)s, %(war_baserunning)s, %(war_fielding)s, %(war_positional)s,
        %(war_league)s, %(war_replacement)s, %(rar)s, %(wpa)s,
-       %(avg)s, %(obp)s, %(slg)s, %(hr)s, %(rbi)s, %(sb)s, %(pa)s)
+       %(avg)s, %(obp)s, %(slg)s, %(hr)s, %(rbi)s, %(sb)s, %(pa)s,
+       %(w)s, %(l)s, %(sv)s, %(gs)s, %(ip)s, %(whip)s, %(k_pct)s, %(bb_pct)s)
     on conflict (mlbam_id, season) do update set
       ops             = coalesce(excluded.ops,             web_player_season_stats.ops),
       wrc_plus        = coalesce(excluded.wrc_plus,        web_player_season_stats.wrc_plus),
@@ -109,6 +128,14 @@ UPSERT_SQL = """
       rbi             = coalesce(excluded.rbi,             web_player_season_stats.rbi),
       sb              = coalesce(excluded.sb,              web_player_season_stats.sb),
       pa              = coalesce(excluded.pa,              web_player_season_stats.pa),
+      w               = coalesce(excluded.w,               web_player_season_stats.w),
+      l               = coalesce(excluded.l,               web_player_season_stats.l),
+      sv              = coalesce(excluded.sv,              web_player_season_stats.sv),
+      gs              = coalesce(excluded.gs,              web_player_season_stats.gs),
+      ip              = coalesce(excluded.ip,              web_player_season_stats.ip),
+      whip            = coalesce(excluded.whip,            web_player_season_stats.whip),
+      k_pct           = coalesce(excluded.k_pct,           web_player_season_stats.k_pct),
+      bb_pct          = coalesce(excluded.bb_pct,          web_player_season_stats.bb_pct),
       updated_at = now()
 """
 
@@ -194,6 +221,14 @@ def run(season: int) -> None:
     value_missing = [h for h in WAR_COMPONENT_COLS if h not in bat.columns]
     basic_present = [h for h in BASIC_STAT_COLS if h in bat.columns]
     basic_missing = [h for h in BASIC_STAT_COLS if h not in bat.columns]
+    pitching_present = [h for h in PITCHING_STAT_COLS if h in pit.columns]
+    pitching_missing = [h for h in PITCHING_STAT_COLS if h not in pit.columns]
+    if not pit.empty and pitching_missing:
+        log.warning(
+            "pitching %s: stat column(s) absent, storing NULL: %s "
+            "(WHIP/K%%/BB%% need a Custom Report export — Dashboard + those three)",
+            season, pitching_missing,
+        )
     if not bat.empty:
         _warn_duplicate_value_headers(bat, season)
         if value_missing:
@@ -233,6 +268,8 @@ def run(season: int) -> None:
         entry["era"] = _num(r.get("ERA"))
         entry["fip"] = _num(r.get("FIP"))
         entry["k_per_9"] = _num(r.get("K/9"))
+        for header in pitching_present:
+            entry[PITCHING_STAT_COLS[header]] = _num(r.get(header))
         # Two-way players: WAR may already be set from batting; sum if both.
         pit_war = _num(r.get("WAR"))
         if pit_war is not None:
@@ -253,6 +290,8 @@ def run(season: int) -> None:
         for target in WAR_COMPONENT_COLS.values():
             entry.setdefault(target, None)
         for target in BASIC_STAT_COLS.values():
+            entry.setdefault(target, None)
+        for target in PITCHING_STAT_COLS.values():
             entry.setdefault(target, None)
         rows.append(entry)
 

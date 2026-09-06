@@ -83,11 +83,13 @@ function shiftDays(ymd: string, delta: number): string {
 
 // Games within the last `days` days ending at `asOf` (inclusive of asOf, a
 // rolling window). game_date is 'YYYY-MM-DD' so string compare is date-correct.
-export function windowByDays(
-  rows: BatterGameRow[],
+// Generic over the row shape so the pitcher log (lib/pitching-form.ts) can
+// reuse the same window logic.
+export function windowByDays<T extends { game_date: string }>(
+  rows: T[],
   days: number,
   asOf: string,
-): BatterGameRow[] {
+): T[] {
   const cutoff = shiftDays(asOf, -days);
   return rows.filter((g) => g.game_date > cutoff);
 }

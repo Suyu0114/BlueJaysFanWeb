@@ -48,7 +48,7 @@ view — 那是先前產生重複 `wRC+` / `ISO` / `SLG` / `BsR` 欄位的原因
 | 檔案 | 設定 |
 |---|---|
 | `batting_2026.csv` | **Batting** 分頁 / Blue Jays / 2026 / Min PA: 1 / Regular Season / **不勾 Split Seasons** / 用 **Custom Report**：保留現有 dashboard 欄位（已含 P9 逐年表用的 `AVG`/`OBP`/`SLG`/`HR`/`RBI`/`SB`/`PA`），**再加上 Value 區** `Bat`、`BsR`、`Fld`、`Pos`、`Lg`、`Rep`、`RAR`、`WPA` |
-| `pitching_2026.csv` | **Pitching** 分頁 / Blue Jays / 2026 / Min IP: 1 / Regular Season / **不勾 Split Seasons**（維持原樣 — P7 的 WAR 細項只做打者，投手不需要 Value 匯出） |
+| `pitching_2026.csv` | **Pitching** 分頁 / Blue Jays / 2026 / Min IP: 1 / Regular Season / **不勾 Split Seasons** / **P10 起改用 Custom Report**：保留 Dashboard 欄位（已含 `W`/`L`/`SV`/`GS`/`IP`/`ERA`/`FIP`/`K/9`/`WAR`），**再加上 `WHIP`、`K%`、`BB%`**（Dashboard preset 沒有這三欄；缺了投手 Overview 會顯示「—」） |
 
 > - 兩個檔都必須含 identity 欄位 `Name` 與 `MLBAMID`（`MLBAMID` 是 join 到
 >   `web_players` 的鍵）。
@@ -60,6 +60,11 @@ view — 那是先前產生重複 `wRC+` / `ISO` / `SLG` / `BsR` 欄位的原因
 > - **P9 basic line**：`AVG`/`OBP`/`SLG`/`HR`/`RBI`/`SB`/`PA` 是 Dashboard preset
 >   既有欄位，照上面「保留現有 dashboard 欄位」匯出即可，逐年表會自動帶入；
 >   舊 CSV 只要含這些欄位，重跑 `pull_season_stats.py` 就會補寫（不必重新匯出）。
+> - **P10 pitcher line**：`W`/`L`/`SV`/`GS`/`IP` 舊 Dashboard CSV 已有（重跑
+>   importer 即補寫）；`WHIP`/`K%`/`BB%` **必須**重新匯出 Custom Report 才會有，
+>   2024 / 2025 / 2026 三個 pitching CSV 都要換。`K%`/`BB%` 匯出值是小數
+>   （`0.245`），importer 原樣入庫，前端才 ×100 顯示。`IP` 是棒球記法
+>   （`170.1` = 170⅓），只供顯示，運算用 box score 的 `outs_recorded`。
 
 **Step 4：單獨補寫 KPI（只有在 backfill 之後又更新了 CSV 才需要）**
 ```powershell
@@ -135,4 +140,13 @@ WHERE g.season = 2026;
 
 -- 確認最新比賽日期（首頁用這個）
 SELECT MAX(game_date) FROM web_statcast_events;
+
+-- P10: 確認投手季 line 有進來（Gausman；WHIP/K%/BB% 在 Custom Report 匯出前為 NULL）
+SELECT season, w, l, sv, gs, ip, era, whip, k_pct, bb_pct
+FROM web_player_season_stats WHERE mlbam_id = 592332 ORDER BY season;
+
+-- P10: 確認 Statcast 新欄位已回填（pfx 應 ≈ total；balls/strikes = total）
+SELECT EXTRACT(year FROM game_date)::int AS season,
+       COUNT(*) AS total, COUNT(pfx_x) AS with_pfx, COUNT(balls) AS with_count
+FROM web_statcast_events GROUP BY 1 ORDER BY 1;
 ```

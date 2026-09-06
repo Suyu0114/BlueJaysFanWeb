@@ -31,7 +31,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 - This Supabase project is **shared with other projects** that already have a `players` table.
 - **Every table for this app is prefixed `web_`**: `web_players`, `web_statcast_events`, `web_player_season_stats`, `web_player_seasons`, `web_fielding_frv`, `web_id_map`.
 - Never create an unprefixed table here; it will collide.
-- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6) → `006_games.sql` + `007_player_game_stats.sql` + `008_war_components.sql` (P7) → `009_basic_season_stats.sql` (P9). One concern per migration file.
+- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6) → `006_games.sql` + `007_player_game_stats.sql` + `008_war_components.sql` (P7) → `009_basic_season_stats.sql` (P9) → `010_pitching_season_stats.sql` + `011_statcast_pitch_detail.sql` (P10). One concern per migration file.
 
 ### Audience & language
 - **Primary audience: English-speaking Toronto locals**, including non-Chinese speakers curious about BaZi. Chinese (TW/HK) fans are secondary.
@@ -65,7 +65,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 ### FanGraphs scraping is dead — use these workarounds
 - `pybaseball.team_batting` / `team_pitching` / `batting_stats` / `pitching_stats` return **HTTP 403**. The block is server-side; updating pybaseball won't help.
 - **Player enumeration** for "who appeared for the Jays in season X" now uses MLB Stats API `rosterType=fullSeason` (`etl/mlb_api.py::fetch_full_season_roster`). It includes 40-man members who never debuted — accept the small over-inclusion. Run via `python etl/pull_team_players.py --season YEAR`.
-- **Season stats** (OPS / wRC+ / ERA / FIP / K/9 / WAR) load from **manually-exported FanGraphs CSVs** dropped into `etl/data/fangraphs/{batting,pitching}_{season}.csv` (directory gitignored, requires a paid FanGraphs membership). `etl/pull_season_stats.py` reads them; missing files log a warning, do not fail. Full step-by-step in `ETL_update_flow.md`.
+- **Season stats** (OPS / wRC+ / ERA / FIP / K/9 / WAR + batter basic line + P10 pitcher line W/L/SV/GS/IP/WHIP/K%/BB%) load from **manually-exported FanGraphs CSVs** dropped into `etl/data/fangraphs/{batting,pitching}_{season}.csv` (directory gitignored, requires a paid FanGraphs membership). `etl/pull_season_stats.py` reads them; missing files log a warning, do not fail. ⚠️ The plain pitching **Dashboard** export lacks `WHIP`/`K%`/`BB%` — export a **Custom Report** (Dashboard + those three) or they stay NULL (site renders "—"). Full step-by-step in `ETL_update_flow.md`.
 - Statcast event pulls (`statcast_batter` / `statcast_pitcher`) and fielding leaderboard (`statcast_outs_above_average`) hit Baseball Savant directly — these are **unaffected**.
 
 ---
@@ -113,6 +113,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   007_player_game_stats.sql    # web_player_game_stats (per-game box score)
   008_war_components.sql       # web_player_season_stats: war_*/rar/wpa (batter WAR breakdown)
   009_basic_season_stats.sql   # web_player_season_stats: avg/obp/slg/hr/rbi/sb/pa (batter basic line, P9)
+  010_pitching_season_stats.sql # web_player_season_stats: w/l/sv/gs/ip/whip/k_pct/bb_pct (pitcher line, P10)
+  011_statcast_pitch_detail.sql # web_statcast_events: pfx_x/pfx_z/release_extension/estimated_woba/balls/strikes (P10)
 /.github/workflows/etl.yml     # daily cron (rolling 7-day window for current season)
 /ETL_update_flow.md            # backfill + FanGraphs CSV download steps
 /web/                          # Next.js app
@@ -120,9 +122,9 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     page.tsx                   # team home + "Today's Blue Jays" module
     players/page.tsx           # roster list with Current 26-man / All 2024-2026 toggle
     players/[mlbam_id]/
-      page.tsx                 # overview: KPI + RecentForm + RollingOpsSparkline + SeasonProgressBar + SeasonStatTable + ContactQualityCard + WarBreakdown + GameLog (batter modules are batter-only)
-      batting/page.tsx         # spray chart
-      pitching/page.tsx        # pitch distribution
+      page.tsx                 # overview: batter = KPI + RecentForm + RollingOpsSparkline + SeasonProgressBar + SeasonStatTable + ContactQualityCard + WarBreakdown + GameLog; pitcher (P10) = KPI(W-L/SV/IP/ERA/WHIP/K%/WAR + hints) + PitcherRecentForm + RollingEraSparkline + SeasonProgressBar + PitcherSeasonStatTable + PitcherGameLog
+      batting/page.tsx         # spray chart + EV/LA scatter
+      pitching/page.tsx        # P10: arsenal table + movement chart + zone heatmap + velo trend
       fielding/page.tsx        # FRV table + multi-position diagram
     about/page.tsx
   components/
@@ -136,22 +138,32 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     RecentForm.tsx             # P9 Last 7 / Last 30 / Season slash lines (overview)
     GameLog.tsx                # P9 last-10 game log (overview)
     ContactQualityCard.tsx     # P9 Avg/Max EV + Hard-Hit% (reuses computeExitVeloStats)
+    PitcherSeasonStatTable.tsx # P10 year-by-year pitching line (overview, pitcher-only)
+    PitcherRecentForm.tsx      # P10 Last 5 outings / Last 30 / Season (ERA/IP/K/BB/WHIP)
+    PitcherGameLog.tsx         # P10 last-10 outings log (overview)
     charts/
       SprayChart.tsx           # optional secondaryEvents prop for /compare
       SprayChartExplorer.tsx   # client filter wrapper around SprayChart (month/pitch/outcome/hand)
-      PitchDistribution.tsx
-      PitchingExplorer.tsx     # client filter wrapper: PitchDistribution + PitchZoneHeatmap
+      PitchingExplorer.tsx     # client filter wrapper: ArsenalTable + PitchMovementChart + PitchZoneHeatmap + VeloTrendChart
+      ArsenalTable.tsx         # P10 per-pitch-type usage bar + velo/spin/whiff%/xwOBAcon (replaced PitchDistribution)
+      PitchMovementChart.tsx   # P10 pfx scatter, pitcher's view (alignment-agnostic)
+      VeloTrendChart.tsx       # P10 per-game primary-fastball velo (Recharts line)
       PitchZoneHeatmap.tsx     # pitch-location heatmap (16x20 grid + Gaussian kernel + SVG blur)
       FieldingDiagram.tsx      # primary chip (brick) + secondary chips (steel)
       WarBreakdown.tsx         # batter WAR diverging stacked bar (P7)
       RollingOpsSparkline.tsx  # P9 15-game rolling-OPS trend (Recharts line)
+      RollingEraSparkline.tsx  # P10 5-outing rolling-ERA trend (Recharts line)
   lib/
     db.ts                      # postgres.js client (PgBouncer-safe: prepare: false)
     players.ts                 # roster modes + getPlayerAvailability
     batting.ts / pitching.ts / fielding.ts
-    season-stats.ts            # web_player_season_stats (incl. P9 basic line) + batter games-played
+    season-stats.ts            # web_player_season_stats (incl. P9 basic line + P10 pitcher line) + batter games-played
     batter-game-log.ts         # P9 per-game batting log (web_player_game_stats + web_games), current season
-    batting-form.ts            # P9 pure helpers: summarize / windowByDays / rollingOps
+    batting-form.ts            # P9 pure helpers: summarize / windowByDays (generic) / rollingOps
+    pitcher-game-log.ts        # P10 per-appearance pitching log (mirrors batter-game-log)
+    pitching-form.ts           # P10 pure helpers: summarizePitching / lastNAppearances / rollingEra
+    pitch-arsenal.ts           # P10 pure: PitchEvent type + buildArsenal (whiff%/xwOBAcon) + veloTrend
+    pitch-colors.ts            # P10: shared PITCH_COLOR map (was in PitchDistribution)
     recent-game.ts             # Today's Blue Jays helpers (HR hero, hardest contact, IP/K/H)
     field-geometry.ts          # Rogers Centre SVG paths (exports polar())
   messages/
@@ -241,5 +253,6 @@ Graduate is an **all-caps slab display face with no true lowercase** — use it 
 | P7 | done | Schedule calendar on home page (en + zh-TW); per-game box score detail page; nightly cron two-job refresh; WAR breakdown chart (batter-only, diverging stacked bar, RAR reconcile) on player overview; WPA stored |
 | P8 | done | EV/LA scatter + KPI chips on batting page |
 | P9 | done | Batter overview deep-dive (en + zh-TW): year-by-year basic+advanced table (migration `009` adds avg/obp/slg/hr/rbi/sb/pa, ingested from FanGraphs Dashboard CSV); Recent Form (Last 7/30/Season slash lines) + last-10 game log + 15-game rolling-OPS sparkline (from `web_player_game_stats`, current season); contact-quality card (reuses `computeExitVeloStats`). Pitcher overview unchanged. |
+| P10 | done | Pitcher deep-dive (en + zh-TW). Overview: KPI (W-L/SV/IP/ERA/WHIP/K%/WAR + plain-language hints), Recent Form (Last 5 outings/30d/Season), 5-outing rolling-ERA sparkline, year-by-year pitching table, last-10 outings log (migration `010`; pitching rows of `web_player_game_stats`). Pitching page: arsenal table (usage/velo/spin/Whiff%/xwOBAcon), pfx movement chart, velo trend (migration `011` + full 2024-2026 Statcast re-backfill adds pfx/xwOBA/count). WHIP/K%/BB% need the FanGraphs pitching **Custom Report** re-export. See `docs/P10_spec.md`. |
 
 v2 (deferred): BaZi personality / fortune / matchup-prediction / injury-risk; daily WAR snapshots for strict same-date pace comparisons; `/compare` page (SprayChart `secondaryEvents` prop is already wired).

@@ -2,12 +2,20 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import PitchDistribution, {
-  type PitchEvent,
-} from "@/components/charts/PitchDistribution";
+import ArsenalTable from "@/components/charts/ArsenalTable";
+import PitchMovementChart from "@/components/charts/PitchMovementChart";
 import PitchZoneHeatmap from "@/components/charts/PitchZoneHeatmap";
+import VeloTrendChart from "@/components/charts/VeloTrendChart";
+import {
+  primaryFastball,
+  veloTrend,
+  type PitchEvent,
+} from "@/lib/pitch-arsenal";
 
 type BatterHand = "all" | "L" | "R";
+
+// Velocity trend needs a real line before it means anything.
+const VELO_TREND_MIN_GAMES = 5;
 
 function Chip({
   active,
@@ -46,8 +54,11 @@ function FilterGroup({ label, children }: { label: string; children: ReactNode }
 }
 
 // Client wrapper: holds filter state, feeds filtered pitches to the pure
-// PitchDistribution and PitchZoneHeatmap. The pure components never see
-// next-intl; all i18n lives here.
+// chart components (ArsenalTable / PitchMovementChart / PitchZoneHeatmap /
+// VeloTrendChart). The pure components never see next-intl; all i18n lives
+// here. P10 layout: arsenal (the "what does he throw and how good is it"
+// anchor) -> movement + location -> fastball velocity trend, each with a
+// plain-language story caption.
 export default function PitchingExplorer({
   pitches,
 }: {
@@ -88,8 +99,9 @@ export default function PitchingExplorer({
 
   // The location heatmap reads plate_x/plate_z, which changed reference frame in
   // 2026 ('front' <=2025 -> 'middle' >=2026). Feed it a SINGLE alignment so the
-  // zone doesn't smear by 1-3 inches; the usage bars above are alignment-agnostic
-  // and keep every row. See docs/DATA_MODEL.md (plate_alignment invariant).
+  // zone doesn't smear by 1-3 inches; the arsenal table and movement chart are
+  // alignment-agnostic (release-frame fields only) and keep every row. See
+  // docs/DATA_MODEL.md (plate_alignment invariant).
   const zoneAlignments = useMemo(() => {
     const present = new Set<string>();
     for (const p of filtered) if (p.plate_alignment) present.add(p.plate_alignment);
@@ -110,10 +122,31 @@ export default function PitchingExplorer({
     [filtered, activeAlignment],
   );
 
+  // Velocity trend: computed from the FULL pitch set (not the filters) so the
+  // line stays a stable season-long story; veloTrend() scopes to the latest
+  // season internally.
+  const { trendPitch, trendPoints } = useMemo(() => {
+    const trendPitch = primaryFastball(pitches);
+    return {
+      trendPitch,
+      trendPoints: trendPitch ? veloTrend(pitches, trendPitch) : [],
+    };
+  }, [pitches]);
+
   const alignLabel = (a: string) =>
     a === "middle" ? t("alignMiddle") : t("alignFront");
 
-  const distLabels = {
+  const arsenalLabels = {
+    usage: t("colUsage"),
+    pitches: t("colCount"),
+    avgVelo: t("colAvgVelo"),
+    spin: t("colSpin"),
+    whiff: t("colWhiff"),
+    xwobaCon: t("colXwobaCon"),
+  };
+  const movementLabels = {
+    axisHorz: t("axisHorzBreak"),
+    axisVert: t("axisVertBreak"),
     pitches: t("colCount"),
     avgVelo: t("colAvgVelo"),
   };
@@ -140,7 +173,7 @@ export default function PitchingExplorer({
     });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="space-y-1.5">
         <FilterGroup label={t("filterMonth")}>
           <Chip active={month === "all"} onClick={() => setMonth("all")}>
@@ -193,12 +226,23 @@ export default function PitchingExplorer({
         </p>
       </div>
 
+      <section>
+        <h2 className="mb-2 text-sm font-semibold text-navy">
+          {t("arsenalTitle")}
+        </h2>
+        <ArsenalTable pitches={filtered} labels={arsenalLabels} />
+        <p className="mt-2 text-xs text-navy/50">{t("arsenalStory")}</p>
+        <p className="mt-0.5 text-xs text-navy/40">{t("xwobaConNote")}</p>
+      </section>
+
       <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-start">
         <section>
           <h2 className="mb-2 text-sm font-semibold text-navy">
-            {t("usageTitle")}
+            {t("movementTitle")}
           </h2>
-          <PitchDistribution pitches={filtered} labels={distLabels} />
+          <PitchMovementChart pitches={filtered} labels={movementLabels} />
+          <p className="mt-1 text-xs text-navy/50">{t("movementStory")}</p>
+          <p className="mt-0.5 text-xs text-navy/40">{t("pitcherViewNote")}</p>
         </section>
 
         <section>
@@ -230,8 +274,21 @@ export default function PitchingExplorer({
               })}
             </p>
           )}
+          <p className="mt-1 max-w-[280px] text-xs text-navy/50">
+            {t("locationStory")}
+          </p>
         </section>
       </div>
+
+      {trendPitch && trendPoints.length >= VELO_TREND_MIN_GAMES && (
+        <section>
+          <h2 className="mb-2 text-sm font-semibold text-navy">
+            {t("veloTrendTitle")} · {trendPitch}
+          </h2>
+          <VeloTrendChart data={trendPoints} pitchType={trendPitch} />
+          <p className="mt-1 text-xs text-navy/50">{t("veloTrendStory")}</p>
+        </section>
+      )}
     </div>
   );
 }

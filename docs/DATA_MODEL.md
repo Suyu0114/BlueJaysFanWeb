@@ -10,8 +10,8 @@ the columns that **don't** exist so nobody assumes them.
 > update this file in the same change.** To re-verify, dump the columns for every
 > table below and diff — the verification recipe is at the bottom.
 >
-> **Verified against live DB: 2026-06-05** (migrations `001`–`009` applied;
-> `web_player_season_stats` re-confirmed at 24 columns).
+> **Verified against live DB: 2026-07-08** (migrations `001`–`011` applied;
+> `web_player_season_stats` at 32 columns, `web_statcast_events` at 29).
 >
 > This Supabase project is **shared** with other projects, so every table here is
 > prefixed `web_`. See CLAUDE.md → "Supabase tables are shared — prefix everything
@@ -74,8 +74,9 @@ into this table, so **every opponent batter/pitcher a Jay has faced is also here
 ---
 
 ## `web_statcast_events`
-*Migration: `001` (+ `004` added `plate_alignment`). Writer:
-[`etl/db.py`](../etl/db.py) `upsert_statcast_events`. Conflict key:
+*Migration: `001` (+ `004` added `plate_alignment`; + `011` added the P10 pitch
+detail: `pfx_x`/`pfx_z`/`release_extension`/`estimated_woba`/`balls`/`strikes`).
+Writer: [`etl/db.py`](../etl/db.py) `upsert_statcast_events`. Conflict key:
 `(game_pk, batter_id, pitcher_id, at_bat_number, pitch_number)`.*
 
 The big one (~132k rows). One row per pitch. **The writer inserts a hardcoded
@@ -108,20 +109,30 @@ written until that list is also updated.
 | `p_throws` | char(1) | yes | Pitcher handedness `L` / `R`. |
 | `zone` | int | yes | Savant strike-zone cell (1–14). |
 | `plate_alignment` | text | yes | `front` (≤2025) or `middle` (≥2026) — which plate reference frame `plate_x`/`plate_z` use. |
+| `pfx_x` | numeric | yes | Horizontal movement vs a spinless pitch, **feet, catcher's perspective** (`011`). Charts flip the sign for pitcher's view and convert to inches. Release-frame → alignment-agnostic. |
+| `pfx_z` | numeric | yes | Vertical movement vs a spinless pitch, feet (`011`). |
+| `release_extension` | numeric | yes | Feet toward home at release (`011`). Stored but not yet consumed by the web app. |
+| `estimated_woba` | numeric | yes | Savant `estimated_woba_using_speedangle` (`011`). ⚠️ **Not only on batted balls**: Savant also fills it on PA-ending non-contact pitches (K/BB/HBP) with the event's wOBA constant. Anything computing "xwOBA on contact" must gate on `description = 'hit_into_play'` (as `lib/pitch-arsenal.ts` does). |
+| `balls` | int | yes | Count **before** the pitch, 0–3 (`011`). |
+| `strikes` | int | yes | Count **before** the pitch, 0–2 (`011`). ⚠️ Unrelated to `web_player_game_stats.strikes` (strikes *thrown* in a game). |
 
 ---
 
 ## `web_player_season_stats`
 *Migration: `001` (+ `008` added `war_*` / `rar` / `wpa`; + `009` added the
-`avg`/`obp`/`slg`/`hr`/`rbi`/`sb`/`pa` basic line). Writer:
+`avg`/`obp`/`slg`/`hr`/`rbi`/`sb`/`pa` basic line; + `010` added the pitcher line
+`w`/`l`/`sv`/`gs`/`ip`/`whip`/`k_pct`/`bb_pct`). Writer:
 [`etl/pull_season_stats.py`](../etl/pull_season_stats.py). Conflict key: `(mlbam_id, season)`.*
 
 Pre-aggregated season lines from **manually-exported FanGraphs CSVs** (the
 scraper is dead — see CLAUDE.md → "FanGraphs scraping is dead"). Missing CSVs warn
 and skip (leave NULLs), never hard-fail. The `war_*` block is **batter-only**
 (from the FanGraphs "Value" preset); the P9 basic line (`avg`…`pa`) is also
-batter-only and comes from the standard Dashboard columns of the same CSV — both
-are OPTIONAL (warn + NULL if the export lacks them, `coalesce` on upsert).
+batter-only and comes from the standard Dashboard columns of the same CSV; the
+P10 pitcher line (`w`…`bb_pct`) is pitcher-only — all three blocks are OPTIONAL
+(warn + NULL if the export lacks them, `coalesce` on upsert). ⚠️ The plain
+pitching Dashboard export lacks `WHIP`/`K%`/`BB%` — those need a **Custom Report**
+(Dashboard + WHIP + K% + BB%); `W/L/SV/GS/IP` are in every Dashboard export.
 
 | Column | Type | Null | Meaning |
 |---|---|---|---|
@@ -149,6 +160,14 @@ are OPTIONAL (warn + NULL if the export lacks them, `coalesce` on upsert).
 | `rbi` | numeric | yes | Runs batted in. |
 | `sb` | numeric | yes | Stolen bases. |
 | `pa` | numeric | yes | Plate appearances (volume context for the year-by-year table). |
+| `w` | numeric | yes | Wins. Pitcher-only (`010`). |
+| `l` | numeric | yes | Losses. |
+| `sv` | numeric | yes | Saves (drives the conditional SV KPI card). |
+| `gs` | numeric | yes | Games started (starter/reliever signal). |
+| `ip` | numeric | yes | ⚠️ FanGraphs **baseball notation**: `170.1` = 170⅓. **Display only — never sum or divide.** Arithmetic IP comes from `web_player_game_stats.outs_recorded`. |
+| `whip` | numeric | yes | (H+BB)/IP. NULL until the Custom Report re-export. |
+| `k_pct` | numeric | yes | Strikeout rate as a **raw fraction** (`0.245`) — multiply by 100 at display. NULL until re-export. |
+| `bb_pct` | numeric | yes | Walk rate, raw fraction. NULL until re-export. |
 
 ---
 
@@ -285,7 +304,8 @@ on `mlbam_id` means an unknown call-up must be inserted into `web_players` first
 4. **`plate_alignment` splits the plate coordinate frame.** `front` (≤2025) vs
    `middle` (≥2026). The `PitchZoneHeatmap` must consume a **single** alignment
    value at a time or it smears the zone by 1–3 inches. **Enforced** by the
-   "Zone coords" filter in `PitchingExplorer` (the usage bars stay cross-season;
+   "Zone coords" filter in `PitchingExplorer` (the arsenal table, movement chart,
+   and velo trend read release-frame/outcome fields only and stay cross-season;
    only the heatmap is alignment-scoped). `getPitches` still fetches all seasons,
    so any *new* plate-coordinate consumer must filter alignment itself. See Known gaps #1.
 5. **`web_players` is a superset.** It contains every player referenced by a
@@ -304,10 +324,11 @@ on `mlbam_id` means an unknown call-up must be inserted into `web_players` first
    (≥2026) frames on one heatmap. Now `PitchEvent` carries `plate_alignment`,
    `getPitches` ([web/lib/pitching.ts](../web/lib/pitching.ts)) selects it, and
    `PitchingExplorer` scopes the heatmap to a single alignment — a "Zone coords"
-   toggle appears when both eras are present, defaulting to the newest. The usage
-   bars stay cross-season (they don't read plate coords). The single-alignment
-   guarantee is enforced client-side at the heatmap, **not** by the query — so a
-   new plate-coordinate consumer must still scope alignment itself.
+   toggle appears when both eras are present, defaulting to the newest. The
+   arsenal table / movement chart / velo trend stay cross-season (they don't read
+   plate coords). The single-alignment guarantee is enforced client-side at the
+   heatmap, **not** by the query — so a new plate-coordinate consumer must still
+   scope alignment itself.
 2. **`web_id_map` is empty (0 rows).** By design it's a lazy cache, but worth
    knowing nothing currently depends on it being warm.
 3. **EV-but-no-coordinate batted balls are dropped** from the batting page (see
@@ -344,5 +365,5 @@ with psycopg.connect(os.environ["DATABASE_URL"], prepare_threshold=None) as c:
 ```
 
 Run: `conda run -n MLBxBaZi python <script>.py`. Expect the column counts in the
-table index above (11 / 23 / 24 / 7 / 12 / 6 / 16 / 27). Re-confirm the anti-index
+table index above (11 / 29 / 32 / 7 / 12 / 6 / 16 / 27). Re-confirm the anti-index
 holds (`bb_type`, `launch_speed_angle` still absent).

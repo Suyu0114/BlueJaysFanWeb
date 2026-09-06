@@ -253,6 +253,9 @@ STATCAST_COLUMNS = [
     "hc_x_feet", "hc_y_feet",
     "launch_speed", "launch_angle",
     "stand", "p_throws", "zone",
+    # P10 (migration 011): movement / xwOBA / count detail.
+    "pfx_x", "pfx_z", "release_extension",
+    "estimated_woba", "balls", "strikes",
 ]
 
 
