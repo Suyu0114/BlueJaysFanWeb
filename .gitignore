@@ -54,3 +54,6 @@ etl/data/
 *.csv
 *.parquet
 !etl/fixtures/*.csv
+
+# --- Claude Code (local, per-machine) ---
+.claude/settings.local.json
