@@ -10,12 +10,13 @@
 
 1. **Data visualizations** (per player, filterable by season / month / pitch type)
    - Spray chart — batted-ball locations, colored by outcome, sized by exit velocity
-   - Pitching distribution — pitch types, zone heatmap
+   - Pitching breakdown — arsenal table (usage / velo / spin / Whiff% / xwOBA on contact), pitch-movement plot (pitcher's view), zone heatmap, and per-game fastball velocity trend
    - Fielding diagram + FRV table — primary position in brick, secondary positions in steel (so multi-position guys like Ernie Clement read at a glance)
 2. **Player pages**
-   - Overview with KPI cards (OPS / wRC+ / ERA / FIP / WAR) and a season-progress bar (pace projection for batters; current-vs-prior for pitchers, because `162/games` is meaningless for either starters or relievers)
+   - Overview with KPI cards (batters: OPS / wRC+ / WAR; pitchers: W-L / SV / IP / ERA / WHIP / K% / WAR, each with a plain-language hint) and a season-progress bar (pace projection for batters; current-vs-prior for pitchers, because `162/games` is meaningless for either starters or relievers)
    - WAR breakdown chart (batter-only) — a diverging stacked bar of the six FanGraphs run-value components (Bat / BsR / Fld / Pos / Lg / Rep) reconciling to RAR, with an on-page methodology note
    - Batter deep-dive (batter-only) — year-by-year table (AVG / OBP / SLG / OPS / HR / RBI / SB / wRC+ / WAR), Recent Form (Last 7 / Last 30 / Season slash lines), last-10 game log, a 15-game rolling-OPS sparkline, and a Statcast contact-quality card (Avg / Max EV, Hard-Hit%)
+   - Pitcher deep-dive (pitcher-only) — year-by-year pitching table (W-L / SV / IP / ERA / FIP / WHIP / K% / BB% / WAR), Recent Form (Last 5 outings / Last 30 / Season), last-10 outings log, and a 5-outing rolling-ERA sparkline
    - Sub-tabs auto-hide for roles a player didn't appear in
 3. **Roster**
    - Current 26-man (default) / All 2024-2026 toggle
@@ -33,7 +34,7 @@
 
 - **Frontend:** Next.js 16 (App Router) + TypeScript + Tailwind + shadcn/ui
 - **i18n:** `next-intl` — default `en`, optional `zh-TW`
-- **Charts:** D3.js (spray / pitch zone / fielding) + Recharts (WAR breakdown diverging stacked bar) + rough.js (hand-drawn schedule calendar)
+- **Charts:** D3.js (spray / pitch zone / pitch movement / fielding) + Recharts (WAR breakdown diverging stacked bar, rolling OPS / ERA sparklines, velocity trend) + rough.js (hand-drawn schedule calendar)
 - **Database:** Supabase Postgres
 - **ETL:** Python + pybaseball, scheduled via GitHub Actions (daily)
 - **Deploy:** Vercel
@@ -56,10 +57,11 @@
 │   ├── pull_fielding.py          # OAA / FRV per position
 │   ├── pull_schedule.py          # season schedule + results → web_games
 │   ├── pull_boxscore.py          # per-game box scores → web_player_game_stats
-│   ├── pull_season_stats.py      # OPS / wRC+ / ERA / FIP / WAR + value components + basic line (CSV)
+│   ├── pull_season_stats.py      # OPS / wRC+ / ERA / FIP / WAR + value components + batter basic
+│   │                             # line + pitcher line W/L/SV/GS/IP/WHIP/K%/BB% (CSV)
 │   ├── backfill.py               # one-shot orchestrator
 │   └── data/fangraphs/           # gitignored manual CSV drop zone
-├── db/migrations/                # plain SQL: 001 → 009
+├── db/migrations/                # plain SQL: 001 → 011
 ├── web/                          # Next.js app
 │   ├── app/[locale]/
 │   │   ├── page.tsx              # Home: schedule calendar + "Today's Blue Jays"
@@ -75,10 +77,14 @@
 │   │   ├── HeroCard.tsx          # "Today's Blue Jays" cards (wraps ScorecardFrame)
 │   │   ├── RosterExplorer.tsx    # roster filter (All/Pitchers/Batters) + all-time season grouping
 │   │   ├── SeasonStatTable / RecentForm / GameLog / ContactQualityCard  # batter overview modules
-│   │   └── charts/               # SprayChart, PitchDistribution, FieldingDiagram, WarBreakdown, ExitVeloChart, RollingOpsSparkline
+│   │   ├── PitcherSeasonStatTable / PitcherRecentForm / PitcherGameLog  # pitcher overview modules
+│   │   └── charts/               # SprayChart, ArsenalTable, PitchMovementChart, PitchZoneHeatmap,
+│   │                             # FieldingDiagram, WarBreakdown, ExitVeloChart,
+│   │                             # RollingOpsSparkline, RollingEraSparkline, VeloTrendChart
 │   ├── lib/                      # db, players, batting/pitching/fielding, season-stats,
 │   │                             # recent-game, field-geometry, games, team-abbr,
-│   │                             # batter-game-log, batting-form, exit-velo-stats
+│   │                             # batter-game-log, batting-form, exit-velo-stats,
+│   │                             # pitcher-game-log, pitching-form, pitch-arsenal, pitch-colors
 │   └── messages/{en,zh-TW}.json
 ├── .github/workflows/etl.yml     # two-job cron: ~09:00 ET full refresh + ~11:30 PM ET finals
 ├── ETL_update_flow.md            # backfill + FanGraphs CSV download steps
@@ -199,12 +205,12 @@ What stays English in zh-TW (do **not** translate):
 
 - **[pybaseball](https://github.com/jldbc/pybaseball)** — wrapper around Baseball Savant. Covers batting (spray data), pitching (location, velocity, spin), and fielding (FRV via `statcast_outs_above_average`, which returns `fielding_runs_prevented`). **Savant pulls work; FanGraphs scrapers do not** — see workaround below.
 - **MLB Stats API** (`statsapi.mlb.com`) — player bio (incl. birth city/country), full-season roster enumeration, primary position.
-- **FanGraphs (manual CSV export)** — only source of OPS / wRC+ / ERA / FIP / WAR, the WAR value components (Bat / BsR / Fld / Pos / Lg / Rep / RAR), season WPA, and the basic slash line (AVG / OBP / SLG / HR / RBI / SB / PA); requires a paid membership and human-in-the-loop download. See [ETL_update_flow.md](ETL_update_flow.md).
+- **FanGraphs (manual CSV export)** — only source of OPS / wRC+ / ERA / FIP / WAR, the WAR value components (Bat / BsR / Fld / Pos / Lg / Rep / RAR), season WPA, and the basic slash line (AVG / OBP / SLG / HR / RBI / SB / PA), and the pitcher line (W / L / SV / GS / IP / WHIP / K% / BB%); requires a paid membership and human-in-the-loop download. ⚠️ The plain pitching **Dashboard** preset lacks `WHIP` / `K%` / `BB%` — export a **Custom Report** (Dashboard + those three) or they stay NULL. See [ETL_update_flow.md](ETL_update_flow.md).
 
 ### Important Statcast gotchas
 
 - Pybaseball **includes playoffs by default.** Filter `game_type == 'R'` for regular season; `transform.regular_season_only(df, keep_postseason=True)` opts in (used for the 2025 playoff backfill).
-- 2026 changed `plate_x`/`plate_z` from front-of-plate to middle-of-plate alignment. `transform.tag_plate_alignment()` writes `'front'` (≤2025) or `'middle'` (≥2026) to `web_statcast_events.plate_alignment`. PitchDistribution must filter to a single alignment value at a time.
+- 2026 changed `plate_x`/`plate_z` from front-of-plate to middle-of-plate alignment. `transform.tag_plate_alignment()` writes `'front'` (≤2025) or `'middle'` (≥2026) to `web_statcast_events.plate_alignment`. `PitchZoneHeatmap` must render a single alignment value at a time (enforced by the "Zone coords" filter in `PitchingExplorer`); the arsenal table, movement chart, and velocity trend read release-frame fields only and are alignment-agnostic.
 - Pitch classifications can be retroactively edited → daily ETL re-pulls the last 7 days (current season only). Historical seasons stay static after `etl/backfill.py`.
 - Spray-chart coordinate transform:
   ```
@@ -217,7 +223,7 @@ What stays English in zh-TW (do **not** translate):
 `pybaseball.team_batting` / `team_pitching` / `batting_stats` / `pitching_stats` return HTTP 403 (server-side block; upgrading pybaseball won't help). Two workarounds in place:
 
 - **Player enumeration** ("who appeared for the Jays in season X") uses MLB Stats API `rosterType=fullSeason` in `etl/mlb_api.py`. Includes a few 40-man members who never actually debuted — acceptable; their Statcast pulls just return zero rows.
-- **Season stats** load from manually-exported FanGraphs CSVs in `etl/data/fangraphs/{batting,pitching}_{season}.csv` (directory gitignored). Missing file → warning + skip, not a hard failure.
+- **Season stats** load from manually-exported FanGraphs CSVs in `etl/data/fangraphs/{batting,pitching}_{season}.csv` (directory gitignored). Missing file → warning + skip, not a hard failure; a missing optional column → warning + NULL (see the Custom Report caveat above).
 
 ---
 
@@ -235,6 +241,7 @@ What stays English in zh-TW (do **not** translate):
 | P7 | Schedule calendar + per-game box scores + batter WAR breakdown + season WPA | done |
 | P8 | EV/LA scatter + KPI chips on batting page | done |
 | P9 | Batter overview deep-dive: year-by-year table + recent form + game log + rolling OPS + contact quality | done |
+| P10 | Pitcher deep-dive: pitcher KPI set + recent form + outings log + rolling ERA + year-by-year table; arsenal table, pitch-movement chart, velocity trend | done |
 
 ---
 
