@@ -3,6 +3,7 @@
     "brand": "Blue Jays Fan Hub",
     "home": "首頁",
     "players": "球員",
+    "standings": "戰績排名",
     "about": "關於"
   },
   "Home": {
@@ -33,6 +34,34 @@
     "live": "比賽進行中",
     "tbd": "待定",
     "today": "今天"
+  },
+  "Standings": {
+    "title": "戰績排名",
+    "subtitle": "{season} 球季 MLB 戰績排名 — 分區龍頭與外卡爭奪。",
+    "americanLeague": "美聯",
+    "nationalLeague": "國聯",
+    "tabWildCard": "外卡",
+    "viewLabel": "排名檢視",
+    "leagueLabel": "聯盟",
+    "alEast": "美聯東區",
+    "alCentral": "美聯中區",
+    "alWest": "美聯西區",
+    "nlEast": "國聯東區",
+    "nlCentral": "國聯中區",
+    "nlWest": "國聯西區",
+    "alWildCard": "美聯外卡",
+    "nlWildCard": "國聯外卡",
+    "team": "球隊",
+    "cutLine": "線以上的球隊目前佔有季後賽席位。",
+    "homeTitle": "季後賽戰況",
+    "playoffRaceTitle": "美聯季後賽排名",
+    "fullStandings": "查看所有分區完整排名 →",
+    "legendTitle": "圖例",
+    "legendZ": "z — 全聯盟最佳戰績",
+    "legendY": "y — 分區冠軍",
+    "legendX": "x — 確定晉級季後賽",
+    "legendE": "e — 確定無緣季後賽",
+    "empty": "本球季尚無排名資料。"
   },
   "Game": {
     "battingTitle": "打擊",

@@ -31,7 +31,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 - This Supabase project is **shared with other projects** that already have a `players` table.
 - **Every table for this app is prefixed `web_`**: `web_players`, `web_statcast_events`, `web_player_season_stats`, `web_player_seasons`, `web_fielding_frv`, `web_id_map`.
 - Never create an unprefixed table here; it will collide.
-- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6) → `006_games.sql` + `007_player_game_stats.sql` + `008_war_components.sql` (P7) → `009_basic_season_stats.sql` (P9) → `010_pitching_season_stats.sql` + `011_statcast_pitch_detail.sql` (P10). One concern per migration file.
+- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6) → `006_games.sql` + `007_player_game_stats.sql` + `008_war_components.sql` (P7) → `009_basic_season_stats.sql` (P9) → `010_pitching_season_stats.sql` + `011_statcast_pitch_detail.sql` (P10) → `012_standings.sql` (P11). One concern per migration file.
 
 ### Audience & language
 - **Primary audience: English-speaking Toronto locals**, including non-Chinese speakers curious about BaZi. Chinese (TW/HK) fans are secondary.
@@ -61,6 +61,13 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
   y_feet = 2.5 * (198.27 - hc_y)
   ```
 - Upsert key for `web_statcast_events`: `(game_pk, batter_id, pitcher_id, at_bat_number, pitch_number)`.
+- **Standings GB columns are `text`, not numbers.** `web_standings.games_back` /
+  `wc_games_back` / `elimination_number` / `magic_number` hold MLB's own display
+  strings, sentinels included: `'-'` = "is the reference", `'+9.5'` = ahead of the
+  wild card cut line, `'E'` = eliminated. Stored verbatim, never parsed — **order
+  by the `*_rank` columns.** Also: `wild_card_rank` is NULL for division leaders
+  (absent upstream), and MLB's NL division ids are reversed (**203 = NL West,
+  204 = NL East**). See `docs/DATA_MODEL.md` → `web_standings`.
 
 ### FanGraphs scraping is dead — use these workarounds
 - `pybaseball.team_batting` / `team_pitching` / `batting_stats` / `pitching_stats` return **HTTP 403**. The block is server-side; updating pybaseball won't help.
@@ -100,6 +107,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   pull_statcast.py             # batter Statcast; --all-batters / --include-postseason
   pull_pitcher.py              # pitcher Statcast; --all-pitchers / --include-postseason
   pull_fielding.py             # OAA / FRV per position (Savant leaderboard)
+  pull_standings.py            # MLB standings snapshot, both leagues (MLB Stats API)
+  fetch_team_logos.py          # ONE-SHOT: cap logos -> web/public/team-logos (recoloured, committed)
   pull_season_stats.py         # OPS/wRC+/ERA/FIP/WAR + basic line (avg/obp/slg/hr/rbi/sb/pa) from FanGraphs CSV exports
   backfill.py                  # one-shot orchestrator for 2024 + 2025 (and optional 2026)
   data/fangraphs/              # gitignored manual CSV drop zone for season stats
@@ -115,6 +124,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   009_basic_season_stats.sql   # web_player_season_stats: avg/obp/slg/hr/rbi/sb/pa (batter basic line, P9)
   010_pitching_season_stats.sql # web_player_season_stats: w/l/sv/gs/ip/whip/k_pct/bb_pct (pitcher line, P10)
   011_statcast_pitch_detail.sql # web_statcast_events: pfx_x/pfx_z/release_extension/estimated_woba/balls/strikes (P10)
+  012_standings.sql            # web_standings (MLB standings snapshot, all 30 clubs, P11)
 /.github/workflows/etl.yml     # daily cron (rolling 7-day window for current season)
 /ETL_update_flow.md            # backfill + FanGraphs CSV download steps
 /web/                          # Next.js app
@@ -126,6 +136,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       batting/page.tsx         # spray chart + EV/LA scatter
       pitching/page.tsx        # P10: arsenal table + movement chart + zone heatmap + velo trend
       fielding/page.tsx        # FRV table + multi-position diagram
+    standings/page.tsx         # P11: three views (AL / NL / Wild Card) + clinch legend
     about/page.tsx
   components/
     PlayerNav.tsx              # tabs with `available` prop (bazi slot reserved for v2)
@@ -141,6 +152,14 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     PitcherSeasonStatTable.tsx # P10 year-by-year pitching line (overview, pitcher-only)
     PitcherRecentForm.tsx      # P10 Last 5 outings / Last 30 / Season (ERA/IP/K/BB/WHIP)
     PitcherGameLog.tsx         # P10 last-10 outings log (overview)
+    SketchDefs.tsx             # P11 shared SVG #sketch filter (hand-drawn logo wobble), mounted once in layout
+    TeamLogo.tsx               # P11 recoloured cap logo + TeamCell (logo + clinch marker + name)
+    StandingsTable.tsx         # P11 one division table (W/L/PCT/GB/WCGB/L10/STRK/RS/RA/DIFF/X-W/L/HOME/AWAY)
+    WildCardTable.tsx          # P11 wild card race + cut line (division leaders excluded)
+    PlayoffRace.tsx            # P11 AL seeds 1-6 + cut line + chasers
+    HomeStandings.tsx          # P11 home module: AL East table + PlayoffRace in ScorecardFrames
+    standings-chrome.ts        # P11 shared table chrome (navy header bar / ledger stripes / rowBg)
+    StandingsTabs.tsx          # P11 client view switcher: AL / NL / Wild Card (+ AL-NL toggle inside WC)
     charts/
       SprayChart.tsx           # optional secondaryEvents prop for /compare
       SprayChartExplorer.tsx   # client filter wrapper around SprayChart (month/pitch/outcome/hand)
@@ -164,6 +183,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     pitching-form.ts           # P10 pure helpers: summarizePitching / lastNAppearances / rollingEra
     pitch-arsenal.ts           # P10 pure: PitchEvent type + buildArsenal (whiff%/xwOBAcon) + veloTrend
     pitch-colors.ts            # P10: shared PITCH_COLOR map (was in PitchDistribution)
+    standings.ts               # P11 web_standings + byDivision / wildCardRace / playoffPicture / clinchMarker
     recent-game.ts             # Today's Blue Jays helpers (HR hero, hardest contact, IP/K/H)
     field-geometry.ts          # Rogers Centre SVG paths (exports polar())
   messages/
@@ -229,7 +249,13 @@ Light/warm theme (no dark mode). Palette is defined as Tailwind v4 `@theme` toke
 
 Reuse these tokens — don't introduce ad-hoc hex. The brand 5 (`papaya`/`navy`/`steel`/`lava`/`brick`) are for chrome and data marks; `grass`/`dirt` are primarily for the realistic ballpark surfaces in the SprayChart (applied via `var(--color-grass)` / `var(--color-dirt)` with per-layer `fillOpacity`, not as utility classes). SprayChart batted-ball markers use the brand tokens (HR=brick, single=navy, XBH=lava, out=steel).
 
-The home **schedule calendar** (`ScheduleCalendar.tsx`), the **home hero cards** (`HeroCard.tsx`, "Today's Blue Jays"), and the **roster cards** (`players/page.tsx`) all share one hand-drawn "scorecard" look and are the one piece of chrome allowed to use `grass`/`dirt`: `grass` for the Win badge (vs `brick` for Loss), and `dirt` as the warm "parchment" surface (`bg-dirt/40`) so empty days read as paper (not white) and game days / cards float as lighter `papaya`. The "today" highlight (cell border + `TODAY` badge) is **`steel`** — deliberately *not* `brick`/`grass`, which already mean loss/win. The hand-drawn frame (rough.js, navy outer + faint-navy inner rule `INK_FAINT`) is factored into **`ScorecardFrame.tsx`** — a reusable client wrapper (SVG overlay sized by a `ResizeObserver`, stable per-`seedKey` `seed` so the wobble doesn't shimmer); the hero and roster cards just wrap their content in it. Its `variant="control"` (single tighter line, no shadow/hover) frames the roster's mode + filter segmented toggles so the controls match the cards. The calendar keeps its own overlay (it also draws the per-day game boxes). rough.js needs literal hex strings, so the components re-declare the token hexes as `const NAVY/STEEL/PAPAYA` — keep those in sync with the `@theme` block above. The `bg-dirt/40` surface lives in `ScorecardFrame.tsx` (hero + roster cards) and `ScheduleCalendar.tsx` (calendar panel); change both together.
+The home **schedule calendar** (`ScheduleCalendar.tsx`), the **home hero cards** (`HeroCard.tsx`, "Today's Blue Jays"), and the **roster cards** (`players/page.tsx`) all share one hand-drawn "scorecard" look and are the one piece of chrome allowed to use `grass`/`dirt`: `grass` for the Win badge (vs `brick` for Loss), and `dirt` as the warm "parchment" surface (`bg-dirt/40`) so empty days read as paper (not white) and game days / cards float as lighter `papaya`. The "today" highlight (cell border + `TODAY` badge) is **`steel`** — deliberately *not* `brick`/`grass`, which already mean loss/win. The hand-drawn frame (rough.js, navy outer + faint-navy inner rule `INK_FAINT`) is factored into **`ScorecardFrame.tsx`** — a reusable client wrapper (SVG overlay sized by a `ResizeObserver`, stable per-`seedKey` `seed` so the wobble doesn't shimmer); the hero and roster cards just wrap their content in it. Its `variant="control"` (single tighter line, no shadow/hover) frames the roster's mode + filter segmented toggles so the controls match the cards, and `variant="panel"` (same double-line frame + shadow as `card`, but **no hover lift**) wraps the P11 standings tables — a table isn't clickable, so the lift would signal an affordance that isn't there. The calendar keeps its own overlay (it also draws the per-day game boxes). rough.js needs literal hex strings, so the components re-declare the token hexes as `const NAVY/STEEL/PAPAYA` — keep those in sync with the `@theme` block above. The `bg-dirt/40` surface lives in `ScorecardFrame.tsx` (hero + roster cards) and `ScheduleCalendar.tsx` (calendar panel); change both together.
+
+The **standings tables** (P11) reuse this same vocabulary rather than inventing a second table look: a `panel` `ScorecardFrame` for the parchment + wobbly ink border, the calendar's navy header bar (`bg-navy text-papaya` in `font-display` uppercase) for the column row, and ledger striping in `bg-papaya/70` / `bg-papaya/35` so rows read as ruled scorecard paper. Those class strings live in one place, **`components/standings-chrome.ts`** (`HEAD_ROW` / `TH*` / `TD*` / `rowBg`), so the four standings tables can't drift apart. `rowBg()` returns **one resolved class string** rather than stacking `odd:` and `bg-brick` utilities — equal-specificity utilities are resolved by stylesheet order, not class order, so the Jays highlight would otherwise win or lose at random.
+
+The **browser tab icon** is the recoloured Jays cap, `/team-logos/141.svg`, wired through `metadata.icons` in `app/[locale]/layout.tsx`. The stock create-next-app `app/favicon.ico` was **deleted on purpose** — Next auto-serves that file at `/favicon.ico` by convention, so leaving it would have competed with the SVG.
+
+**Graduate is labels-only, and that includes table captions.** Column abbreviations (`W`, `PCT`, `WCGB`) are labels and take `font-display`; the cut-line caption and the clinch-legend entries are *sentences* and stay in Gabriela — Graduate has no lowercase and would render them as unreadable all-caps.
 
 Typography pairs two Eduardo Tunni faces, both loaded in `app/[locale]/layout.tsx` via next/font. The retro varsity **display** face **Graduate** (`font-display` → `--font-display`) is the **heading layer**: the nav brand wordmark (`Header.tsx`), section headings (`Today's Blue Jays`, `Schedule`), and the calendar chrome (month label / weekday row / day numbers). The serif **Gabriela** (`--font-gabriela`) is everything else — it is the body default (`globals.css`) and is mapped to **both** `--font-sans` and `--font-mono` because Gabriela ships a single 400 style with **no Sans/Mono variants**. So `font-mono` + `tabular-nums` no longer give true monospaced/tabular digits (kept on data cells as a no-op in case a mono is reintroduced); `font-semibold`/`font-bold` render as synthesized faux-bold (Gabriela has only weight 400).
 
@@ -254,5 +280,7 @@ Graduate is an **all-caps slab display face with no true lowercase** — use it 
 | P8 | done | EV/LA scatter + KPI chips on batting page |
 | P9 | done | Batter overview deep-dive (en + zh-TW): year-by-year basic+advanced table (migration `009` adds avg/obp/slg/hr/rbi/sb/pa, ingested from FanGraphs Dashboard CSV); Recent Form (Last 7/30/Season slash lines) + last-10 game log + 15-game rolling-OPS sparkline (from `web_player_game_stats`, current season); contact-quality card (reuses `computeExitVeloStats`). Pitcher overview unchanged. |
 | P10 | done | Pitcher deep-dive (en + zh-TW). Overview: KPI (W-L/SV/IP/ERA/WHIP/K%/WAR + plain-language hints), Recent Form (Last 5 outings/30d/Season), 5-outing rolling-ERA sparkline, year-by-year pitching table, last-10 outings log (migration `010`; pitching rows of `web_player_game_stats`). Pitching page: arsenal table (usage/velo/spin/Whiff%/xwOBAcon), pfx movement chart, velo trend (migration `011` + full 2024-2026 Statcast re-backfill adds pfx/xwOBA/count). WHIP/K%/BB% need the FanGraphs pitching **Custom Report** re-export. See `docs/P10_spec.md`. |
+
+| P11 | done | Standings & playoff race (en + zh-TW). `/standings` page: six division tables (AL East first) + AL/NL wild card with a cut line + clinch legend. Home module: AL East table + AL playoff picture, between "Today's Blue Jays" and the calendar. Migration `012` + `etl/pull_standings.py` (nightly, both cron jobs) + one-shot `etl/fetch_team_logos.py` (cap logos recoloured to navy-on-papaya, committed to `web/public/team-logos/`). See `docs/P11_spec.md`. |
 
 v2 (deferred): BaZi personality / fortune / matchup-prediction / injury-risk; daily WAR snapshots for strict same-date pace comparisons; `/compare` page (SprayChart `secondaryEvents` prop is already wired).

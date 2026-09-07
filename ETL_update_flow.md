@@ -87,6 +87,19 @@ python etl/pull_season_stats.py --season 2026
   ```powershell
   python etl/backfill.py --season 2024 --season 2025
   ```
+- **P11 戰績排名（`web_standings`）**：`pull_standings.py` 已排進 `backfill.py`
+  (Step 3/8) 和**兩班** cron，平常不用手動跑。單獨補某一季：
+  ```powershell
+  python etl/pull_standings.py --season 2026     # 應該是 30 rows / 6 divisions
+  ```
+  這張表是**快照**不是歷史：每次跑都覆寫該季的 30 列，沒有日期維度。過去球季
+  抓回來的是該季**最終**排名，重跑安全。
+- **球隊 Logo 是一次性的**（`etl/fetch_team_logos.py`）：把 30 隊的球帽 logo 下載
+  後改成本站配色（navy ink / papaya paper）寫進 `web/public/team-logos/`，**產物
+  已 commit 進 repo**。除非要換配色，否則不用再跑，**也絕對不要**加進 cron。
+  ```powershell
+  python etl/fetch_team_logos.py                 # 應該寫出 30 個檔案
+  ```
 
 ---
 
@@ -95,8 +108,11 @@ python etl/pull_season_stats.py --season 2026
 P7 起 GitHub Actions 有**兩個**排程（都 idempotent、都會 upsert）：
 
 - **~09:00 ET**：2026 rolling 7 天 Statcast、守備、`web_games` 賽程 refresh、
-  近 ~3 天 box score 補抓（West-Coast / 晚場 final 在這裡補完）、嘗試 FanGraphs KPI。
-- **~23:30 ET**：今天的賽程 refresh + 今天 final 場次的 box score。
+  `web_standings` 排名 refresh、近 ~3 天 box score 補抓（West-Coast / 晚場 final
+  在這裡補完）、嘗試 FanGraphs KPI。
+- **~23:30 ET**：今天的賽程 refresh + 排名 refresh + 今天 final 場次的 box score。
+
+> 兩班的順序都是 **schedule → standings → boxscore → revalidate**。
 
 > GitHub cron 是 best-effort，可能延遲 10–15 分鐘；西岸客場（~22:00 ET 開打、
 > ~01:00 ET 結束）在 23:30 還沒打完是正常的，會留給隔天 09:00 那班補。
@@ -108,6 +124,14 @@ P7 起 GitHub Actions 有**兩個**排程（都 idempotent、都會 upsert）：
 ```sql
 -- 確認 2026 球員有進來
 SELECT COUNT(*) FROM web_player_seasons WHERE season = 2026;
+
+-- P11 排名：每季應該剛好 30 列、6 個分區
+SELECT season, COUNT(*), COUNT(DISTINCT division_id) FROM web_standings GROUP BY season;
+
+-- wild_card_rank 應該剛好在 6 支分區龍頭上是 NULL（上游本來就沒有這個欄位）
+SELECT COUNT(*) FILTER (WHERE wild_card_rank IS NULL) AS wc_null,
+       COUNT(*) FILTER (WHERE division_leader)        AS leaders
+FROM web_standings WHERE season = 2026;
 
 -- 確認 Vladdy 的 KPI 有值
 SELECT * FROM web_player_season_stats WHERE mlbam_id = 665489 AND season = 2026;

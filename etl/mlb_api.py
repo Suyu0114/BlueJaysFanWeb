@@ -281,3 +281,120 @@ def fetch_boxscore(game_pk: int, team_id: int = BLUE_JAYS_TEAM_ID) -> dict:
             }
         )
     return {"game_pk": game_pk, "team_id": team_id, "players": players_out}
+
+
+# --- P11: standings ---
+
+STANDINGS_URL = f"{BASE_URL}/standings"
+
+AMERICAN_LEAGUE_ID = 103
+NATIONAL_LEAGUE_ID = 104
+
+# MLB division ids. The NL pair is REVERSED relative to the AL pattern
+# (203 = NL West, 204 = NL East) -- verified against the live feed, do not
+# "correct" this from memory.
+AL_EAST_DIVISION_ID = 201
+
+
+def _split(records: dict, group: str, type_: str) -> dict:
+    """Pull one {wins, losses} block out of records.<group>[] by its `type`.
+
+    Returns {} when absent (a team with no games played has no splits yet), so
+    callers can .get() their way to None rather than KeyError.
+    """
+    for entry in records.get(group, []) or []:
+        if entry.get("type") == type_:
+            return entry
+    return {}
+
+
+def _int(value) -> int | None:
+    """MLB sends ranks as strings ('1', '4'). '-'/'E'/None are not ranks."""
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def fetch_standings(season: int, league_ids: str = "103,104") -> list[dict]:
+    """One flat web_standings row per team (30 across both leagues).
+
+    NOTE: `hydrate=team` is REQUIRED -- without it `team` carries only the short
+    name ('Rays', not 'Tampa Bay Rays') and no abbreviation / division name.
+
+    Sentinel-bearing fields (gamesBack, wildCardGamesBack, eliminationNumber,
+    wildCardEliminationNumber, magicNumber) are passed through UNTOUCHED as the
+    strings MLB sends: '-' means "is the reference", '+9.5' means "ahead of the
+    wild card cut line", 'E' means eliminated. Parsing them into signed numbers
+    invents a sign convention that will eventually be read backwards; ordering
+    always uses the *_rank columns instead. See db/migrations/012_standings.sql.
+    """
+    r = requests.get(
+        STANDINGS_URL,
+        params={
+            "leagueId": league_ids,
+            "season": season,
+            "standingsTypes": "regularSeason",
+            "hydrate": "team",
+        },
+        timeout=30,
+    )
+    r.raise_for_status()
+
+    rows: list[dict] = []
+    for record in r.json().get("records", []):
+        for t in record.get("teamRecords", []):
+            team = t.get("team", {})
+            rec = t.get("records", {})
+            l10 = _split(rec, "splitRecords", "lastTen")
+            home = _split(rec, "splitRecords", "home")
+            away = _split(rec, "splitRecords", "away")
+            xwl = _split(rec, "expectedRecords", "xWinLoss")
+            streak = t.get("streak", {})
+            pct = t.get("winningPercentage")
+
+            rows.append(
+                {
+                    "season": season,
+                    "team_id": team["id"],
+                    "team_name": team["name"],
+                    "team_abbrev": team.get("abbreviation"),
+                    "league_id": team.get("league", {}).get("id"),
+                    "division_id": team.get("division", {}).get("id"),
+                    "division_name": team.get("division", {}).get("name"),
+                    "games_played": t.get("gamesPlayed"),
+                    "w": t.get("wins"),
+                    "l": t.get("losses"),
+                    "pct": float(pct) if pct is not None else None,
+                    "division_rank": _int(t.get("divisionRank")),
+                    "league_rank": _int(t.get("leagueRank")),
+                    # ABSENT (not null) for division leaders -- .get() is load-bearing.
+                    "wild_card_rank": _int(t.get("wildCardRank")),
+                    "games_back": t.get("gamesBack"),
+                    "wc_games_back": t.get("wildCardGamesBack"),
+                    "streak_code": streak.get("streakCode"),
+                    "l10_w": l10.get("wins"),
+                    "l10_l": l10.get("losses"),
+                    "home_w": home.get("wins"),
+                    "home_l": home.get("losses"),
+                    "away_w": away.get("wins"),
+                    "away_l": away.get("losses"),
+                    "x_w": xwl.get("wins"),
+                    "x_l": xwl.get("losses"),
+                    "runs_scored": t.get("runsScored"),
+                    "runs_allowed": t.get("runsAllowed"),
+                    "run_diff": t.get("runDifferential"),
+                    "division_leader": bool(t.get("divisionLeader", False)),
+                    "division_champ": bool(t.get("divisionChamp", False)),
+                    "wild_card_leader": t.get("wildCardLeader"),
+                    "clinched": bool(t.get("clinched", False)),
+                    "has_wildcard": t.get("hasWildcard"),
+                    "elimination_number": t.get("eliminationNumber"),
+                    "wc_elimination_number": t.get("wildCardEliminationNumber"),
+                    "magic_number": t.get("magicNumber"),
+                    "last_updated": t.get("lastUpdated"),
+                }
+            )
+    return rows

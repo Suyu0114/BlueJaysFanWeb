@@ -24,9 +24,12 @@ export default function ScorecardFrame({
   children,
 }: {
   seedKey: string;
-  // "card" = double-line frame + offset shadow + hover lift (hero / roster cards).
+  // "card"    = double-line frame + offset shadow + hover lift (hero / roster cards).
+  // "panel"   = same frame + shadow, NO hover lift — for content that isn't
+  //             clickable (the standings tables); lifting would signal an
+  //             affordance that isn't there.
   // "control" = single tighter line, no shadow/hover (segmented toggles).
-  variant?: "card" | "control";
+  variant?: "card" | "panel" | "control";
   className?: string;
   children: React.ReactNode;
 }) {
@@ -100,7 +103,9 @@ export default function ScorecardFrame({
   const surface =
     variant === "control"
       ? "rounded-md bg-dirt/40"
-      : "rounded-lg bg-dirt/40 shadow-[5px_5px_0_0_#00304933] transition-transform hover:-translate-y-0.5";
+      : variant === "panel"
+        ? "rounded-lg bg-dirt/40 shadow-[5px_5px_0_0_#00304933]"
+        : "rounded-lg bg-dirt/40 shadow-[5px_5px_0_0_#00304933] transition-transform hover:-translate-y-0.5";
 
   return (
     <div

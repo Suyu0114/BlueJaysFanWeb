@@ -20,10 +20,14 @@
    - Sub-tabs auto-hide for roles a player didn't appear in
 3. **Roster**
    - Current 26-man (default) / All 2024-2026 toggle
-4. **Home page**
+4. **Standings & playoff race**
+   - `/standings` — three views behind a hand-drawn segmented toggle: **American League** and **National League** (three division tables each, AL East first, with the full mlb.com column set — W / L / PCT / GB / WCGB / L10 / STRK / RS / RA / DIFF / X-W/L / HOME / AWAY), and **Wild Card** with its own retro AL/NL switch, a cut line, and a clinch-marker legend (z / y / x / e)
+   - Club cap logos recoloured to the site palette (navy ink on papaya paper) and wobbled with a shared SVG filter, so they read as hand-drawn stamps rather than glossy vectors
+5. **Home page**
+   - "In the Race" module — AL East standings + the AL playoff picture (seeds 1-6, cut line, chasers), in the parchment scorecard chrome
    - Month schedule calendar — opponent (`vs` / `@`) + result/score or game time (ET); doubleheaders show both games; current / most-recent game day highlighted; click a final game to open its box score
    - "Today's Blue Jays" module — HR hero from the most recent game (hardest-contact fallback when nobody homered) + best pitching line (IP / K / H, no fake ERA)
-5. **Per-game box scores**
+6. **Per-game box scores**
    - Every Jays player's batting and/or pitching line for a finished game; innings pitched rendered correctly from stored outs (never the "5.2" decimal trap)
 
 **v2 (not in this milestone):** BaZi personality analysis, matchup predictions, injury-risk beta, daily WAR snapshots, `/compare` page (the underlying SprayChart `secondaryEvents` prop is already in place).
@@ -56,15 +60,18 @@
 │   ├── pull_pitcher.py           # pitcher Statcast (single or --all-pitchers)
 │   ├── pull_fielding.py          # OAA / FRV per position
 │   ├── pull_schedule.py          # season schedule + results → web_games
+│   ├── pull_standings.py         # MLB standings snapshot (all 30 clubs) → web_standings
 │   ├── pull_boxscore.py          # per-game box scores → web_player_game_stats
 │   ├── pull_season_stats.py      # OPS / wRC+ / ERA / FIP / WAR + value components + batter basic
 │   │                             # line + pitcher line W/L/SV/GS/IP/WHIP/K%/BB% (CSV)
+│   ├── fetch_team_logos.py       # ONE-SHOT: cap logos → web/public/team-logos (recoloured)
 │   ├── backfill.py               # one-shot orchestrator
 │   └── data/fangraphs/           # gitignored manual CSV drop zone
-├── db/migrations/                # plain SQL: 001 → 011
+├── db/migrations/                # plain SQL: 001 → 012
 ├── web/                          # Next.js app
 │   ├── app/[locale]/
-│   │   ├── page.tsx              # Home: schedule calendar + "Today's Blue Jays"
+│   │   ├── page.tsx              # Home: standings + schedule calendar + "Today's Blue Jays"
+│   │   ├── standings/            # Divisions + wild card + clinch legend
 │   │   ├── games/[gamePk]/       # Per-game box score detail
 │   │   └── players/
 │   │       ├── page.tsx          # Roster (Current 26-man / All 2024-2026)
@@ -78,6 +85,10 @@
 │   │   ├── RosterExplorer.tsx    # roster filter (All/Pitchers/Batters) + all-time season grouping
 │   │   ├── SeasonStatTable / RecentForm / GameLog / ContactQualityCard  # batter overview modules
 │   │   ├── PitcherSeasonStatTable / PitcherRecentForm / PitcherGameLog  # pitcher overview modules
+│   │   ├── StandingsTable / WildCardTable / PlayoffRace / HomeStandings # P11 standings modules
+│   │   ├── StandingsTabs.tsx    # AL / NL / Wild Card view switcher (client)
+│   │   ├── TeamLogo.tsx          # recoloured cap logo + TeamCell
+│   │   ├── SketchDefs.tsx        # shared SVG #sketch filter (hand-drawn wobble)
 │   │   └── charts/               # SprayChart, ArsenalTable, PitchMovementChart, PitchZoneHeatmap,
 │   │                             # FieldingDiagram, WarBreakdown, ExitVeloChart,
 │   │                             # RollingOpsSparkline, RollingEraSparkline, VeloTrendChart
@@ -242,6 +253,7 @@ What stays English in zh-TW (do **not** translate):
 | P8 | EV/LA scatter + KPI chips on batting page | done |
 | P9 | Batter overview deep-dive: year-by-year table + recent form + game log + rolling OPS + contact quality | done |
 | P10 | Pitcher deep-dive: pitcher KPI set + recent form + outings log + rolling ERA + year-by-year table; arsenal table, pitch-movement chart, velocity trend | done |
+| P11 | Standings & playoff race: `/standings` (six divisions + AL/NL wild card + clinch legend) and a home AL East + AL playoff-picture module; migration `012`, nightly `pull_standings.py`, one-shot recoloured cap logos | done |
 
 ---
 

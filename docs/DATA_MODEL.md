@@ -10,8 +10,9 @@ the columns that **don't** exist so nobody assumes them.
 > update this file in the same change.** To re-verify, dump the columns for every
 > table below and diff — the verification recipe is at the bottom.
 >
-> **Verified against live DB: 2026-07-08** (migrations `001`–`011` applied;
-> `web_player_season_stats` at 32 columns, `web_statcast_events` at 29).
+> **Verified against live DB: 2026-09-06** (migrations `001`–`012` applied;
+> `web_player_season_stats` at 32 columns, `web_statcast_events` at 29,
+> `web_standings` at 38).
 >
 > This Supabase project is **shared** with other projects, so every table here is
 > prefixed `web_`. See CLAUDE.md → "Supabase tables are shared — prefix everything
@@ -31,6 +32,7 @@ the columns that **don't** exist so nobody assumes them.
 | [`web_id_map`](#web_id_map) | 0 | one row per MLBAM id | Chadwick register (lazy cache) |
 | [`web_games`](#web_games) | 342 | one row per game_pk | MLB Stats API schedule |
 | [`web_player_game_stats`](#web_player_game_stats) | 984 | one row per (game, player, stat group) | MLB Stats API boxscore |
+| [`web_standings`](#web_standings) | 90 | one row per (team, season) — snapshot | MLB Stats API standings |
 
 ---
 
@@ -45,6 +47,8 @@ and is genuinely absent:
 | `launch_speed_angle` / barrel flag | `web_statcast_events` | **Absent.** Statcast's per-event barrel classification is not stored. The P8 EV/LA "barrel zone" is a *visual reference rectangle only*, not per-point truth. |
 | `name_tc` (Chinese name) | `web_players` | **Intentionally absent.** Single English `name` field by design — see CLAUDE.md → "What stays English even in zh-TW". Do not add it. |
 | `woba` / `babip` / per-event run value | `web_statcast_events` | **Absent.** Only the raw Statcast fields below are stored; sabermetric aggregates live in `web_player_season_stats` (season grain), not per pitch. |
+| `games_back` as a **number** | `web_standings` | **It is `text`, not numeric** — and deliberately so. MLB sends display strings with sentinels: `'-'` (this team *is* the reference), `'+9.5'` (ahead of the wild card cut line), `'E'` (eliminated, on `elimination_number`). Same for `wc_games_back`, `elimination_number`, `wc_elimination_number`, `magic_number`. Never cast or arithmetic them; **order by the `*_rank` columns instead.** |
+| `standings_date` / any date dimension | `web_standings` | **Absent by design (P11 D2).** The table is a *snapshot*, overwritten nightly — 30 rows per season, not one row per day. A GB-over-time race chart needs a new column + PK change first. |
 
 ---
 
@@ -284,6 +288,69 @@ on `mlbam_id` means an unknown call-up must be inserted into `web_players` first
 | `pitches` `strikes` | int | yes | Pitch counts. |
 | `decision` | char(1) | yes | `W` / `L` / `S` / `H` / null. |
 | `updated_at` | timestamptz | NO | default `now()`. |
+
+---
+
+## `web_standings`
+*Migration: `012`. Writer: [`etl/db.py`](../etl/db.py) `upsert_standings` (built by
+`pull_standings.py` from `mlb_api.fetch_standings`). Conflict key: `(season, team_id)`.*
+
+**A snapshot, not a history.** One row per team per season, overwritten by every
+nightly run — 30 rows/season. There is no date dimension (P11 D2), so you can read
+"where do the Jays stand right now", never "where did they stand in June".
+
+**All 30 clubs, both leagues** — unlike [`web_games`](#web_games), which is
+Jays-only. This is the only table holding other clubs' records.
+
+⚠️ **`games_back` / `wc_games_back` / `*_number` are `text` on purpose.** MLB
+returns display strings carrying sentinels, and they are stored verbatim:
+
+| Value | Means |
+|---|---|
+| `'-'` on `games_back` | this team leads its division |
+| `'-'` on `wc_games_back` | this team **is** the third wild card — the cut line itself |
+| `'+9.5'` on `wc_games_back` | 9.5 games **ahead** of the cut line |
+| `'E'` on `elimination_number` | eliminated from contention |
+
+Parsing them into signed numerics invents a sign convention that will eventually
+be read backwards. **Every ordering uses the `*_rank` columns instead.**
+
+⚠️ **`wild_card_rank` is NULL for division leaders** — the field is *absent* from
+the upstream payload for them (not null, not `'-'`). Exactly 6 rows per season are
+NULL. `wildCardRace()` in `web/lib/standings.ts` filters division leaders out
+entirely, because MLB reports `wildCardGamesBack = '-'` for them too and leaving
+them in would place a division leader on the cut line.
+
+⚠️ **Division ids: the NL pair is reversed.** 200 = AL West, 201 = AL East,
+202 = AL Central, **203 = NL West, 204 = NL East**, 205 = NL Central. Verified
+against the live feed — do not "correct" 203/204 from memory.
+
+| Column | Type | Null | Meaning |
+|---|---|---|---|
+| `season` | int | NO | **PK part.** |
+| `team_id` | int | NO | **PK part.** MLB Stats API team id (141 = Jays). |
+| `team_name` `team_abbrev` | text | NO | English, e.g. "Toronto Blue Jays" / "TOR". No localized variant — see the `name_tc` rule. |
+| `league_id` | int | NO | 103 = AL, 104 = NL. |
+| `division_id` `division_name` | int / text | NO | See the reversed-NL warning above. |
+| `games_played` | int | yes | |
+| `w` `l` | int | NO | Wins / losses. |
+| `pct` | numeric | yes | Winning percentage (`.599`). A real quantity — this one **is** parsed. |
+| `division_rank` `league_rank` | int | yes | Cast from the API's strings. |
+| `wild_card_rank` | int | yes | **NULL for division leaders** (absent upstream). |
+| `games_back` `wc_games_back` | text | yes | **Display strings — see the warning above.** |
+| `streak_code` | text | yes | `'W2'` / `'L3'`. |
+| `l10_w` `l10_l` | int | yes | From `splitRecords` type `lastTen`. |
+| `home_w` `home_l` `away_w` `away_l` | int | yes | From `splitRecords`. |
+| `x_w` `x_l` | int | yes | Pythagorean expectation, from `expectedRecords` type `xWinLoss` — **not** derived locally. |
+| `runs_scored` `runs_allowed` `run_diff` | int | yes | |
+| `division_leader` `division_champ` `clinched` | boolean | NO | Default false. Feed the derived `z`/`y`/`x` clinch markers. |
+| `wild_card_leader` `has_wildcard` | boolean | yes | |
+| `elimination_number` `wc_elimination_number` `magic_number` | text | yes | **Display strings** — `'-'`, a number, or `'E'`. |
+| `last_updated` | timestamptz | yes | The API's own `lastUpdated`. |
+| `updated_at` | timestamptz | NO | Our write time. |
+
+Indexes: `idx_web_standings_div (season, division_id, division_rank)`,
+`idx_web_standings_wc (season, league_id, wild_card_rank)`.
 
 ---
 

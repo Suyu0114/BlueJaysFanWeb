@@ -1,7 +1,9 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import HeroCard from "@/components/HeroCard";
+import HomeStandings from "@/components/HomeStandings";
 import ScheduleCalendar from "@/components/ScheduleCalendar";
 import { getSchedule, type ScheduleGame } from "@/lib/games";
+import { getStandings } from "@/lib/standings";
 import {
   formatInningsPitched,
   getBestPitchingLine,
@@ -51,7 +53,10 @@ export default async function HomePage({
   }
   const highlightDate = pickHighlightDate(games, todayET);
 
-  const recent = await getMostRecentGame();
+  const [standings, recent] = await Promise.all([
+    getStandings(season),
+    getMostRecentGame(),
+  ]);
   const [hrHero, pitchingLine] = recent
     ? await Promise.all([
         getHomeRunHero(recent.game_pk),
@@ -106,6 +111,8 @@ export default async function HomePage({
           </div>
         </section>
       )}
+
+      <HomeStandings rows={standings} />
 
       {games.length > 0 && (
         <ScheduleCalendar

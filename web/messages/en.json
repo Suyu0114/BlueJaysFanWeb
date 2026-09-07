@@ -3,6 +3,7 @@
     "brand": "Blue Jays Fan Hub",
     "home": "Home",
     "players": "Players",
+    "standings": "Standings",
     "about": "About"
   },
   "Home": {
@@ -33,6 +34,34 @@
     "live": "In Progress",
     "tbd": "TBD",
     "today": "Today"
+  },
+  "Standings": {
+    "title": "Standings",
+    "subtitle": "{season} MLB standings — division races and the wild card picture.",
+    "americanLeague": "American League",
+    "nationalLeague": "National League",
+    "tabWildCard": "Wild Card",
+    "viewLabel": "Standings view",
+    "leagueLabel": "League",
+    "alEast": "AL East",
+    "alCentral": "AL Central",
+    "alWest": "AL West",
+    "nlEast": "NL East",
+    "nlCentral": "NL Central",
+    "nlWest": "NL West",
+    "alWildCard": "AL Wild Card",
+    "nlWildCard": "NL Wild Card",
+    "team": "Team",
+    "cutLine": "Teams above the line hold a playoff spot right now.",
+    "homeTitle": "In the Race",
+    "playoffRaceTitle": "AL Playoff Picture",
+    "fullStandings": "Full standings for every division →",
+    "legendTitle": "Key",
+    "legendZ": "z — best record in the league",
+    "legendY": "y — won the division",
+    "legendX": "x — clinched a playoff spot",
+    "legendE": "e — eliminated from playoff contention",
+    "empty": "Standings aren't available yet for this season."
   },
   "Game": {
     "battingTitle": "Batting",

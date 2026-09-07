@@ -287,3 +287,49 @@ def upsert_statcast_events(conn, df: pd.DataFrame) -> int:
     with conn.cursor() as cur:
         cur.executemany(sql, rows)
         return cur.rowcount
+
+
+# --- P11: standings ---
+
+# Every non-key column of web_standings, in DDL order. The feed is always
+# complete for every column, so this is a straight overwrite (no coalesce):
+# a stale value must never survive a refresh.
+STANDINGS_COLUMNS = [
+    "season", "team_id", "team_name", "team_abbrev", "league_id",
+    "division_id", "division_name", "games_played", "w", "l", "pct",
+    "division_rank", "league_rank", "wild_card_rank",
+    "games_back", "wc_games_back", "streak_code",
+    "l10_w", "l10_l", "home_w", "home_l", "away_w", "away_l", "x_w", "x_l",
+    "runs_scored", "runs_allowed", "run_diff",
+    "division_leader", "division_champ", "wild_card_leader", "clinched",
+    "has_wildcard", "elimination_number", "wc_elimination_number",
+    "magic_number", "last_updated",
+]
+
+
+def upsert_standings(conn, rows: Iterable[dict]) -> int:
+    """Upsert into web_standings keyed on (season, team_id).
+
+    Rows come from mlb_api.fetch_standings(). games_back / wc_games_back /
+    *_number are TEXT carrying MLB's own sentinels ('-', '+9.5', 'E') -- stored
+    verbatim, never parsed. See db/migrations/012_standings.sql.
+    """
+    cols = ", ".join(STANDINGS_COLUMNS)
+    placeholders = ", ".join(f"%({c})s" for c in STANDINGS_COLUMNS)
+    key_cols = {"season", "team_id"}
+    set_clause = ",\n          ".join(
+        f"{c} = excluded.{c}" for c in STANDINGS_COLUMNS if c not in key_cols
+    )
+    sql = f"""
+        insert into web_standings ({cols})
+        values ({placeholders})
+        on conflict (season, team_id) do update set
+          {set_clause},
+          updated_at = now()
+    """
+    rows = list(rows)
+    if not rows:
+        return 0
+    with conn.cursor() as cur:
+        cur.executemany(sql, rows)
+        return cur.rowcount

@@ -8,7 +8,7 @@
 #   * `30 3 * * *` (~11:30 PM ET): a LIGHT freshness run -- today's schedule
 #     refresh + today's final box scores only. No Statcast / roster work.
 #
-# Per-run order is always schedule -> boxscore -> revalidate: pull_boxscore's
+# Per-run order is always schedule -> standings -> boxscore -> revalidate: pull_boxscore's
 # final-game guard reads web_games.is_final, which pull_schedule populates.
 #
 # Both crons drift ~1h across DST (acceptable). GitHub cron is best-effort and
@@ -101,6 +101,9 @@ jobs:
       - name: Refresh schedule (web_games, current season)
         run: python etl/pull_schedule.py --season "$SEASON"
 
+      - name: Refresh standings (web_standings, both leagues)
+        run: python etl/pull_standings.py --season "$SEASON"
+
       - name: Pull box scores (last 3 days of finals)
         run: python etl/pull_boxscore.py --recent 3
 
@@ -144,9 +147,12 @@ jobs:
       - name: Determine current season
         run: echo "SEASON=$(date -u +%Y)" >> "$GITHUB_ENV"
 
-      # P7: schedule -> boxscore -> revalidate.
+      # P7/P11: schedule -> standings -> boxscore -> revalidate.
       - name: Refresh schedule (web_games, current season)
         run: python etl/pull_schedule.py --season "$SEASON"
+
+      - name: Refresh standings (web_standings, both leagues)
+        run: python etl/pull_standings.py --season "$SEASON"
 
       - name: Pull box scores (today's finals)
         run: python etl/pull_boxscore.py --recent 1

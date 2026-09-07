@@ -16,3 +16,10 @@ export function teamAbbr(teamId: number, fallbackName?: string): string {
     (fallbackName ? fallbackName.split(" ").pop()! : String(teamId))
   );
 }
+
+// P11: the recoloured cap logos in web/public/team-logos/ were generated from
+// the same 30-club list as TEAM_ABBR, so membership here is an exact proxy for
+// "a logo file exists" -- no filesystem probe needed at render time.
+export function hasTeamLogo(teamId: number): boolean {
+  return teamId in TEAM_ABBR;
+}

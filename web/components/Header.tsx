@@ -21,6 +21,9 @@ export function Header() {
           <Link href="/players" className="transition-colors hover:text-steel">
             {t("players")}
           </Link>
+          <Link href="/standings" className="transition-colors hover:text-steel">
+            {t("standings")}
+          </Link>
           <Link href="/about" className="transition-colors hover:text-steel">
             {t("about")}
           </Link>
