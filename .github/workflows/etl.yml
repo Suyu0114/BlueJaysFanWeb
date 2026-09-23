@@ -1,7 +1,8 @@
 # Daily ETL. Two scheduled runs (P7):
 #
 #   * `0 13 * * *`  (~09:00 ET): the FULL refresh -- Statcast (rolling 7-day
-#     window), roster/participation, fielding, season stats, THEN a current-
+#     window), roster/participation, fielding, season stats (MLB Stats API
+#     sabermetrics -- WAR etc.; no FanGraphs CSV needed), THEN a current-
 #     season schedule refresh + a 3-day box-score re-pull. The box-score re-pull
 #     is the West-Coast / late-final backfill: games still in progress at the
 #     11:30 PM ET run get completed here.
@@ -91,7 +92,7 @@ jobs:
       - name: Pull fielding OAA/FRV (season-to-date aggregate)
         run: python etl/pull_fielding.py --season "$SEASON"
 
-      - name: Pull season stats (OPS / wRC+ / ERA / FIP / WAR + Value components)
+      - name: Pull season stats (MLB Stats API -- OPS / wRC+ / ERA / FIP / WAR + Value components)
         run: python etl/pull_season_stats.py --season "$SEASON"
 
       # P7: schedule -> boxscore must run before revalidate. pull_boxscore guards

@@ -26,7 +26,7 @@ the columns that **don't** exist so nobody assumes them.
 |---|---:|---|---|
 | [`web_players`](#web_players) | 1,576 | one row per MLBAM player | MLB Stats API roster + bio |
 | [`web_statcast_events`](#web_statcast_events) | 132,502 | one row per pitch | Baseball Savant (Statcast) |
-| [`web_player_season_stats`](#web_player_season_stats) | 170 | one row per (player, season) | FanGraphs CSV export (manual) |
+| [`web_player_season_stats`](#web_player_season_stats) | 189 | one row per (player, season) | MLB Stats API `season` + `sabermetrics` (FanGraphs-licensed); nightly |
 | [`web_player_seasons`](#web_player_seasons) | 157 | one row per (player, season, team) | derived during ETL |
 | [`web_fielding_frv`](#web_fielding_frv) | 1,570 | one row per (player, season, position) | Baseball Savant OAA leaderboard |
 | [`web_id_map`](#web_id_map) | 0 | one row per MLBAM id | Chadwick register (lazy cache) |
@@ -128,15 +128,16 @@ written until that list is also updated.
 `w`/`l`/`sv`/`gs`/`ip`/`whip`/`k_pct`/`bb_pct`). Writer:
 [`etl/pull_season_stats.py`](../etl/pull_season_stats.py). Conflict key: `(mlbam_id, season)`.*
 
-Pre-aggregated season lines from **manually-exported FanGraphs CSVs** (the
-scraper is dead — see CLAUDE.md → "FanGraphs scraping is dead"). Missing CSVs warn
-and skip (leave NULLs), never hard-fail. The `war_*` block is **batter-only**
-(from the FanGraphs "Value" preset); the P9 basic line (`avg`…`pa`) is also
-batter-only and comes from the standard Dashboard columns of the same CSV; the
-P10 pitcher line (`w`…`bb_pct`) is pitcher-only — all three blocks are OPTIONAL
-(warn + NULL if the export lacks them, `coalesce` on upsert). ⚠️ The plain
-pitching Dashboard export lacks `WHIP`/`K%`/`BB%` — those need a **Custom Report**
-(Dashboard + WHIP + K% + BB%); `W/L/SV/GS/IP` are in every Dashboard export.
+Pre-aggregated season lines from the **MLB Stats API** (`/stats?stats=season,sabermetrics&teamId=141`,
+free, no key) — replaced the manual FanGraphs CSV export on 2026-09-23 when the
+paid membership lapsed. The `sabermetrics` block is FanGraphs data licensed to
+MLB, so `war` / `wrc_plus` / `fip` / the `war_*` Value components are the same
+numbers the CSVs carried (verified vs the 2025 export: WAR ±0.05, the rest within
+rounding). Refreshed for the current season by the ~09:00 ET cron. Rows are
+**team-scoped** (a traded player's row covers his Blue Jays games only). The
+`war_*` block and the basic line (`avg`…`pa`) are batter-only; the pitcher line
+(`w`…`bb_pct`) is pitcher-only. Upsert is `coalesce` per column — a NULL from the
+API never erases a stored value, and rows are **never deleted** (see Known gaps #5).
 
 | Column | Type | Null | Meaning |
 |---|---|---|---|
@@ -151,12 +152,12 @@ pitching Dashboard export lacks `WHIP`/`K%`/`BB%` — those need a **Custom Repo
 | `updated_at` | timestamptz | yes | default `now()`. |
 | `war_batting` | numeric | yes | Bat (wRAA). Batter-only. |
 | `war_baserunning` | numeric | yes | BsR. |
-| `war_fielding` | numeric | yes | Fld (pure fielding, excl. positional). |
+| `war_fielding` | numeric | yes | Fld (pure fielding, excl. positional; **incl. catcher framing**). Derived as `rar` − the other five components, because the API's `fielding` omits framing while its `rar` counts it — reproduces FanGraphs' `Fld` and keeps the chart reconciling exactly. |
 | `war_positional` | numeric | yes | Pos. |
 | `war_league` | numeric | yes | Lg. |
 | `war_replacement` | numeric | yes | Rep. |
 | `rar` | numeric | yes | Runs above replacement = Bat+BsR+Fld+Pos+Lg+Rep (checksum for the WAR breakdown chart). |
-| `wpa` | numeric | yes | Season Win Probability Added. |
+| `wpa` | numeric | yes | Season Win Probability Added. ⚠️ **Frozen**: the MLB API has no WPA, so the loader doesn't write it — values are whatever the last FanGraphs CSV import left (2024, 2025, 2026 through early June). Not rendered anywhere. |
 | `avg` | numeric | yes | Batting average (H/AB). Batter-only (`009`). |
 | `obp` | numeric | yes | On-base percentage. |
 | `slg` | numeric | yes | Slugging (`ops` = `obp` + `slg`). |
@@ -168,10 +169,10 @@ pitching Dashboard export lacks `WHIP`/`K%`/`BB%` — those need a **Custom Repo
 | `l` | numeric | yes | Losses. |
 | `sv` | numeric | yes | Saves (drives the conditional SV KPI card). |
 | `gs` | numeric | yes | Games started (starter/reliever signal). |
-| `ip` | numeric | yes | ⚠️ FanGraphs **baseball notation**: `170.1` = 170⅓. **Display only — never sum or divide.** Arithmetic IP comes from `web_player_game_stats.outs_recorded`. |
-| `whip` | numeric | yes | (H+BB)/IP. NULL until the Custom Report re-export. |
-| `k_pct` | numeric | yes | Strikeout rate as a **raw fraction** (`0.245`) — multiply by 100 at display. NULL until re-export. |
-| `bb_pct` | numeric | yes | Walk rate, raw fraction. NULL until re-export. |
+| `ip` | numeric | yes | ⚠️ **Baseball notation**: `170.1` = 170⅓. **Display only — never sum or divide.** Arithmetic IP comes from `web_player_game_stats.outs_recorded`. |
+| `whip` | numeric | yes | (H+BB)/IP. |
+| `k_pct` | numeric | yes | Strikeout rate SO/BF as a **raw fraction** (`0.245`) — multiply by 100 at display. |
+| `bb_pct` | numeric | yes | Walk rate BB/BF (IBB included), raw fraction. |
 
 ---
 
@@ -405,6 +406,13 @@ Indexes: `idx_web_standings_div (season, division_id, division_rank)`,
 4. **Batting & Pitching subtitles "2025 regular season" — RESOLVED 2026-06-03.**
    The `Batting.subtitle` / `Pitching.subtitle` keys (en + zh-TW) now read
    season-agnostically ("…on file" / "…紀錄") to match the all-seasons fetch.
+5. **Phantom 2026 `web_player_season_stats` rows (12, written 2026-06-05).** Old
+   FanGraphs **2025** values stored under `season = 2026` for players who never
+   played for Toronto in 2026 (Bichette, Santander, Kiner-Falefa, …) — most likely
+   a 2025 CSV loaded as `batting_2026.csv` for a day. The loader never deletes, so
+   they survived; `pickLatest` then shows those players' 2025 line labelled 2026.
+   Identify with `season = 2026 and updated_at::date = '2026-06-05' and not exists
+   (web_player_seasons row for 2026)` → delete.
 
 ---
 

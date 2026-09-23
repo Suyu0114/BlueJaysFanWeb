@@ -16,8 +16,8 @@ function dec(v: number | null, d: number): string {
 }
 
 // P9: year-by-year batting line (basic + advanced) for the overview page.
-// Stat abbreviations stay English in both locales (CLAUDE.md). Basic columns are
-// NULL until the FanGraphs CSV is re-exported with them; they render "—".
+// Stat abbreviations stay English in both locales (CLAUDE.md). Missing values
+// render "—".
 export default async function SeasonStatTable({
   stats,
 }: {

@@ -15,7 +15,7 @@ Order matters per season:
   4. pull_statcast       --all-batters   (regular season + 2025 postseason)
   5. pull_pitcher        --all-pitchers  (regular season + 2025 postseason)
   6. pull_fielding       -> season-aggregate OAA/FRV per position
-  7. pull_season_stats   -> OPS/wRC+/ERA/FIP/WAR + Value components (war_*, rar, wpa)
+  7. pull_season_stats   -> OPS/wRC+/ERA/FIP/WAR + Value components (MLB Stats API)
   8. pull_boxscore       -> web_player_game_stats for every final game
 """
 

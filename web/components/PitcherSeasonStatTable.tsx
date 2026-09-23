@@ -7,19 +7,18 @@ function int0(v: number | null): string {
 function dec(v: number | null, d: number): string {
   return v == null || !Number.isFinite(v) ? "—" : v.toFixed(d);
 }
-// k_pct/bb_pct are stored as raw fractions (0.245) per the FanGraphs export.
+// k_pct/bb_pct are stored as raw fractions (0.245).
 function pct1(v: number | null): string {
   return v == null || !Number.isFinite(v) ? "—" : `${(v * 100).toFixed(1)}%`;
 }
-// FanGraphs IP is baseball notation already (170.1 = 170 1/3) — display verbatim.
+// IP is stored in baseball notation (170.1 = 170 1/3) — display verbatim.
 function ip1(v: number | null): string {
   return v == null || !Number.isFinite(v) ? "—" : v.toFixed(1);
 }
 
 // P10: year-by-year pitching line for the overview page. Mirrors
 // SeasonStatTable (the batter twin). Stat abbreviations stay English in both
-// locales (CLAUDE.md). WHIP/K%/BB% are NULL until the FanGraphs pitching CSV is
-// re-exported as a Custom Report with them; they render "—".
+// locales (CLAUDE.md). Missing values render "—".
 export default async function PitcherSeasonStatTable({
   stats,
 }: {

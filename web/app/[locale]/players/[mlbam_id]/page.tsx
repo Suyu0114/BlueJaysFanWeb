@@ -37,7 +37,7 @@ function fmt(v: number | null, digits = 3): string {
   return v.toFixed(digits);
 }
 
-// k_pct/bb_pct arrive as raw fractions (0.245) from the FanGraphs export.
+// k_pct/bb_pct are stored as raw fractions (0.245) — see etl/pull_season_stats.py.
 function pct1(v: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return `${(v * 100).toFixed(1)}%`;

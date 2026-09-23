@@ -28,50 +28,27 @@ python etl/backfill.py --season 2026
 | 3 | `pull_statcast --all-batters` | 打者 Statcast → `web_statcast_events` |
 | 4 | `pull_pitcher --all-pitchers` | 投手 Statcast → `web_statcast_events` |
 | 5 | `pull_fielding` | OAA / FRV → `web_fielding_frv` |
-| 6 | `pull_season_stats` | OPS / wRC+ / ERA / FIP / WAR **+ Value 細項**（`war_*` / `rar` / `wpa`）→ `web_player_season_stats`（需要 Step 3 的 CSV 已就位） |
+| 6 | `pull_season_stats` | OPS / wRC+ / ERA / FIP / WAR **+ Value 細項**（`war_*` / `rar`）+ 打者 basic line + 投手 line → `web_player_season_stats`（MLB Stats API，全自動） |
 | 7 | `pull_boxscore --season` | 每場 final 的 box score → `web_player_game_stats` |
 
 > 順序由 `backfill.py` 內部保證：`pull_schedule`（第 2 步）一定在 `pull_boxscore`
 > （第 7 步）之前，因為 boxscore 用 `web_games.is_final` 當 final-game guard。
->
-> 想讓第 6 步一次就把 `war_*` / KPI 寫進去，**先做 Step 3 把 CSV 放好再跑
-> backfill**；否則第 6 步會 warning + 跳過（KPI 顯示「—」），等你補 CSV 後再
-> 單獨跑 Step 4。
 
-**Step 3：下載 FanGraphs CSV（手動，需付費會員）**
-
-P7 改用**單一 Custom Report**匯出打者檔。**不要**再用 Dashboard preset 疊加多個
-view — 那是先前產生重複 `wRC+` / `ISO` / `SLG` / `BsR` 欄位的原因。
-
-到 https://www.fangraphs.com/leaders/major-league，放進 `etl/data/fangraphs/`：
-
-| 檔案 | 設定 |
-|---|---|
-| `batting_2026.csv` | **Batting** 分頁 / Blue Jays / 2026 / Min PA: 1 / Regular Season / **不勾 Split Seasons** / 用 **Custom Report**：保留現有 dashboard 欄位（已含 P9 逐年表用的 `AVG`/`OBP`/`SLG`/`HR`/`RBI`/`SB`/`PA`），**再加上 Value 區** `Bat`、`BsR`、`Fld`、`Pos`、`Lg`、`Rep`、`RAR`、`WPA` |
-| `pitching_2026.csv` | **Pitching** 分頁 / Blue Jays / 2026 / Min IP: 1 / Regular Season / **不勾 Split Seasons** / **P10 起改用 Custom Report**：保留 Dashboard 欄位（已含 `W`/`L`/`SV`/`GS`/`IP`/`ERA`/`FIP`/`K/9`/`WAR`），**再加上 `WHIP`、`K%`、`BB%`**（Dashboard preset 沒有這三欄；缺了投手 Overview 會顯示「—」） |
-
-> - 兩個檔都必須含 identity 欄位 `Name` 與 `MLBAMID`（`MLBAMID` 是 join 到
->   `web_players` 的鍵）。
-> - 8 個 Value 欄位全部在 Batting 分頁的 Value 區，**單檔即可**，不需另開
->   fielding CSV 來 join。
-> - header 字串已對照確認（見 `pull_season_stats.py` 的 `WAR_COMPONENT_COLS`
->   與 P9 的 `BASIC_STAT_COLS`）；`pull_season_stats.py` 會在欄位重複或缺漏時
->   warning，不會 hard-fail。
-> - **P9 basic line**：`AVG`/`OBP`/`SLG`/`HR`/`RBI`/`SB`/`PA` 是 Dashboard preset
->   既有欄位，照上面「保留現有 dashboard 欄位」匯出即可，逐年表會自動帶入；
->   舊 CSV 只要含這些欄位，重跑 `pull_season_stats.py` 就會補寫（不必重新匯出）。
-> - **P10 pitcher line**：`W`/`L`/`SV`/`GS`/`IP` 舊 Dashboard CSV 已有（重跑
->   importer 即補寫）；`WHIP`/`K%`/`BB%` **必須**重新匯出 Custom Report 才會有，
->   2024 / 2025 / 2026 三個 pitching CSV 都要換。`K%`/`BB%` 匯出值是小數
->   （`0.245`），importer 原樣入庫，前端才 ×100 顯示。`IP` 是棒球記法
->   （`170.1` = 170⅓），只供顯示，運算用 box score 的 `outs_recorded`。
-
-**Step 4：單獨補寫 KPI（只有在 backfill 之後又更新了 CSV 才需要）**
+**Step 3：單獨補寫 season stats（選用）**
 ```powershell
 python etl/pull_season_stats.py --season 2026
 ```
-> 一般情況下 Step 2 的第 6 步已經寫過了；這步只是「換了新 CSV、不想重跑整個
-> backfill」時的捷徑。
+> 2026-09-23 起 season stats（OPS / wRC+ / ERA / FIP / WAR + Value 細項 + 打者
+> basic line + 投手 W/L/SV/GS/IP/WHIP/K%/BB%）改從 **MLB Stats API** 抓
+> （`stats=season,sabermetrics`，免費、不用 key），**不再需要 FanGraphs 會員或
+> 手動下載 CSV**。API 的 sabermetrics 就是 MLB 授權的 FanGraphs 數據，WAR 跟
+> FanGraphs 排行榜差 ±0.05 以內。每天 ~09:00 ET 的 cron 會自動跑當季；這步只在
+> 想馬上刷新、或補過去球季時才需要。
+>
+> - 捕手的 `war_fielding` 是用 `rar` 減掉其他五項推出來的（API 的 `fielding`
+>   不含 framing，但 `rar`/`war` 有含），這樣才跟 FanGraphs 的 `Fld` 一致。
+> - API 沒有 WPA，所以 `wpa` 不再更新（停在最後一次 CSV 匯入的值；網站沒顯示）。
+> - `etl/data/fangraphs/` 的舊 CSV 已經沒有程式在讀，可以刪。
 
 ---
 
@@ -79,9 +56,8 @@ python etl/pull_season_stats.py --season 2026
 
 - `backfill.py` 內部已處理好相依順序（roster 先、boxscore 最後），照 Step 2
   一次跑完即可。
-- 第 6 步（season-stats）依賴 Step 3 的 CSV；CSV 不在時 warning + 跳過，**不會**
-  中斷 backfill。
-- FanGraphs CSV 是手動下載，in-season 需要時再更新。
+- 第 6 步（season-stats）打 MLB Stats API；API 掛掉會讓該步失敗（跟 schedule /
+  standings 一樣），重跑即可。
 - 歷史賽季（2024 / 2025）的 Statcast / 名單已經在 DB；要補它們的**賽程 + box
   score**（P7 新表）時重跑：
   ```powershell
@@ -109,7 +85,7 @@ P7 起 GitHub Actions 有**兩個**排程（都 idempotent、都會 upsert）：
 
 - **~09:00 ET**：2026 rolling 7 天 Statcast、守備、`web_games` 賽程 refresh、
   `web_standings` 排名 refresh、近 ~3 天 box score 補抓（West-Coast / 晚場 final
-  在這裡補完）、嘗試 FanGraphs KPI。
+  在這裡補完）、season stats（WAR / OPS / ERA …，MLB Stats API）。
 - **~23:30 ET**：今天的賽程 refresh + 排名 refresh + 今天 final 場次的 box score。
 
 > 兩班的順序都是 **schedule → standings → boxscore → revalidate**。
@@ -142,8 +118,9 @@ SELECT mlbam_id, season, war, rar, wpa,
        war_positional, war_league, war_replacement
 FROM web_player_season_stats
 WHERE mlbam_id = 665489 AND season = 2026;
--- 期望：rar ≈ war_batting+war_baserunning+war_fielding+war_positional
---               +war_league+war_replacement（FanGraphs 顯示捨入內，±0.x 正常）
+-- 期望：rar = war_batting+war_baserunning+war_fielding+war_positional
+--               +war_league+war_replacement（war_fielding 是用 rar 反推的，所以會精準相等）
+-- wpa 從 2026-06 起不再更新（MLB API 沒有 WPA）
 
 -- P7: 確認賽程有進來（含未來未打的場次；finals < games）
 SELECT season,
@@ -165,7 +142,7 @@ WHERE g.season = 2026;
 -- 確認最新比賽日期（首頁用這個）
 SELECT MAX(game_date) FROM web_statcast_events;
 
--- P10: 確認投手季 line 有進來（Gausman；WHIP/K%/BB% 在 Custom Report 匯出前為 NULL）
+-- P10: 確認投手季 line 有進來（Gausman；每季 WHIP/K%/BB% 都應該有值）
 SELECT season, w, l, sv, gs, ip, era, whip, k_pct, bb_pct
 FROM web_player_season_stats WHERE mlbam_id = 592332 ORDER BY season;
 

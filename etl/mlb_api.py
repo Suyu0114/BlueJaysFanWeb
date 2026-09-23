@@ -17,6 +17,7 @@ ROSTER_URL = f"{BASE_URL}/teams/{BLUE_JAYS_TEAM_ID}/roster"
 PEOPLE_URL = f"{BASE_URL}/people"
 SCHEDULE_URL = f"{BASE_URL}/schedule"
 BOXSCORE_URL = f"{BASE_URL}/game/{{game_pk}}/boxscore"
+STATS_URL = f"{BASE_URL}/stats"
 HEADSHOT_URL = "https://midfield.mlbstatic.com/v1/people/{id}/spots/120"
 
 # /people endpoint hard-caps at ~640 IDs per request in practice; keep batches
@@ -398,3 +399,96 @@ def fetch_standings(season: int, league_ids: str = "103,104") -> list[dict]:
                 }
             )
     return rows
+
+
+# ---------------------------------------------------------------------------
+# Season stats (replaces the manual FanGraphs CSV export)
+# ---------------------------------------------------------------------------
+
+
+def fetch_team_season_stats(
+    season: int, group: str, team_id: int = BLUE_JAYS_TEAM_ID
+) -> list[dict]:
+    """Regular-season line for every player who played for `team_id` in
+    `season`. `group` is 'hitting' or 'pitching'.
+
+    Merges two stat types per player: `season` (traditional line) and
+    `sabermetrics` (wRC+ / FIP / WAR + run-value components). The sabermetrics
+    block is FanGraphs data licensed to MLB -- WAR matches the FanGraphs
+    leaderboard to within +-0.05 -- so it is a drop-in for the old CSV export.
+
+    Team-scoped like the old FanGraphs `Team=TOR` export: a traded player's
+    row covers only his Blue Jays games. `playerPool=ALL` is load-bearing --
+    the default pool is qualified players only.
+
+    One record per player: {mlbam_id, name, position_code, stat}. `stat` is
+    the raw merged API dict; rate stats arrive as strings ('.292', '3.59',
+    '-.--' when undefined) and `inningsPitched` in baseball notation ('170.1').
+    """
+    types = {"season", "sabermetrics"}
+    r = requests.get(
+        STATS_URL,
+        params={
+            "stats": ",".join(sorted(types)),
+            "group": group,
+            "season": season,
+            "teamId": team_id,
+            "sportId": 1,
+            "gameType": "R",
+            "playerPool": "ALL",
+            "limit": 500,
+        },
+        timeout=30,
+    )
+    r.raise_for_status()
+    by_id: dict[int, dict] = {}
+    have: dict[int, set[str]] = {}
+    for block in r.json().get("stats", []):
+        for s in block.get("splits", []):
+            pid = s["player"]["id"]
+            rec = by_id.setdefault(
+                pid,
+                {
+                    "mlbam_id": pid,
+                    "name": s["player"].get("fullName"),
+                    "position_code": s.get("position", {}).get("code"),
+                    "stat": {},
+                },
+            )
+            rec["stat"].update(s.get("stat", {}))
+            have.setdefault(pid, set()).add(block["type"]["displayName"])
+
+    # The team leaderboard sometimes drops one stat type for a player traded
+    # AWAY mid-season (2024: Jansen + Kikuchi kept their sabermetrics line but
+    # lost the traditional one). The per-player endpoint still has the split
+    # for this team, so patch those few players one request each.
+    for pid, rec in by_id.items():
+        missing = types - have[pid]
+        if missing:
+            rec["stat"].update(
+                _fetch_player_team_split(pid, season, group, missing, team_id)
+            )
+    return list(by_id.values())
+
+
+def _fetch_player_team_split(
+    mlbam_id: int, season: int, group: str, types: set[str], team_id: int
+) -> dict:
+    r = requests.get(
+        f"{PEOPLE_URL}/{mlbam_id}/stats",
+        params={
+            "stats": ",".join(sorted(types)),
+            "group": group,
+            "season": season,
+            "gameType": "R",
+        },
+        timeout=30,
+    )
+    r.raise_for_status()
+    out: dict = {}
+    for block in r.json().get("stats", []):
+        for s in block.get("splits", []):
+            # Traded players get one split per team plus a team-less total.
+            if s.get("team", {}).get("id") == team_id:
+                out.update(s.get("stat", {}))
+    return out

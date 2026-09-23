@@ -63,10 +63,9 @@
 │   ├── pull_standings.py         # MLB standings snapshot (all 30 clubs) → web_standings
 │   ├── pull_boxscore.py          # per-game box scores → web_player_game_stats
 │   ├── pull_season_stats.py      # OPS / wRC+ / ERA / FIP / WAR + value components + batter basic
-│   │                             # line + pitcher line W/L/SV/GS/IP/WHIP/K%/BB% (CSV)
+│   │                             # line + pitcher line W/L/SV/GS/IP/WHIP/K%/BB% (MLB Stats API)
 │   ├── fetch_team_logos.py       # ONE-SHOT: cap logos → web/public/team-logos (recoloured)
-│   ├── backfill.py               # one-shot orchestrator
-│   └── data/fangraphs/           # gitignored manual CSV drop zone
+│   └── backfill.py               # one-shot orchestrator
 ├── db/migrations/                # plain SQL: 001 → 012
 ├── web/                          # Next.js app
 │   ├── app/[locale]/
@@ -98,7 +97,7 @@
 │   │                             # pitcher-game-log, pitching-form, pitch-arsenal, pitch-colors
 │   └── messages/{en,zh-TW}.json
 ├── .github/workflows/etl.yml     # two-job cron: ~09:00 ET full refresh + ~11:30 PM ET finals
-├── ETL_update_flow.md            # backfill + FanGraphs CSV download steps
+├── ETL_update_flow.md            # backfill + manual re-run steps
 ├── CLAUDE.md                     # guidance for AI coding agents
 ├── .env.example                  # template for env vars
 └── README.md
@@ -163,9 +162,8 @@ python etl/backfill.py --season 2026
 python etl/backfill.py                              # default = 2024 + 2025
 ```
 
-Season stats (OPS / wRC+ / ERA / FIP / WAR) require a manual FanGraphs CSV
-download — pybaseball's FanGraphs scrapers are 403'd indefinitely. Step-by-step
-in **[ETL_update_flow.md](ETL_update_flow.md)**.
+Season stats (OPS / wRC+ / ERA / FIP / WAR + components) come from the MLB Stats
+API and need no manual step. Runbook in **[ETL_update_flow.md](ETL_update_flow.md)**.
 
 The cron version runs in GitHub Actions; see `.github/workflows/etl.yml`.
 
@@ -216,7 +214,7 @@ What stays English in zh-TW (do **not** translate):
 
 - **[pybaseball](https://github.com/jldbc/pybaseball)** — wrapper around Baseball Savant. Covers batting (spray data), pitching (location, velocity, spin), and fielding (FRV via `statcast_outs_above_average`, which returns `fielding_runs_prevented`). **Savant pulls work; FanGraphs scrapers do not** — see workaround below.
 - **MLB Stats API** (`statsapi.mlb.com`) — player bio (incl. birth city/country), full-season roster enumeration, primary position.
-- **FanGraphs (manual CSV export)** — only source of OPS / wRC+ / ERA / FIP / WAR, the WAR value components (Bat / BsR / Fld / Pos / Lg / Rep / RAR), season WPA, and the basic slash line (AVG / OBP / SLG / HR / RBI / SB / PA), and the pitcher line (W / L / SV / GS / IP / WHIP / K% / BB%); requires a paid membership and human-in-the-loop download. ⚠️ The plain pitching **Dashboard** preset lacks `WHIP` / `K%` / `BB%` — export a **Custom Report** (Dashboard + those three) or they stay NULL. See [ETL_update_flow.md](ETL_update_flow.md).
+- **MLB Stats API `season` + `sabermetrics` stats** — source of OPS / wRC+ / ERA / FIP / WAR, the WAR value components (Bat / BsR / Fld / Pos / Lg / Rep / RAR), the basic slash line (AVG / OBP / SLG / HR / RBI / SB / PA), and the pitcher line (W / L / SV / GS / IP / WHIP / K% / BB%). Free, no key; the sabermetrics block is FanGraphs data licensed to MLB, so the numbers match FanGraphs. Replaced the manual FanGraphs CSV export in Sept 2026. (Season WPA isn't in the API and is frozen at the last CSV import.)
 
 ### Important Statcast gotchas
 
@@ -231,10 +229,10 @@ What stays English in zh-TW (do **not** translate):
 
 ### FanGraphs scraper is dead
 
-`pybaseball.team_batting` / `team_pitching` / `batting_stats` / `pitching_stats` return HTTP 403 (server-side block; upgrading pybaseball won't help). Two workarounds in place:
+`pybaseball.team_batting` / `team_pitching` / `batting_stats` / `pitching_stats` return HTTP 403 (server-side block; upgrading pybaseball won't help). Both needs are served by the MLB Stats API instead:
 
 - **Player enumeration** ("who appeared for the Jays in season X") uses MLB Stats API `rosterType=fullSeason` in `etl/mlb_api.py`. Includes a few 40-man members who never actually debuted — acceptable; their Statcast pulls just return zero rows.
-- **Season stats** load from manually-exported FanGraphs CSVs in `etl/data/fangraphs/{batting,pitching}_{season}.csv` (directory gitignored). Missing file → warning + skip, not a hard failure; a missing optional column → warning + NULL (see the Custom Report caveat above).
+- **Season stats** come from `/stats?stats=season,sabermetrics&teamId=141` (`etl/mlb_api.py::fetch_team_season_stats`), refreshed nightly. Catcher `war_fielding` is derived as `rar` minus the other five components so it includes framing, as FanGraphs' `Fld` does.
 
 ---
 

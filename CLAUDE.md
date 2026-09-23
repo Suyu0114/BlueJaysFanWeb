@@ -72,7 +72,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 ### FanGraphs scraping is dead — use these workarounds
 - `pybaseball.team_batting` / `team_pitching` / `batting_stats` / `pitching_stats` return **HTTP 403**. The block is server-side; updating pybaseball won't help.
 - **Player enumeration** for "who appeared for the Jays in season X" now uses MLB Stats API `rosterType=fullSeason` (`etl/mlb_api.py::fetch_full_season_roster`). It includes 40-man members who never debuted — accept the small over-inclusion. Run via `python etl/pull_team_players.py --season YEAR`.
-- **Season stats** (OPS / wRC+ / ERA / FIP / K/9 / WAR + batter basic line + P10 pitcher line W/L/SV/GS/IP/WHIP/K%/BB%) load from **manually-exported FanGraphs CSVs** dropped into `etl/data/fangraphs/{batting,pitching}_{season}.csv` (directory gitignored, requires a paid FanGraphs membership). `etl/pull_season_stats.py` reads them; missing files log a warning, do not fail. ⚠️ The plain pitching **Dashboard** export lacks `WHIP`/`K%`/`BB%` — export a **Custom Report** (Dashboard + those three) or they stay NULL (site renders "—"). Full step-by-step in `ETL_update_flow.md`.
+- **Season stats** (OPS / wRC+ / ERA / FIP / K/9 / WAR + Value components + batter basic line + P10 pitcher line W/L/SV/GS/IP/WHIP/K%/BB%) come from the **MLB Stats API** `/stats?stats=season,sabermetrics&teamId=141` (`etl/mlb_api.py::fetch_team_season_stats`, free, no key) and refresh in the ~09:00 ET cron. The `sabermetrics` block is FanGraphs data licensed to MLB, so WAR matches the FanGraphs leaderboard (±0.05). This replaced the manual FanGraphs CSV export on 2026-09-23 (membership lapsed) — **don't reintroduce a CSV path.** Gotchas: (a) `playerPool=ALL` is required (default = qualified only); (b) the team leaderboard can drop one stat type for a player traded *away* mid-season — `fetch_team_season_stats` patches those from `/people/{id}/stats`; (c) catcher framing is in the API's `rar`/`war` but not its `fielding`, so `war_fielding` is derived as `rar` − the other five components; (d) no WPA in the API — `wpa` is frozen at the last CSV import.
 - Statcast event pulls (`statcast_batter` / `statcast_pitcher`) and fielding leaderboard (`statcast_outs_above_average`) hit Baseball Savant directly — these are **unaffected**.
 
 ---
@@ -109,9 +109,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   pull_fielding.py             # OAA / FRV per position (Savant leaderboard)
   pull_standings.py            # MLB standings snapshot, both leagues (MLB Stats API)
   fetch_team_logos.py          # ONE-SHOT: cap logos -> web/public/team-logos (recoloured, committed)
-  pull_season_stats.py         # OPS/wRC+/ERA/FIP/WAR + basic line (avg/obp/slg/hr/rbi/sb/pa) from FanGraphs CSV exports
+  pull_season_stats.py         # OPS/wRC+/ERA/FIP/WAR + Value components + basic line + pitcher line (MLB Stats API)
   backfill.py                  # one-shot orchestrator for 2024 + 2025 (and optional 2026)
-  data/fangraphs/              # gitignored manual CSV drop zone for season stats
 /db/migrations/                # plain SQL, apply via psql or Supabase Studio
   001_initial_schema.sql       # web_players, web_statcast_events, web_player_season_stats
   002_fielding_frv.sql         # web_fielding_frv
@@ -126,7 +125,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   011_statcast_pitch_detail.sql # web_statcast_events: pfx_x/pfx_z/release_extension/estimated_woba/balls/strikes (P10)
   012_standings.sql            # web_standings (MLB standings snapshot, all 30 clubs, P11)
 /.github/workflows/etl.yml     # daily cron (rolling 7-day window for current season)
-/ETL_update_flow.md            # backfill + FanGraphs CSV download steps
+/ETL_update_flow.md            # backfill + manual re-run steps
 /web/                          # Next.js app
   app/[locale]/
     page.tsx                   # team home + "Today's Blue Jays" module
@@ -215,11 +214,11 @@ python etl/pull_statcast.py --player 665489 --start 2026-03-27 --end 2026-05-26
 python etl/backfill.py --season 2026
 python etl/backfill.py                              # default = 2024 + 2025
 
-# C) Just season stats (after dropping FanGraphs CSVs into etl/data/fangraphs/):
+# C) Just season stats (MLB Stats API; the cron already does the current season):
 python etl/pull_season_stats.py --season 2026
 ```
 
-Full update flow (incl. the manual FanGraphs CSV step) lives in `ETL_update_flow.md`.
+Full update flow lives in `ETL_update_flow.md`.
 
 Env vars live in `.env` at the repo root (single `DATABASE_URL`). The ETL loads
 `.env` from the repo root or `etl/`, whichever exists. See `.env.example`.

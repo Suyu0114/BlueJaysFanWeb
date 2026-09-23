@@ -9,8 +9,8 @@ export type SeasonStats = {
   era: number | null;
   fip: number | null;
   k_per_9: number | null;
-  // P7: FanGraphs Value components (batter-only) + season WPA. Null for
-  // pitchers / seasons without a Value-preset CSV.
+  // P7: FanGraphs Value components (batter-only, via the MLB Stats API) +
+  // season WPA (frozen at the last FanGraphs CSV import). Null for pitchers.
   war_batting: number | null;
   war_baserunning: number | null;
   war_fielding: number | null;
@@ -20,7 +20,7 @@ export type SeasonStats = {
   rar: number | null;
   wpa: number | null;
   // P9: basic batting line (slash + counting) for the year-by-year table.
-  // Batter-only; null for pitchers / seasons without a Dashboard-preset CSV.
+  // Batter-only; null for pitchers.
   avg: number | null;
   obp: number | null;
   slg: number | null;
@@ -28,9 +28,8 @@ export type SeasonStats = {
   rbi: number | null;
   sb: number | null;
   pa: number | null;
-  // P10: pitcher season line. Pitcher-only; whip/k_pct/bb_pct stay null until
-  // the FanGraphs Custom Report re-export (Dashboard preset lacks them).
-  // `ip` is FanGraphs baseball notation (170.1 = 170 1/3) — display only,
+  // P10: pitcher season line. Pitcher-only.
+  // `ip` is baseball notation (170.1 = 170 1/3) — display only,
   // never do arithmetic on it. k_pct/bb_pct are raw fractions (0.245).
   w: number | null;
   l: number | null;
