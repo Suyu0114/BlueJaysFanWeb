@@ -74,7 +74,16 @@ export default function SprayChartExplorer({
   const t = useTranslations("Batting");
   const locale = useLocale();
 
-  const [season, setSeason] = useState("all"); // "all" | "YYYY"
+  // Distinct seasons present in the data, newest first.
+  const seasons = useMemo(() => {
+    const s = new Set<string>();
+    for (const e of events) if (e.game_date) s.add(e.game_date.slice(0, 4));
+    return [...s].sort().reverse();
+  }, [events]);
+
+  // Default to the newest season rather than "all" (also keeps the month chips
+  // visible for single-season players, since those hang off a picked season).
+  const [season, setSeason] = useState(() => seasons[0] ?? "all"); // "all" | "YYYY"
   const [month, setMonth] = useState("all"); // "all" | "YYYY-MM"
   const [pitchTypes, setPitchTypes] = useState<Set<string>>(new Set());
   const [outcome, setOutcome] = useState<Outcome>("all");
@@ -85,13 +94,6 @@ export default function SprayChartExplorer({
     setSeason(s);
     setMonth("all");
   };
-
-  // Distinct seasons present in the data, newest first.
-  const seasons = useMemo(() => {
-    const s = new Set<string>();
-    for (const e of events) if (e.game_date) s.add(e.game_date.slice(0, 4));
-    return [...s].sort().reverse();
-  }, [events]);
 
   // Distinct months and pitch types actually present in the data, scoped to the
   // selected season so the month chips don't show duplicate Mar/Apr/... .
