@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useReducedMotion } from "motion/react";
 import {
   Line,
   LineChart,
@@ -9,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import WhenInView from "@/components/motion/WhenInView";
 import type { RollingOpsPoint } from "@/lib/batting-form";
 
 // Baseball convention: ".308" / "1.002".
@@ -34,12 +36,14 @@ export default function RollingOpsSparkline({
   data: RollingOpsPoint[];
 }) {
   const t = useTranslations("Overview");
+  const reduce = useReducedMotion();
   if (data.length === 0) return null;
 
   return (
     <div className="rounded-lg border border-navy/10 bg-white/50 p-4">
       <h3 className="text-sm font-semibold text-navy">{t("rollingOpsTitle")}</h3>
-      <div className="mt-2 h-[96px] w-full">
+      {/* Mounted on scroll-in so the line visibly draws left → right. */}
+      <WhenInView className="mt-2 h-[96px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 6, right: 6, bottom: 0, left: 0 }}>
             <XAxis dataKey="date" hide />
@@ -52,6 +56,8 @@ export default function RollingOpsSparkline({
             />
             <Tooltip
               cursor={{ stroke: "var(--color-steel)", strokeWidth: 1 }}
+              animationDuration={350}
+              animationEasing="ease-out"
               contentStyle={{
                 borderRadius: 8,
                 border: "1px solid var(--color-navy)",
@@ -67,11 +73,14 @@ export default function RollingOpsSparkline({
               stroke="var(--color-brick)"
               strokeWidth={2}
               dot={false}
-              isAnimationActive={false}
+              activeDot={{ r: 4, fill: "var(--color-brick)", stroke: "var(--color-papaya)", strokeWidth: 2 }}
+              isAnimationActive={!reduce}
+              animationDuration={900}
+              animationEasing="ease-out"
             />
           </LineChart>
         </ResponsiveContainer>
-      </div>
+      </WhenInView>
     </div>
   );
 }

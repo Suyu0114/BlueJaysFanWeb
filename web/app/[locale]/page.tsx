@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import HeroCard from "@/components/HeroCard";
 import HomeStandings from "@/components/HomeStandings";
+import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import ScheduleCalendar from "@/components/ScheduleCalendar";
 import { getSchedule, type ScheduleGame } from "@/lib/games";
 import { getStandings } from "@/lib/standings";
@@ -69,57 +70,67 @@ export default async function HomePage({
     <div className="mx-auto max-w-5xl px-4 py-12">
       {recent && (hrHero || contact || pitchingLine) && (
         <section>
-          <h2 className="font-display text-xl uppercase tracking-wide text-navy">
-            {t("todayTitle")}
-          </h2>
-          <p className="mt-0.5 text-xs text-navy/55">
-            {t("fromGame", { date: recent.game_date })}
-          </p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Reveal>
+            <h2 className="font-display text-xl uppercase tracking-wide text-navy">
+              {t("todayTitle")}
+            </h2>
+            <p className="mt-0.5 text-xs text-navy/55">
+              {t("fromGame", { date: recent.game_date })}
+            </p>
+          </Reveal>
+          <RevealGroup className="mt-4 grid gap-4 sm:grid-cols-2">
             {hrHero ? (
-              <HeroCard
-                href={`/players/${hrHero.mlbam_id}`}
-                headshot={hrHero.headshot_url}
-                name={hrHero.name}
-                headline={t("hrHero", { name: hrHero.name, n: hrHero.hr_count })}
-              />
+              <RevealItem>
+                <HeroCard
+                  href={`/players/${hrHero.mlbam_id}`}
+                  headshot={hrHero.headshot_url}
+                  name={hrHero.name}
+                  headline={t("hrHero", { name: hrHero.name, n: hrHero.hr_count })}
+                />
+              </RevealItem>
             ) : contact ? (
-              <HeroCard
-                href={`/players/${contact.mlbam_id}`}
-                headshot={contact.headshot_url}
-                name={contact.name}
-                headline={t("hardestContact", {
-                  name: contact.name,
-                  mph: contact.launch_speed.toFixed(1),
-                })}
-              />
+              <RevealItem>
+                <HeroCard
+                  href={`/players/${contact.mlbam_id}`}
+                  headshot={contact.headshot_url}
+                  name={contact.name}
+                  headline={t("hardestContact", {
+                    name: contact.name,
+                    mph: contact.launch_speed.toFixed(1),
+                  })}
+                />
+              </RevealItem>
             ) : null}
 
             {pitchingLine && (
-              <HeroCard
-                href={`/players/${pitchingLine.mlbam_id}`}
-                headshot={pitchingLine.headshot_url}
-                name={pitchingLine.name}
-                headline={t("bestPitching", {
-                  name: pitchingLine.name,
-                  ip: formatInningsPitched(pitchingLine.outs),
-                  k: pitchingLine.ks,
-                  h: pitchingLine.hits,
-                })}
-              />
+              <RevealItem>
+                <HeroCard
+                  href={`/players/${pitchingLine.mlbam_id}`}
+                  headshot={pitchingLine.headshot_url}
+                  name={pitchingLine.name}
+                  headline={t("bestPitching", {
+                    name: pitchingLine.name,
+                    ip: formatInningsPitched(pitchingLine.outs),
+                    k: pitchingLine.ks,
+                    h: pitchingLine.hits,
+                  })}
+                />
+              </RevealItem>
             )}
-          </div>
+          </RevealGroup>
         </section>
       )}
 
       <HomeStandings rows={standings} />
 
       {games.length > 0 && (
-        <ScheduleCalendar
-          games={games}
-          highlightDate={highlightDate}
-          season={season}
-        />
+        <Reveal>
+          <ScheduleCalendar
+            games={games}
+            highlightDate={highlightDate}
+            season={season}
+          />
+        </Reveal>
       )}
     </div>
   );

@@ -1,3 +1,5 @@
+"use client";
+
 // Framework-pure arsenal table: one row per pitch type with an inline usage
 // bar (absorbs the former PitchDistribution) plus the "how good is each pitch"
 // columns — Velo / Spin / Whiff% / xwOBA on contact. Receives plain JSON; no
@@ -9,6 +11,8 @@
 // so the table is plate_alignment-agnostic and safe across seasons. The sibling
 // PitchZoneHeatmap is the only plate-coordinate consumer.
 
+import { motion } from "motion/react";
+import { EASE_SOFT, SPRING_SOFT, STAGGER } from "@/lib/motion";
 import { buildArsenal, type PitchEvent } from "@/lib/pitch-arsenal";
 import { colorFor } from "@/lib/pitch-colors";
 
@@ -56,11 +60,15 @@ export default function ArsenalTable({
         <span className="text-right">{labels.whiff}</span>
         <span className="text-right">{labels.xwobaCon}</span>
       </div>
-      {rows.map((r) => {
+      {rows.map((r, idx) => {
         const widthPct = maxUsage === 0 ? 0 : (r.usage / maxUsage) * 100;
         return (
-          <div
+          // layout="position": when a filter reorders the pitch mix, rows
+          // slide to their new rank instead of jumping.
+          <motion.div
             key={r.pitchType}
+            layout="position"
+            transition={SPRING_SOFT}
             className="grid grid-cols-[2.5rem_1fr_3rem_4rem_4.5rem_3.5rem_4.5rem] items-center gap-2 text-sm sm:gap-3"
           >
             <span className="font-mono font-semibold text-navy">
@@ -71,13 +79,19 @@ export default function ArsenalTable({
               role="img"
               aria-label={`${r.pitchType} ${(r.usage * 100).toFixed(1)} percent usage`}
             >
-              <div
-                className="h-full rounded"
+              {/* Grows from the left on scroll-in (scaleX, staggered by row);
+                  after that, filter changes glide the width (CSS transition). */}
+              <motion.div
+                className="h-full origin-left rounded transition-[width] duration-500"
                 style={{
                   width: `${widthPct}%`,
                   backgroundColor: colorFor(r.pitchType),
                   opacity: 0.85,
                 }}
+                initial={{ scaleX: 0 }}
+                whileInView={{ scaleX: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, ease: EASE_SOFT, delay: idx * STAGGER }}
               />
               <span className="absolute inset-y-0 left-2 flex items-center text-xs font-medium text-papaya mix-blend-luminosity">
                 {(r.usage * 100).toFixed(1)}%
@@ -98,7 +112,7 @@ export default function ArsenalTable({
             <span className="text-right text-xs tabular-nums text-navy/60">
               {woba3(r.xwobaCon)}
             </span>
-          </div>
+          </motion.div>
         );
       })}
     </div>

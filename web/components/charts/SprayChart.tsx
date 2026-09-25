@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef } from "react";
 import { scaleLinear } from "d3-scale";
+import { useInView } from "motion/react";
+import ChartTooltip from "@/components/charts/ChartTooltip";
+import { useLingeringHover } from "@/lib/use-lingering-hover";
 import {
   BASES,
   DISTANCE_MARKERS,
@@ -86,7 +89,9 @@ export default function SprayChart({
 }) {
   const height = (width * FIELD_HEIGHT_FT) / FIELD_WIDTH_FT;
   const pxPerFoot = width / FIELD_WIDTH_FT;
-  const [hovered, setHovered] = useState<PlacedEvent | null>(null);
+  const { hovered, last, enter, leave } = useLingeringHover<PlacedEvent>();
+  const svgRef = useRef<SVGSVGElement>(null);
+  const inView = useInView(svgRef, { once: true, amount: 0.3 });
 
   const { project, placed, placedSecondary, wallPath, fairPath, foulPath, dirtPath, warningPath } =
     useMemo(() => {
@@ -121,6 +126,18 @@ export default function SprayChart({
 
   const baseSize = width * 0.014;
 
+  // Entrance: every ball leaves home plate and flies to where it landed
+  // (.ball-fly in globals.css). --dx/--dy = plate minus landing spot, in SVG
+  // user units. Staggered across ~0.8s in draw order — outs first, home runs
+  // last. Keyed by event id, so after a filter change only NEW balls fly.
+  const [homeX, homeY] = project(BASES.home[0], BASES.home[1]);
+  const flyStyle = (p: PlacedEvent, i: number, n: number) =>
+    ({
+      "--dx": `${homeX - p.cx}px`,
+      "--dy": `${homeY - p.cy}px`,
+      animationDelay: `${Math.round((i / Math.max(1, n)) * 800)}ms`,
+    }) as React.CSSProperties;
+
   const legend: { category: Category; label: string }[] = [
     { category: "hr", label: labels.homeRun },
     { category: "xbh", label: labels.extraBase },
@@ -135,8 +152,9 @@ export default function SprayChart({
         style={{ aspectRatio: `${width} / ${height}` }}
       >
         <svg
+          ref={svgRef}
           viewBox={`0 0 ${width} ${height}`}
-          className="h-full w-full"
+          className={`h-full w-full ${inView ? "" : "anim-paused"}`}
           preserveAspectRatio="xMidYMid meet"
           role="img"
           aria-label="Spray chart"
@@ -248,9 +266,11 @@ export default function SprayChart({
             />
           ))}
           {/* batted balls */}
-          {placed.map((p) => (
+          {placed.map((p, i) => (
             <circle
               key={p.ev.id}
+              className="chart-dot ball-fly cursor-pointer"
+              data-hot={hovered === p || undefined}
               cx={p.cx}
               cy={p.cy}
               r={p.r}
@@ -258,48 +278,45 @@ export default function SprayChart({
               fillOpacity={p.category === "out" ? 0.25 : 0.85}
               stroke={p.category === "hr" ? "var(--color-papaya)" : "none"}
               strokeWidth={p.category === "hr" ? 1 : 0}
-              onMouseEnter={() => setHovered(p)}
-              onMouseLeave={() => setHovered(null)}
-              style={{ cursor: "pointer" }}
+              onMouseEnter={() => enter(p)}
+              onMouseLeave={leave}
+              style={flyStyle(p, i, placed.length)}
             />
           ))}
         </svg>
 
-        {hovered && (
-          <div
-            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-md border border-navy/20 bg-white px-3 py-2 text-xs shadow-md"
-            style={{
-              left: `${(hovered.cx / width) * 100}%`,
-              top: `${(hovered.cy / height) * 100}%`,
-              marginTop: -8,
-            }}
+        {last && (
+          <ChartTooltip
+            open={hovered !== null}
+            left={(last.cx / width) * 100}
+            top={(last.cy / height) * 100}
           >
             <div className="font-medium text-navy">
-              {resultLabel(hovered.ev.event)}
+              {resultLabel(last.ev.event)}
             </div>
             <dl className="mt-1 grid grid-cols-[auto_auto] gap-x-2 gap-y-0.5 text-navy/70">
               <dt>{labels.date}</dt>
-              <dd>{hovered.ev.game_date}</dd>
-              {hovered.ev.pitch_type && (
+              <dd>{last.ev.game_date}</dd>
+              {last.ev.pitch_type && (
                 <>
                   <dt>{labels.pitch}</dt>
-                  <dd>{hovered.ev.pitch_type}</dd>
+                  <dd>{last.ev.pitch_type}</dd>
                 </>
               )}
-              {hovered.ev.launch_speed != null && (
+              {last.ev.launch_speed != null && (
                 <>
                   <dt>{labels.exitVelo}</dt>
-                  <dd>{hovered.ev.launch_speed.toFixed(1)} mph</dd>
+                  <dd>{last.ev.launch_speed.toFixed(1)} mph</dd>
                 </>
               )}
-              {hovered.ev.launch_angle != null && (
+              {last.ev.launch_angle != null && (
                 <>
                   <dt>{labels.launchAngle}</dt>
-                  <dd>{Math.round(hovered.ev.launch_angle)}&deg;</dd>
+                  <dd>{Math.round(last.ev.launch_angle)}&deg;</dd>
                 </>
               )}
             </dl>
-          </div>
+          </ChartTooltip>
         )}
       </div>
 

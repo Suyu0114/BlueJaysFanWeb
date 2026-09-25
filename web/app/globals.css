@@ -15,10 +15,106 @@
   --font-sans: var(--font-gabriela);
   --font-mono: var(--font-gabriela); /* Gabriela has no mono variant — single serif everywhere */
   --font-display: var(--font-graduate); /* retro varsity — heading layer */
+
+  /* Motion — mirrors lib/motion.ts (EASE_SOFT). Overriding Tailwind's defaults
+     slows every existing `transition-*` utility from a snappy 150ms to a soft
+     300ms ease-out in one place, so hovers glide instead of blinking. */
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --default-transition-duration: 300ms;
+  --default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 body {
   background-color: var(--color-papaya);
   color: var(--color-navy);
   font-family: var(--font-gabriela), Georgia, "Times New Roman", serif;
+}
+
+/* A Reveal wrapper whose child rendered nothing (e.g. a chart with no data)
+   shouldn't leave a phantom gap in a space-y stack. */
+[data-reveal]:empty {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Hand-drawn ink (lib/ink-draw.ts). rough.js strokes are split into one <path>
+   per sub-stroke with pathLength="1", so a 1-unit dash sweeps each stroke in
+   like a pen. Explicit from/to + fill-mode `both`: the stroke is hidden during
+   its stagger delay, and with animations off it falls back to fully drawn.
+   --------------------------------------------------------------------------- */
+.ink-pending path {
+  opacity: 0; /* frame not in view yet — nothing drawn */
+}
+path.ink-stroke {
+  stroke-dasharray: 1;
+  animation: ink-draw var(--ink-dur, 380ms) var(--ease-soft) both;
+}
+path.ink-fill {
+  animation: ink-fade 420ms var(--ease-soft) both;
+}
+@keyframes ink-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes ink-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---------------------------------------------------------------------------
+   Chart marks. fill-mode is `backwards` ON PURPOSE: it holds the start frame
+   during the stagger delay, then releases — `both`/`forwards` would pin the
+   final transform and swallow the hover scale below.
+   --------------------------------------------------------------------------- */
+.chart-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 250ms var(--ease-soft);
+}
+.chart-dot[data-hot] {
+  transform: scale(1.6);
+}
+.dot-pop {
+  animation: dot-pop 500ms var(--ease-soft) backwards;
+}
+@keyframes dot-pop {
+  from { transform: scale(0); opacity: 0; }
+}
+/* Spray chart: batted balls leave home plate and land. --dx/--dy = home plate
+   minus landing spot, in SVG user units (set per circle). */
+.ball-fly {
+  animation: ball-fly 750ms var(--ease-soft) backwards;
+}
+@keyframes ball-fly {
+  from { transform: translate(var(--dx), var(--dy)) scale(0.35); opacity: 0; }
+}
+
+/* A chart holds its marks at their start frame until it scrolls into view
+   (the chart toggles this class off via useInView), so the entrance plays
+   where the reader can see it. */
+.anim-paused * {
+  animation-play-state: paused !important;
+}
+
+.fade-in {
+  animation: fade-in 350ms var(--ease-soft) backwards;
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  path.ink-stroke,
+  path.ink-fill,
+  .dot-pop,
+  .ball-fly,
+  .fade-in {
+    animation: none;
+  }
+  .ink-pending path {
+    opacity: 1;
+  }
+  .chart-dot {
+    transition: none;
+  }
 }

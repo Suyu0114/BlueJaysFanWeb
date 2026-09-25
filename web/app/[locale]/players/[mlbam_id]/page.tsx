@@ -13,6 +13,8 @@ import PitcherSeasonStatTable from "@/components/PitcherSeasonStatTable";
 import PitcherRecentForm from "@/components/PitcherRecentForm";
 import PitcherGameLog from "@/components/PitcherGameLog";
 import RollingEraSparkline from "@/components/charts/RollingEraSparkline";
+import CountUp from "@/components/motion/CountUp";
+import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
 import {
   getBatterGamesPlayed,
@@ -43,21 +45,39 @@ function pct1(v: number | null): string {
   return `${(v * 100).toFixed(1)}%`;
 }
 
+type CountSpec = { value: number; digits: number; scale?: number; suffix?: string };
+
+// Roll-up spec for a plain decimal KPI; undefined (→ static "—") when missing.
+function count(
+  v: number | null,
+  digits: number,
+  scale?: number,
+  suffix?: string,
+): CountSpec | undefined {
+  return v != null && Number.isFinite(v) ? { value: v, digits, scale, suffix } : undefined;
+}
+
 function KpiCard({
   label,
   value,
+  countTo,
   hint,
 }: {
   label: string;
   value: string;
+  // When set, the number rolls up from 0 on scroll-in (CountUp). Its format
+  // must match `value` exactly. Never for W-L or IP (thirds notation).
+  countTo?: CountSpec;
   hint?: string;
 }) {
   return (
-    <div className="rounded-lg border border-brick/20 bg-white/70 px-3 py-2">
+    <RevealItem className="rounded-lg border border-brick/20 bg-white/70 px-3 py-2">
       <div className="text-[10px] uppercase tracking-wide text-navy/55">{label}</div>
-      <div className="mt-0.5 text-lg font-semibold tabular-nums text-navy">{value}</div>
+      <div className="mt-0.5 text-lg font-semibold tabular-nums text-navy">
+        {countTo ? <CountUp {...countTo} /> : value}
+      </div>
       {hint && <div className="mt-0.5 text-[10px] leading-tight text-navy/45">{hint}</div>}
-    </div>
+    </RevealItem>
   );
 }
 
@@ -153,7 +173,7 @@ export default async function PlayerOverviewPage({
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
-      <div className="flex items-start gap-4">
+      <Reveal className="flex items-start gap-4">
         {player.headshot_url && (
           <Image
             src={player.headshot_url}
@@ -178,7 +198,7 @@ export default async function PlayerOverviewPage({
             )}
           </p>
         </div>
-      </div>
+      </Reveal>
 
       <PlayerNav mlbamId={playerId} active="overview" available={availability} />
 
@@ -187,12 +207,12 @@ export default async function PlayerOverviewPage({
           <p className="text-xs uppercase tracking-wide text-navy/55">
             {t("season")} {latest.season}
           </p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+          <RevealGroup className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
             {role === "batter" ? (
               <>
-                <KpiCard label="OPS" value={fmt(latest.ops, 3)} />
-                <KpiCard label="wRC+" value={fmt(latest.wrc_plus, 0)} />
-                <KpiCard label="WAR" value={fmt(latest.war, 1)} />
+                <KpiCard label="OPS" value={fmt(latest.ops, 3)} countTo={count(latest.ops, 3)} />
+                <KpiCard label="wRC+" value={fmt(latest.wrc_plus, 0)} countTo={count(latest.wrc_plus, 0)} />
+                <KpiCard label="WAR" value={fmt(latest.war, 1)} countTo={count(latest.war, 1)} />
               </>
             ) : (
               // P10: fan-first KPI set with plain-language hints. FIP lives in
@@ -219,32 +239,64 @@ export default async function PlayerOverviewPage({
                   value={latest.ip == null ? "—" : latest.ip.toFixed(1)}
                   hint={t("kpiHintIp")}
                 />
-                <KpiCard label="ERA" value={fmt(latest.era, 2)} hint={t("kpiHintEra")} />
-                <KpiCard label="WHIP" value={fmt(latest.whip, 2)} hint={t("kpiHintWhip")} />
-                <KpiCard label="K%" value={pct1(latest.k_pct)} hint={t("kpiHintKPct")} />
-                <KpiCard label="WAR" value={fmt(latest.war, 1)} hint={t("kpiHintWar")} />
+                <KpiCard
+                  label="ERA"
+                  value={fmt(latest.era, 2)}
+                  countTo={count(latest.era, 2)}
+                  hint={t("kpiHintEra")}
+                />
+                <KpiCard
+                  label="WHIP"
+                  value={fmt(latest.whip, 2)}
+                  countTo={count(latest.whip, 2)}
+                  hint={t("kpiHintWhip")}
+                />
+                <KpiCard
+                  label="K%"
+                  value={pct1(latest.k_pct)}
+                  countTo={count(latest.k_pct, 1, 100, "%")}
+                  hint={t("kpiHintKPct")}
+                />
+                <KpiCard
+                  label="WAR"
+                  value={fmt(latest.war, 1)}
+                  countTo={count(latest.war, 1)}
+                  hint={t("kpiHintWar")}
+                />
               </>
             )}
-          </div>
+          </RevealGroup>
 
           {isBatter && gameLog.length > 0 && (
-            <RecentForm last7={last7} last30={last30} season={seasonSplit} />
+            <Reveal>
+              <RecentForm last7={last7} last30={last30} season={seasonSplit} />
+            </Reveal>
           )}
 
-          {isBatter && <RollingOpsSparkline data={rolling} />}
+          {isBatter && (
+            <Reveal>
+              <RollingOpsSparkline data={rolling} />
+            </Reveal>
+          )}
 
           {isPitcher && pitcherLog.length > 0 && (
-            <PitcherRecentForm
-              last5={pitcherLast5}
-              last30={pitcherLast30}
-              season={pitcherSeason}
-            />
+            <Reveal>
+              <PitcherRecentForm
+                last5={pitcherLast5}
+                last30={pitcherLast30}
+                season={pitcherSeason}
+              />
+            </Reveal>
           )}
 
-          {isPitcher && <RollingEraSparkline data={eraTrend} />}
+          {isPitcher && (
+            <Reveal>
+              <RollingEraSparkline data={eraTrend} />
+            </Reveal>
+          )}
 
           {canShowProgress && (
-            <div className="rounded-lg border border-navy/10 bg-white/50 p-4">
+            <Reveal className="rounded-lg border border-navy/10 bg-white/50 p-4">
               <SeasonProgressBar
                 current={latest!.war!}
                 prior={prior!.war!}
@@ -253,33 +305,53 @@ export default async function PlayerOverviewPage({
                 role={role}
                 gamesPlayed={gamesPlayed}
               />
-            </div>
+            </Reveal>
           )}
 
-          {isBatter && <SeasonStatTable stats={stats} />}
+          {isBatter && (
+            <Reveal>
+              <SeasonStatTable stats={stats} />
+            </Reveal>
+          )}
 
-          {isPitcher && <PitcherSeasonStatTable stats={stats} />}
+          {isPitcher && (
+            <Reveal>
+              <PitcherSeasonStatTable stats={stats} />
+            </Reveal>
+          )}
 
           {isBatter && (
-            <ContactQualityCard stats={evStats} season={latest!.season} />
+            <Reveal>
+              <ContactQualityCard stats={evStats} season={latest!.season} />
+            </Reveal>
           )}
 
           {canShowWar && (
-            <WarBreakdown
-              batting={latest!.war_batting ?? 0}
-              baserunning={latest!.war_baserunning ?? 0}
-              fielding={latest!.war_fielding ?? 0}
-              positional={latest!.war_positional ?? 0}
-              league={latest!.war_league ?? 0}
-              replacement={latest!.war_replacement ?? 0}
-              rar={latest!.rar!}
-              war={latest!.war!}
-            />
+            <Reveal>
+              <WarBreakdown
+                batting={latest!.war_batting ?? 0}
+                baserunning={latest!.war_baserunning ?? 0}
+                fielding={latest!.war_fielding ?? 0}
+                positional={latest!.war_positional ?? 0}
+                league={latest!.war_league ?? 0}
+                replacement={latest!.war_replacement ?? 0}
+                rar={latest!.rar!}
+                war={latest!.war!}
+              />
+            </Reveal>
           )}
 
-          {isBatter && <GameLog games={recentGames} />}
+          {isBatter && (
+            <Reveal>
+              <GameLog games={recentGames} />
+            </Reveal>
+          )}
 
-          {isPitcher && <PitcherGameLog games={recentApps} />}
+          {isPitcher && (
+            <Reveal>
+              <PitcherGameLog games={recentApps} />
+            </Reveal>
+          )}
         </section>
       ) : (
         <p className="mt-6 text-navy/60">{t("noStats")}</p>

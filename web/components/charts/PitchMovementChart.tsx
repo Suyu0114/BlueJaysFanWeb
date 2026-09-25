@@ -14,8 +14,12 @@
 // across 2025/2026 seasons together. Only PitchZoneHeatmap needs alignment
 // scoping.
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef } from "react";
 import { scaleLinear } from "d3-scale";
+import { motion, useInView } from "motion/react";
+import ChartTooltip from "@/components/charts/ChartTooltip";
+import { SPRING_SOFT } from "@/lib/motion";
+import { useLingeringHover } from "@/lib/use-lingering-hover";
 import type { PitchEvent } from "@/lib/pitch-arsenal";
 import { colorFor } from "@/lib/pitch-colors";
 
@@ -54,7 +58,9 @@ export default function PitchMovementChart({
   width?: number;
 }) {
   const height = width; // movement space is symmetric; keep it square
-  const [hovered, setHovered] = useState<MeanMark | null>(null);
+  const { hovered, last, enter, leave } = useLingeringHover<MeanMark>();
+  const svgRef = useRef<SVGSVGElement>(null);
+  const inView = useInView(svgRef, { once: true, amount: 0.3 });
 
   const { dots, means, xScale, yScale, xTicks, yTicks } = useMemo(() => {
     // Pitcher's view: flip pfx_x; feet -> inches.
@@ -148,8 +154,9 @@ export default function PitchMovementChart({
       style={{ aspectRatio: `${width} / ${height}` }}
     >
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${width} ${height}`}
-        className="h-full w-full"
+        className={`h-full w-full ${inView ? "" : "anim-paused"}`}
         preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-label="Pitch movement scatter plot"
@@ -256,35 +263,55 @@ export default function PitchMovementChart({
           {labels.axisVert}
         </text>
 
-        {/* individual pitches (sampled) */}
-        {dots.map((d) => (
+        {/* individual pitches (sampled) — pop in staggered across ~0.5s */}
+        {dots.map((d, i) => (
           <circle
             key={d.id}
+            className="chart-dot dot-pop"
             cx={d.cx}
             cy={d.cy}
             r={2.5}
             fill={d.color}
             fillOpacity={0.18}
+            style={{
+              animationDelay: `${Math.round((i / Math.max(1, dots.length)) * 500)}ms`,
+            }}
           />
         ))}
 
-        {/* per-type mean markers + direct labels */}
-        {means.map((m) => (
-          <g key={m.pitchType}>
+        {/* per-type mean markers + direct labels. Positioned by a motion <g>
+            translate so a filter change GLIDES each mean to its new spot; they
+            pop in after the cloud on first render. */}
+        {means.map((m, k) => (
+          <motion.g
+            key={m.pitchType}
+            initial={{ x: m.cx, y: m.cy, opacity: 0, scale: 0.4 }}
+            animate={
+              inView
+                ? { x: m.cx, y: m.cy, opacity: 1, scale: 1 }
+                : { x: m.cx, y: m.cy, opacity: 0, scale: 0.4 }
+            }
+            transition={{
+              ...SPRING_SOFT,
+              opacity: { duration: 0.3, delay: 0.45 + k * 0.08 },
+              scale: { ...SPRING_SOFT, delay: 0.45 + k * 0.08 },
+            }}
+          >
             <circle
-              cx={m.cx}
-              cy={m.cy}
+              className="chart-dot cursor-pointer"
+              data-hot={hovered === m || undefined}
+              cx={0}
+              cy={0}
               r={7}
               fill={colorFor(m.pitchType)}
               stroke="var(--color-papaya)"
               strokeWidth={2}
-              onMouseEnter={() => setHovered(m)}
-              onMouseLeave={() => setHovered(null)}
-              style={{ cursor: "pointer" }}
+              onMouseEnter={() => enter(m)}
+              onMouseLeave={leave}
             />
             <text
-              x={m.cx + 10}
-              y={m.cy}
+              x={10}
+              y={0}
               dominantBaseline="middle"
               fill="var(--color-navy)"
               fontSize={11}
@@ -292,35 +319,33 @@ export default function PitchMovementChart({
             >
               {m.pitchType}
             </text>
-          </g>
+          </motion.g>
         ))}
       </svg>
 
-      {hovered && (
-        <div
-          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-md border border-navy/20 bg-white px-3 py-2 text-xs shadow-md"
-          style={{
-            left: `${(hovered.cx / width) * 100}%`,
-            top: `${(hovered.cy / height) * 100}%`,
-            marginTop: -10,
-          }}
+      {last && (
+        <ChartTooltip
+          open={hovered !== null}
+          left={(last.cx / width) * 100}
+          top={(last.cy / height) * 100}
+          gap={10}
         >
-          <div className="font-medium text-navy">{hovered.pitchType}</div>
+          <div className="font-medium text-navy">{last.pitchType}</div>
           <dl className="mt-1 grid grid-cols-[auto_auto] gap-x-2 gap-y-0.5 text-navy/70">
             <dt>{labels.axisHorz}</dt>
-            <dd>{hovered.hIn.toFixed(1)}&quot;</dd>
+            <dd>{last.hIn.toFixed(1)}&quot;</dd>
             <dt>{labels.axisVert}</dt>
-            <dd>{hovered.vIn.toFixed(1)}&quot;</dd>
-            {hovered.avgVelo != null && (
+            <dd>{last.vIn.toFixed(1)}&quot;</dd>
+            {last.avgVelo != null && (
               <>
                 <dt>{labels.avgVelo}</dt>
-                <dd>{hovered.avgVelo.toFixed(1)} mph</dd>
+                <dd>{last.avgVelo.toFixed(1)} mph</dd>
               </>
             )}
             <dt>{labels.pitches}</dt>
-            <dd>{hovered.n}</dd>
+            <dd>{last.n}</dd>
           </dl>
-        </div>
+        </ChartTooltip>
       )}
     </div>
   );

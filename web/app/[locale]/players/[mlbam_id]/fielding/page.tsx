@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import FieldingDiagram from "@/components/charts/FieldingDiagram";
 import PlayerNav from "@/components/PlayerNav";
+import { Reveal } from "@/components/motion/Reveal";
 import { getFielding } from "@/lib/fielding";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
 
@@ -75,18 +76,18 @@ export default async function FieldingPage({
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
-      <div>
+      <Reveal>
         <p className="text-sm text-navy/60">{player.name}</p>
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="mt-0.5 text-sm text-navy/60">{t("subtitle")}</p>
-        <PlayerNav mlbamId={playerId} active="fielding" available={availability} />
-      </div>
+      </Reveal>
+      <PlayerNav mlbamId={playerId} active="fielding" available={availability} />
 
       {seasons.length === 0 ? (
         <p className="mt-6 text-navy/60">{t("noData")}</p>
       ) : (
         <div className="mt-6 grid gap-6 md:grid-cols-[1fr_auto] md:items-start">
-          <section className="space-y-4">
+          <Reveal as="section" className="space-y-4">
             {runsSavedText && (
               <p className="text-sm text-navy">{runsSavedText}</p>
             )}
@@ -131,9 +132,13 @@ export default async function FieldingPage({
               <p className="mt-1">{t("explainBody")}</p>
               <p className="mt-2 text-xs text-navy/60">{t("note")}</p>
             </div>
-          </section>
+          </Reveal>
 
-          <section className="w-full max-w-[340px] justify-self-center">
+          <Reveal
+            as="section"
+            delay={0.12}
+            className="w-full max-w-[340px] justify-self-center"
+          >
             <FieldingDiagram
               positions={allPositions}
               primary={primaryPosition ?? undefined}
@@ -152,7 +157,7 @@ export default async function FieldingPage({
                     })
                 : t("diagramCaptionGeneric")}
             </p>
-          </section>
+          </Reveal>
         </div>
       )}
     </div>

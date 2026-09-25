@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useReducedMotion } from "motion/react";
 import {
   Bar,
   BarChart,
@@ -9,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import WhenInView from "@/components/motion/WhenInView";
 
 type Props = {
   batting: number;
@@ -37,6 +39,7 @@ function signed(v: number): string {
 
 export default function WarBreakdown(props: Props) {
   const t = useTranslations("WarBreakdown");
+  const reduce = useReducedMotion();
 
   const values: Record<string, number> = {
     batting: props.batting,
@@ -75,7 +78,8 @@ export default function WarBreakdown(props: Props) {
         )}
       </div>
 
-      <div className="mt-3 h-[240px] w-full">
+      {/* Mounted on scroll-in so the stacked bar visibly grows from 0. */}
+      <WhenInView className="mt-3 h-[240px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           {/* stackOffset="sign" => diverging: positives stack above 0, negatives
               below (default "none" would stack negatives within the positive
@@ -105,13 +109,15 @@ export default function WarBreakdown(props: Props) {
                 dataKey={c.key}
                 stackId="war"
                 fill={c.color}
-                isAnimationActive={false}
+                isAnimationActive={!reduce}
+                animationDuration={800}
+                animationEasing="ease-out"
                 maxBarSize={72}
               />
             ))}
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </WhenInView>
 
       {/* Legend with each component's signed value (doubles as the data table). */}
       <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">

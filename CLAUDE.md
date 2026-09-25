@@ -85,6 +85,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 | Styling | Tailwind CSS + shadcn/ui |
 | i18n | `next-intl` with `[locale]` route segments |
 | Charts | D3.js (spray / pitch zone / fielding heatmap) + Recharts (KPI bars / lines) + rough.js (hand-drawn schedule calendar) |
+| Motion | `motion` (framer-motion) — added 2026-09 because the UI read as too static and hovers felt abrupt; see **Motion** below |
 | Database | Supabase Postgres |
 | ETL | Python + pybaseball + Supabase Python client |
 | Cron | GitHub Actions (`0 13 * * *` = 09:00 ET daily) |
@@ -129,6 +130,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
 /web/                          # Next.js app
   app/[locale]/
     page.tsx                   # team home + "Today's Blue Jays" module
+    template.tsx               # page-to-page fade on client navigation (skipped on first load)
     players/page.tsx           # roster list with Current 26-man / All 2024-2026 toggle
     players/[mlbam_id]/
       page.tsx                 # overview: batter = KPI + RecentForm + RollingOpsSparkline + SeasonProgressBar + SeasonStatTable + ContactQualityCard + WarBreakdown + GameLog; pitcher (P10) = KPI(W-L/SV/IP/ERA/WHIP/K%/WAR + hints) + PitcherRecentForm + RollingEraSparkline + SeasonProgressBar + PitcherSeasonStatTable + PitcherGameLog
@@ -159,7 +161,14 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     HomeStandings.tsx          # P11 home module: AL East table + PlayoffRace in ScorecardFrames
     standings-chrome.ts        # P11 shared table chrome (navy header bar / ledger stripes / rowBg)
     StandingsTabs.tsx          # P11 client view switcher: AL / NL / Wild Card (+ AL-NL toggle inside WC)
+    motion/
+      MotionProvider.tsx       # MotionConfig (reducedMotion="user"), mounted once in layout
+      Reveal.tsx               # Reveal / RevealGroup / RevealItem — scroll-into-view fade + rise
+      CountUp.tsx              # KPI number roll-up (plain decimals only — never IP / W-L)
+      SlidingPill.tsx          # shared-layout highlight for segmented toggles + PlayerNav underline
+      WhenInView.tsx           # defers mounting a Recharts chart until visible (so its draw-in is seen)
     charts/
+      ChartTooltip.tsx         # shared animated tooltip for the SVG charts (pairs with use-lingering-hover)
       SprayChart.tsx           # optional secondaryEvents prop for /compare
       SprayChartExplorer.tsx   # client filter wrapper around SprayChart (month/pitch/outcome/hand)
       PitchingExplorer.tsx     # client filter wrapper: ArsenalTable + PitchMovementChart + PitchZoneHeatmap + VeloTrendChart
@@ -185,6 +194,9 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     standings.ts               # P11 web_standings + byDivision / wildCardRace / playoffPicture / clinchMarker
     recent-game.ts             # Today's Blue Jays helpers (HR hero, hardest contact, IP/K/H)
     field-geometry.ts          # Rogers Centre SVG paths (exports polar())
+    motion.ts                  # motion timing tokens (EASE_SOFT / DUR / STAGGER / SPRING_*)
+    ink-draw.ts                # inkify(): split rough.js strokes + stagger a pen draw-in
+    use-lingering-hover.ts     # chart hover state that lingers 120ms so tooltips glide, not blink
   messages/
     en.json                    # source of truth
     zh-TW.json                 # translation
@@ -261,6 +273,39 @@ Typography pairs two Eduardo Tunni faces, both loaded in `app/[locale]/layout.ts
 Graduate is an **all-caps slab display face with no true lowercase** — use it only for headings/labels (apply `uppercase`). Never put it on body prose, player names, or paragraph text (they'd render all-caps and tank readability), and never put a hand-drawn font into the calendar cells — 30+ wobbly cells become unreadable; the hand-drawn motif lives in the rough.js lines only.
 
 > Turbopack gotcha: after changing `@theme` in `globals.css`, custom color utilities may not regenerate. Stop dev, delete `web/.next`, restart.
+
+## Motion
+
+The site moves with **one rhythm**: every timing comes from `web/lib/motion.ts`
+(`EASE_SOFT` ease-out-quint, `DUR`, `STAGGER`, `SPRING_SOFT`, `SPRING_TOOLTIP`),
+mirrored in CSS as `--ease-soft`. Don't hand-tune durations in components.
+
+- **Hovers are 300ms, not 150ms.** `globals.css` overrides Tailwind's
+  `--default-transition-duration` / `--default-transition-timing-function`, so
+  every plain `transition-colors` is already soft — don't add `duration-150`.
+- **Only `ScorecardFrame variant="card"` lifts** (spring y/tilt + deeper shadow).
+  `panel` and `control` never move on hover — same affordance rule as above. The
+  card shadow lives in the motion `style` (as rgba, offsets first) so it can
+  interpolate; don't put a `shadow-[…]` class back on it.
+- **Ink draw-in**: `ScorecardFrame` / `ScheduleCalendar` run `inkify()` on
+  their rough.js output the first time they scroll into view. Redraws skip when
+  the size is unchanged — ResizeObserver's initial callback lands a frame after
+  the first draw and would otherwise wipe the animation.
+- **Chart marks** use CSS keyframes (`.ball-fly`, `.dot-pop`), not motion
+  components — there can be 1,500 of them. Their fill-mode must stay
+  **`backwards`**: `both`/`forwards` pins the final transform and kills the
+  `.chart-dot[data-hot]` hover scale. Charts hold marks paused (`.anim-paused`)
+  until `useInView` says they're visible.
+- **Tooltips** on the SVG charts go through `ChartTooltip` +
+  `useLingeringHover` — never `hovered && <div>` with `onMouseLeave → null`,
+  which blinks between neighbouring dots.
+- **Reduced motion**: `MotionConfig reducedMotion="user"` covers motion
+  components; the CSS keyframes have their own `prefers-reduced-motion` block;
+  Recharts and `CountUp` check `useReducedMotion()`. New animation must do the
+  same.
+- **No-JS**: `Reveal` SSRs `opacity: 0`. The `<noscript>` rule in the layout
+  forces `[data-reveal]` visible — anything new that SSRs hidden needs
+  `data-reveal` (or a matching noscript rule).
 
 ---
 

@@ -2,6 +2,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import RosterExplorer from "@/components/RosterExplorer";
 import ScorecardFrame from "@/components/ScorecardFrame";
+import SlidingPill from "@/components/motion/SlidingPill";
+import { Reveal } from "@/components/motion/Reveal";
 import { getRosterByMode, type RosterMode } from "@/lib/players";
 
 export const revalidate = 86400;
@@ -29,7 +31,7 @@ export default async function PlayersPage({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
-      <div className="flex items-baseline justify-between gap-4">
+      <Reveal className="flex items-baseline justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl uppercase tracking-wide text-navy">
             {t("title")}
@@ -54,19 +56,20 @@ export default async function PlayersPage({
                   href={m === "current" ? "/players" : "/players?mode=all-time"}
                   role="tab"
                   aria-selected={active}
-                  className={`rounded-none px-3 py-1 font-medium transition-colors ${
-                    active
-                      ? "bg-brick text-papaya"
-                      : "text-navy/65 hover:text-navy"
+                  className={`relative rounded-none px-3 py-1 font-medium transition-colors ${
+                    active ? "text-papaya" : "text-navy/65 hover:text-navy"
                   }`}
                 >
-                  {m === "current" ? t("tabCurrent") : t("tabAll")}
+                  {active && <SlidingPill group="roster-mode" />}
+                  <span className="relative z-10">
+                    {m === "current" ? t("tabCurrent") : t("tabAll")}
+                  </span>
                 </Link>
               );
             })}
           </div>
         </ScorecardFrame>
-      </div>
+      </Reveal>
 
       {players.length === 0 ? (
         <p className="mt-8 text-navy/55">{t("empty")}</p>

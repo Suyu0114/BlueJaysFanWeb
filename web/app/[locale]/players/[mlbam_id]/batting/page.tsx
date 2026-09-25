@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import SprayChartExplorer from "@/components/charts/SprayChartExplorer";
 import PlayerNav from "@/components/PlayerNav";
+import { Reveal } from "@/components/motion/Reveal";
 import { getBattedBalls } from "@/lib/batting";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
 
@@ -29,14 +30,14 @@ export default async function BattingPage({
 
   return (
     <div className="mx-auto max-w-3xl px-4 pt-4 pb-8">
-      <div>
+      <Reveal>
         <p className="text-sm text-navy/60">{player.name}</p>
         <h1 className="text-2xl font-semibold tracking-tight">
           {t("sprayChart")}
         </h1>
         <p className="mt-0.5 text-sm text-navy/60">{t("subtitle")}</p>
-        <PlayerNav mlbamId={batterId} active="batting" available={availability} />
-      </div>
+      </Reveal>
+      <PlayerNav mlbamId={batterId} active="batting" available={availability} />
 
       <div className="mt-4">
         {events.length === 0 ? (

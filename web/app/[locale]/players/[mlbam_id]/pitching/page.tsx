@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import PitchingExplorer from "@/components/charts/PitchingExplorer";
 import PlayerNav from "@/components/PlayerNav";
+import { Reveal } from "@/components/motion/Reveal";
 import { getPitches } from "@/lib/pitching";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
 
@@ -29,12 +30,12 @@ export default async function PitchingPage({
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
-      <div>
+      <Reveal>
         <p className="text-sm text-navy/60">{player.name}</p>
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="mt-0.5 text-sm text-navy/60">{t("subtitle")}</p>
-        <PlayerNav mlbamId={pitcherId} active="pitching" available={availability} />
-      </div>
+      </Reveal>
+      <PlayerNav mlbamId={pitcherId} active="pitching" available={availability} />
 
       <div className="mt-6">
         {pitches.length === 0 ? (

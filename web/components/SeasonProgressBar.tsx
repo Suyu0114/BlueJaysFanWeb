@@ -1,4 +1,7 @@
 import { getTranslations } from "next-intl/server";
+// Client-marked motion elements usable from this server component.
+import * as motion from "motion/react-client";
+import { EASE_SOFT } from "@/lib/motion";
 
 type Props = {
   current: number;          // current-season WAR
@@ -56,10 +59,14 @@ export default async function SeasonProgressBar({
           style={{ left: `${priorPct}%` }}
           aria-hidden
         />
-        {/* Current-WAR fill. */}
-        <div
-          className="absolute inset-y-0 left-0 rounded-full bg-brick"
+        {/* Current-WAR fill — grows from the left when it scrolls in. */}
+        <motion.div
+          className="absolute inset-y-0 left-0 origin-left rounded-full bg-brick"
           style={{ width: `${currentPct}%` }}
+          initial={{ scaleX: 0 }}
+          whileInView={{ scaleX: 1 }}
+          viewport={{ once: true, amount: 0.8 }}
+          transition={{ duration: 1.1, ease: EASE_SOFT, delay: 0.15 }}
         />
       </div>
 

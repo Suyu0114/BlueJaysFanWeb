@@ -6,6 +6,7 @@ import ArsenalTable from "@/components/charts/ArsenalTable";
 import PitchMovementChart from "@/components/charts/PitchMovementChart";
 import PitchZoneHeatmap from "@/components/charts/PitchZoneHeatmap";
 import VeloTrendChart from "@/components/charts/VeloTrendChart";
+import { Reveal } from "@/components/motion/Reveal";
 import {
   primaryFastball,
   veloTrend,
@@ -31,7 +32,7 @@ function Chip({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`rounded-full border px-3 py-0.5 text-xs font-medium transition-colors ${
+      className={`rounded-full border px-3 py-0.5 text-xs font-medium transition-[color,background-color,border-color,transform] active:scale-95 ${
         active
           ? "border-navy bg-navy text-papaya"
           : "border-steel/40 text-navy/70 hover:border-steel hover:text-navy"
@@ -226,26 +227,26 @@ export default function PitchingExplorer({
         </p>
       </div>
 
-      <section>
+      <Reveal as="section">
         <h2 className="mb-2 text-sm font-semibold text-navy">
           {t("arsenalTitle")}
         </h2>
         <ArsenalTable pitches={filtered} labels={arsenalLabels} />
         <p className="mt-2 text-xs text-navy/50">{t("arsenalStory")}</p>
         <p className="mt-0.5 text-xs text-navy/40">{t("xwobaConNote")}</p>
-      </section>
+      </Reveal>
 
       <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-start">
-        <section>
+        <Reveal as="section">
           <h2 className="mb-2 text-sm font-semibold text-navy">
             {t("movementTitle")}
           </h2>
           <PitchMovementChart pitches={filtered} labels={movementLabels} />
           <p className="mt-1 text-xs text-navy/50">{t("movementStory")}</p>
           <p className="mt-0.5 text-xs text-navy/40">{t("pitcherViewNote")}</p>
-        </section>
+        </Reveal>
 
-        <section>
+        <Reveal as="section" delay={0.12}>
           <h2 className="mb-2 text-sm font-semibold text-navy">
             {t("locationTitle")}
           </h2>
@@ -277,17 +278,17 @@ export default function PitchingExplorer({
           <p className="mt-1 max-w-[280px] text-xs text-navy/50">
             {t("locationStory")}
           </p>
-        </section>
+        </Reveal>
       </div>
 
       {trendPitch && trendPoints.length >= VELO_TREND_MIN_GAMES && (
-        <section>
+        <Reveal as="section">
           <h2 className="mb-2 text-sm font-semibold text-navy">
             {t("veloTrendTitle")} · {trendPitch}
           </h2>
           <VeloTrendChart data={trendPoints} pitchType={trendPitch} />
           <p className="mt-1 text-xs text-navy/50">{t("veloTrendStory")}</p>
-        </section>
+        </Reveal>
       )}
     </div>
   );

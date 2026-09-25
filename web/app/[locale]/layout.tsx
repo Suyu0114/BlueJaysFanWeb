@@ -6,6 +6,7 @@ import { setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { Header } from "@/components/Header";
 import { SketchDefs } from "@/components/SketchDefs";
+import MotionProvider from "@/components/motion/MotionProvider";
 import "../globals.css";
 
 // Body / UI / data face (Gabriela has a single 400 style — no Sans/Mono variants).
@@ -57,10 +58,17 @@ export default async function LocaleLayout({
       className={`${gabriela.variable} ${graduate.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-papaya text-navy">
+        {/* Reveal SSRs its hidden start state (opacity 0); without JS nothing
+            would ever animate it in, so force those elements visible. */}
+        <noscript>
+          <style>{`[data-reveal]{opacity:1!important;transform:none!important}.anim-paused *{animation:none!important}`}</style>
+        </noscript>
         <NextIntlClientProvider>
-          <SketchDefs />
-          <Header />
-          <main className="flex-1">{children}</main>
+          <MotionProvider>
+            <SketchDefs />
+            <Header />
+            <main className="flex-1">{children}</main>
+          </MotionProvider>
         </NextIntlClientProvider>
       </body>
     </html>

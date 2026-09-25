@@ -5,6 +5,7 @@ import {
   setRequestLocale,
 } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { Reveal } from "@/components/motion/Reveal";
 import {
   getGame,
   getGameBoxscore,
@@ -86,16 +87,20 @@ export default async function GameDetailPage({
 
       {hasBoxscore ? (
         <div className="mt-6 space-y-8">
-          <BattingTable
-            rows={box.batting}
-            title={t("battingTitle")}
-            playerLabel={t("player")}
-          />
-          <PitchingTable
-            rows={box.pitching}
-            title={t("pitchingTitle")}
-            playerLabel={t("player")}
-          />
+          <Reveal>
+            <BattingTable
+              rows={box.batting}
+              title={t("battingTitle")}
+              playerLabel={t("player")}
+            />
+          </Reveal>
+          <Reveal>
+            <PitchingTable
+              rows={box.pitching}
+              title={t("pitchingTitle")}
+              playerLabel={t("player")}
+            />
+          </Reveal>
         </div>
       ) : (
         <p className="mt-6 text-navy/60">{t("noBoxscore")}</p>

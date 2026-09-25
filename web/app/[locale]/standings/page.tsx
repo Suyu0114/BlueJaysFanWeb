@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import ScorecardFrame from "@/components/ScorecardFrame";
+import { Reveal } from "@/components/motion/Reveal";
 import StandingsTable from "@/components/StandingsTable";
 import StandingsTabs from "@/components/StandingsTabs";
 import WildCardTable from "@/components/WildCardTable";
@@ -52,10 +53,12 @@ export default async function StandingsPage({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
-      <h1 className="font-display text-2xl uppercase tracking-wide text-navy">
-        {t("title")}
-      </h1>
-      <p className="mt-1 text-sm text-navy/60">{t("subtitle", { season })}</p>
+      <Reveal>
+        <h1 className="font-display text-2xl uppercase tracking-wide text-navy">
+          {t("title")}
+        </h1>
+        <p className="mt-1 text-sm text-navy/60">{t("subtitle", { season })}</p>
+      </Reveal>
 
       {rows.length === 0 ? (
         <p className="mt-8 text-navy/55">{t("empty")}</p>
@@ -84,24 +87,22 @@ export default async function StandingsPage({
             }
           />
 
-          <ScorecardFrame
-            seedKey="standings-legend"
-            variant="control"
-            className="mt-8"
-          >
-            <div className="relative z-10 p-4 text-xs text-navy/70">
-              <p className="font-display uppercase tracking-wide text-navy">
-                {t("legendTitle")}
-              </p>
-              {/* Legend entries are prose, so they stay in the body face. */}
-              <ul className="mt-1 space-y-0.5">
-                <li>{t("legendZ")}</li>
-                <li>{t("legendY")}</li>
-                <li>{t("legendX")}</li>
-                <li>{t("legendE")}</li>
-              </ul>
-            </div>
-          </ScorecardFrame>
+          <Reveal className="mt-8">
+            <ScorecardFrame seedKey="standings-legend" variant="control">
+              <div className="relative z-10 p-4 text-xs text-navy/70">
+                <p className="font-display uppercase tracking-wide text-navy">
+                  {t("legendTitle")}
+                </p>
+                {/* Legend entries are prose, so they stay in the body face. */}
+                <ul className="mt-1 space-y-0.5">
+                  <li>{t("legendZ")}</li>
+                  <li>{t("legendY")}</li>
+                  <li>{t("legendX")}</li>
+                  <li>{t("legendE")}</li>
+                </ul>
+              </div>
+            </ScorecardFrame>
+          </Reveal>
         </>
       )}
     </div>

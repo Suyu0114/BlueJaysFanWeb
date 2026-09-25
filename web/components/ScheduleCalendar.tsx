@@ -2,8 +2,11 @@
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
+import { AnimatePresence, motion, useInView, type Variants } from "motion/react";
 import rough from "roughjs";
 import { Link } from "@/i18n/navigation";
+import { inkify } from "@/lib/ink-draw";
+import { DUR, EASE_SOFT } from "@/lib/motion";
 import type { ScheduleGame } from "@/lib/games";
 import { teamAbbr } from "@/lib/team-abbr";
 
@@ -19,6 +22,19 @@ const NAVY = "#003049";
 const STEEL = "#669bbc"; // "today" accent — deliberately not brick/grass (those mean loss/win)
 const PAPAYA = "#fdf0d5";
 const INK_FAINT = "rgba(0, 48, 73, 0.28)"; // faint navy inset rule on the parchment panel
+
+const SVGNS = "http://www.w3.org/2000/svg";
+
+// Month label slides in the direction of travel (custom = -1 prev / +1 next).
+const labelVariants: Variants = {
+  enter: (dir: number) => ({ x: dir * 24, opacity: 0 }),
+  center: { x: 0, opacity: 1, transition: { duration: DUR.enter, ease: EASE_SOFT } },
+  exit: (dir: number) => ({
+    x: dir * -24,
+    opacity: 0,
+    transition: { duration: DUR.exit, ease: EASE_SOFT },
+  }),
+};
 
 function pad2(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
@@ -85,6 +101,11 @@ export default function ScheduleCalendar({ games, highlightDate, season }: Props
   }, [highlightDate, monthsWithGames]);
 
   const [month, setMonth] = useState(initialMonth);
+  const [dir, setDir] = useState(0);
+  const goMonth = (step: -1 | 1) => {
+    setDir(step);
+    setMonth((m) => Math.min(maxMonth, Math.max(minMonth, m + step)));
+  };
 
   const minMonth = monthsWithGames[0] ?? month;
   const maxMonth = monthsWithGames[monthsWithGames.length - 1] ?? month;
@@ -113,6 +134,12 @@ export default function ScheduleCalendar({ games, highlightDate, season }: Props
   const panelRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const cellEls = useRef(new Map<string, HTMLDivElement>());
+  // Ink entrance (lib/ink-draw.ts): the frame sketches in once, when the panel
+  // first scrolls into view; the game-day boxes re-sketch on every month
+  // change. Resize redraws paint instantly.
+  const inView = useInView(panelRef, { once: true, amount: 0.15 });
+  const frameInkedRef = useRef(false);
+  const inkedMonthRef = useRef<number | null>(null);
 
   useLayoutEffect(() => {
     const panel = panelRef.current;
@@ -120,10 +147,19 @@ export default function ScheduleCalendar({ games, highlightDate, season }: Props
     if (!panel || !svg) return;
 
     let raf = 0;
+    // ResizeObserver fires once on observe() — a frame AFTER the first draw.
+    // Redrawing then would wipe the ink animation that draw just started, so
+    // only repaint when the size actually changed (month / highlight changes
+    // re-run this whole effect, which resets these).
+    let lastW = -1;
+    let lastH = -1;
     const draw = () => {
       const w = panel.clientWidth;
       const h = panel.clientHeight;
       if (w === 0 || h === 0) return;
+      if (w === lastW && h === lastH) return;
+      lastW = w;
+      lastH = h;
       svg.setAttribute("width", String(w));
       svg.setAttribute("height", String(h));
       svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
@@ -132,29 +168,30 @@ export default function ScheduleCalendar({ games, highlightDate, season }: Props
 
       // Double-line scorecard frame: navy outer + a faint navy inner rule.
       const inset = 5;
-      svg.appendChild(
-        rc.rectangle(inset, inset, w - 2 * inset, h - 2 * inset, {
-          stroke: NAVY,
-          strokeWidth: 2.5,
-          roughness: 1.4,
-          seed: 11,
-        }),
-      );
+      const outer = rc.rectangle(inset, inset, w - 2 * inset, h - 2 * inset, {
+        stroke: NAVY,
+        strokeWidth: 2.5,
+        roughness: 1.4,
+        seed: 11,
+      });
       const inset2 = inset + 4;
-      svg.appendChild(
-        rc.rectangle(inset2, inset2, w - 2 * inset2, h - 2 * inset2, {
-          stroke: INK_FAINT,
-          strokeWidth: 1,
-          roughness: 2,
-          seed: 12,
-        }),
-      );
+      const inner = rc.rectangle(inset2, inset2, w - 2 * inset2, h - 2 * inset2, {
+        stroke: INK_FAINT,
+        strokeWidth: 1,
+        roughness: 2,
+        seed: 12,
+      });
+      svg.appendChild(outer);
+      svg.appendChild(inner);
 
-      // Filled "stamp" behind each game day; highlight day gets a thicker brick edge.
-      for (const [date, el] of cellEls.current) {
+      // Filled "stamp" behind each game day; highlight day gets a thicker brick
+      // edge. Date order = grid reading order, which the ink stagger follows.
+      const boxes = document.createElementNS(SVGNS, "g");
+      const cells = [...cellEls.current].sort(([a], [b]) => (a < b ? -1 : 1));
+      for (const [date, el] of cells) {
         const isHi = date === highlightDate;
         const p = 2.5;
-        svg.appendChild(
+        boxes.appendChild(
           rc.rectangle(
             el.offsetLeft + p,
             el.offsetTop + p,
@@ -171,6 +208,26 @@ export default function ScheduleCalendar({ games, highlightDate, season }: Props
           ),
         );
       }
+      svg.appendChild(boxes);
+
+      if (!inView) {
+        svg.classList.add("ink-pending");
+        return;
+      }
+      svg.classList.remove("ink-pending");
+      let boxDelay = 0;
+      if (!frameInkedRef.current) {
+        inkify(outer, { step: 60 });
+        inkify(inner, { delay: 200, step: 60 });
+        frameInkedRef.current = true;
+        boxDelay = 350;
+      }
+      if (inkedMonthRef.current !== month) {
+        inkedMonthRef.current = month;
+        Array.from(boxes.children).forEach((box, k) =>
+          inkify(box, { delay: boxDelay + k * 25, step: 30, dur: 260 }),
+        );
+      }
     };
 
     const schedule = () => {
@@ -184,7 +241,7 @@ export default function ScheduleCalendar({ games, highlightDate, season }: Props
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [weeks, highlightDate, byDate]);
+  }, [weeks, month, highlightDate, byDate, inView]);
 
   return (
     <section className="mt-8">
@@ -195,19 +252,31 @@ export default function ScheduleCalendar({ games, highlightDate, season }: Props
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={() => setMonth((m) => Math.max(minMonth, m - 1))}
+            onClick={() => goMonth(-1)}
             disabled={month <= minMonth}
             aria-label={t("prevMonth")}
             className="rounded-md px-2 py-1 text-navy/70 transition-colors hover:bg-navy/10 disabled:opacity-30"
           >
             ‹
           </button>
-          <span className="min-w-[9rem] text-center font-display text-base uppercase tracking-wide text-navy">
-            {monthLabel}
+          <span className="relative min-w-[9rem] text-center font-display text-base uppercase tracking-wide text-navy">
+            <AnimatePresence mode="popLayout" initial={false} custom={dir}>
+              <motion.span
+                key={month}
+                custom={dir}
+                variants={labelVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                className="inline-block"
+              >
+                {monthLabel}
+              </motion.span>
+            </AnimatePresence>
           </span>
           <button
             type="button"
-            onClick={() => setMonth((m) => Math.min(maxMonth, m + 1))}
+            onClick={() => goMonth(1)}
             disabled={month >= maxMonth}
             aria-label={t("nextMonth")}
             className="rounded-md px-2 py-1 text-navy/70 transition-colors hover:bg-navy/10 disabled:opacity-30"
@@ -238,7 +307,10 @@ export default function ScheduleCalendar({ games, highlightDate, season }: Props
           ))}
         </div>
 
-        <div className="grid grid-cols-7">
+        {/* Keyed by month so the day contents fade in on a month change. Opacity
+            only: the ink boxes behind are measured at the cells' final
+            positions, so any slide would pull text and boxes apart. */}
+        <div key={month} className="fade-in grid grid-cols-7">
           {weeks.flat().map((date, i) => {
             if (date === null) {
               return <div key={i} className="min-h-[76px]" />;
@@ -310,11 +382,11 @@ function GameCell({
       <Link
         href={`/games/${g.game_pk}`}
         title={title}
-        className="block rounded leading-tight transition-colors hover:bg-navy/5"
+        className="group block rounded leading-tight transition-colors hover:bg-navy/5"
       >
         <div className="font-mono text-xs font-semibold text-navy">{head}</div>
         <span
-          className={`mt-0.5 inline-block rounded-sm px-1 py-px font-mono text-[11px] font-bold tabular-nums text-papaya ${
+          className={`mt-0.5 inline-block rounded-sm px-1 py-px font-mono text-[11px] font-bold tabular-nums text-papaya transition-transform group-hover:-translate-y-px group-hover:scale-110 ${
             won ? "bg-grass" : "bg-brick"
           }`}
         >

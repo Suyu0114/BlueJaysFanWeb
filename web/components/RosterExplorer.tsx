@@ -3,8 +3,11 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import { AnimatePresence, motion } from "motion/react";
 import { Link } from "@/i18n/navigation";
 import ScorecardFrame from "@/components/ScorecardFrame";
+import SlidingPill from "@/components/motion/SlidingPill";
+import { DUR, EASE_SOFT, SPRING_SOFT, STAGGER } from "@/lib/motion";
 import type { RosterMode, RosterPlayer } from "@/lib/players";
 
 type FilterKind = "all" | "pitchers" | "batters";
@@ -55,17 +58,20 @@ export default function RosterExplorer({
                 role="tab"
                 aria-selected={active}
                 onClick={() => setFilter(f)}
-                className={`rounded-none px-3 py-1 font-medium transition-colors ${
-                  active ? "bg-brick text-papaya" : "text-navy/65 hover:text-navy"
+                className={`relative rounded-none px-3 py-1 font-medium transition-colors ${
+                  active ? "text-papaya" : "text-navy/65 hover:text-navy"
                 }`}
               >
-                {t(
-                  f === "all"
-                    ? "filterAll"
-                    : f === "pitchers"
-                      ? "filterPitchers"
-                      : "filterBatters",
-                )}
+                {active && <SlidingPill group="roster-filter" />}
+                <span className="relative z-10">
+                  {t(
+                    f === "all"
+                      ? "filterAll"
+                      : f === "pitchers"
+                        ? "filterPitchers"
+                        : "filterBatters",
+                  )}
+                </span>
               </button>
             );
           })}
@@ -145,41 +151,59 @@ function CardGrid({
   players: RosterPlayer[];
   t: ReturnType<typeof useTranslations>;
 }) {
+  // Each card reveals as it scrolls in (staggered across its row, so a long
+  // all-time list fills in as you scroll rather than all at once). On a filter
+  // change, `layout` slides the surviving cards to their new grid slots while
+  // popLayout lets the filtered-out ones shrink away without holding space.
   return (
-    <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-      {players.map((p) => (
-        <li key={p.mlbam_id}>
-          <ScorecardFrame seedKey={String(p.mlbam_id)} className="h-full">
-            <Link
-              href={`/players/${p.mlbam_id}`}
-              className="relative z-10 block h-full p-4"
-            >
-              {p.headshot_url && (
-                <Image
-                  src={p.headshot_url}
-                  alt={p.name}
-                  width={120}
-                  height={120}
-                  unoptimized
-                  className="mx-auto rounded-full bg-papaya ring-1 ring-navy/15"
-                />
-              )}
-              <div className="mt-3 text-center">
-                <div className="font-medium text-navy">{p.name}</div>
-                <div className="mt-1 text-xs text-navy/60">
-                  {p.position}
-                  {p.bats && p.throws && (
-                    <>
-                      {" · "}
-                      {t("bats")} {p.bats} / {t("throws")} {p.throws}
-                    </>
-                  )}
+    <ul className="relative grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <AnimatePresence mode="popLayout">
+        {players.map((p, i) => (
+          <motion.li
+            key={p.mlbam_id}
+            data-reveal
+            layout
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            exit={{ opacity: 0, scale: 0.9, transition: { duration: DUR.exit, ease: EASE_SOFT } }}
+            transition={{
+              layout: SPRING_SOFT,
+              default: { duration: DUR.enter, ease: EASE_SOFT, delay: (i % 4) * STAGGER },
+            }}
+          >
+            <ScorecardFrame seedKey={String(p.mlbam_id)} className="h-full">
+              <Link
+                href={`/players/${p.mlbam_id}`}
+                className="relative z-10 block h-full p-4"
+              >
+                {p.headshot_url && (
+                  <Image
+                    src={p.headshot_url}
+                    alt={p.name}
+                    width={120}
+                    height={120}
+                    unoptimized
+                    className="mx-auto rounded-full bg-papaya ring-1 ring-navy/15 transition-transform duration-500 group-hover:-rotate-2 group-hover:scale-105"
+                  />
+                )}
+                <div className="mt-3 text-center">
+                  <div className="font-medium text-navy">{p.name}</div>
+                  <div className="mt-1 text-xs text-navy/60">
+                    {p.position}
+                    {p.bats && p.throws && (
+                      <>
+                        {" · "}
+                        {t("bats")} {p.bats} / {t("throws")} {p.throws}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </Link>
-          </ScorecardFrame>
-        </li>
-      ))}
+              </Link>
+            </ScorecardFrame>
+          </motion.li>
+        ))}
+      </AnimatePresence>
     </ul>
   );
 }

@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef } from "react";
 import { scaleLinear } from "d3-scale";
+import { useInView } from "motion/react";
+import ChartTooltip from "@/components/charts/ChartTooltip";
+import { useLingeringHover } from "@/lib/use-lingering-hover";
 import {
   CATEGORY_COLOR,
   CATEGORY_Z,
@@ -64,7 +67,9 @@ export default function ExitVeloChart({
   width?: number;
 }) {
   const height = Math.round(width * 0.72);
-  const [hovered, setHovered] = useState<PlacedPoint | null>(null);
+  const { hovered, last, enter, leave } = useLingeringHover<PlacedPoint>();
+  const svgRef = useRef<SVGSVGElement>(null);
+  const inView = useInView(svgRef, { once: true, amount: 0.3 });
 
   const { placed, xScale, yScale, xTicks, yTicks } = useMemo(() => {
     // Only points with BOTH EV and LA can be positioned.
@@ -134,8 +139,9 @@ export default function ExitVeloChart({
         style={{ aspectRatio: `${width} / ${height}` }}
       >
         <svg
+          ref={svgRef}
           viewBox={`0 0 ${width} ${height}`}
-          className="h-full w-full"
+          className={`h-full w-full ${inView ? "" : "anim-paused"}`}
           preserveAspectRatio="xMidYMid meet"
           role="img"
           aria-label="Exit velocity vs launch angle scatter plot"
@@ -266,10 +272,12 @@ export default function ExitVeloChart({
             {labels.axisEV}
           </text>
 
-          {/* points */}
-          {placed.map((p) => (
+          {/* points — pop in staggered across ~0.6s (.dot-pop) */}
+          {placed.map((p, i) => (
             <circle
               key={p.ev.id}
+              className="chart-dot dot-pop cursor-pointer"
+              data-hot={hovered === p || undefined}
               cx={p.cx}
               cy={p.cy}
               r={4}
@@ -277,48 +285,47 @@ export default function ExitVeloChart({
               fillOpacity={p.category === "out" ? 0.3 : 0.85}
               stroke={p.category === "hr" ? "var(--color-papaya)" : "none"}
               strokeWidth={p.category === "hr" ? 1 : 0}
-              onMouseEnter={() => setHovered(p)}
-              onMouseLeave={() => setHovered(null)}
-              style={{ cursor: "pointer" }}
+              onMouseEnter={() => enter(p)}
+              onMouseLeave={leave}
+              style={{
+                animationDelay: `${Math.round((i / Math.max(1, placed.length)) * 600)}ms`,
+              }}
             />
           ))}
         </svg>
 
-        {hovered && (
-          <div
-            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-md border border-navy/20 bg-white px-3 py-2 text-xs shadow-md"
-            style={{
-              left: `${(hovered.cx / width) * 100}%`,
-              top: `${(hovered.cy / height) * 100}%`,
-              marginTop: -8,
-            }}
+        {last && (
+          <ChartTooltip
+            open={hovered !== null}
+            left={(last.cx / width) * 100}
+            top={(last.cy / height) * 100}
           >
             <div className="font-medium text-navy">
-              {resultLabel(hovered.ev.event)}
+              {resultLabel(last.ev.event)}
             </div>
             <dl className="mt-1 grid grid-cols-[auto_auto] gap-x-2 gap-y-0.5 text-navy/70">
               <dt>{labels.date}</dt>
-              <dd>{hovered.ev.game_date}</dd>
-              {hovered.ev.pitch_type && (
+              <dd>{last.ev.game_date}</dd>
+              {last.ev.pitch_type && (
                 <>
                   <dt>{labels.pitch}</dt>
-                  <dd>{hovered.ev.pitch_type}</dd>
+                  <dd>{last.ev.pitch_type}</dd>
                 </>
               )}
-              {hovered.ev.launch_speed != null && (
+              {last.ev.launch_speed != null && (
                 <>
                   <dt>{labels.exitVelo}</dt>
-                  <dd>{hovered.ev.launch_speed.toFixed(1)} mph</dd>
+                  <dd>{last.ev.launch_speed.toFixed(1)} mph</dd>
                 </>
               )}
-              {hovered.ev.launch_angle != null && (
+              {last.ev.launch_angle != null && (
                 <>
                   <dt>{labels.launchAngle}</dt>
-                  <dd>{Math.round(hovered.ev.launch_angle)}&deg;</dd>
+                  <dd>{Math.round(last.ev.launch_angle)}&deg;</dd>
                 </>
               )}
             </dl>
-          </div>
+          </ChartTooltip>
         )}
       </div>
 

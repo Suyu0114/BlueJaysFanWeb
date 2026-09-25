@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import SlidingPill from "./motion/SlidingPill";
 import type { PlayerAvailability } from "@/lib/players";
 
 export type PlayerSection = "overview" | "batting" | "pitching" | "fielding" | "bazi";
@@ -40,12 +41,18 @@ export default async function PlayerNav({
             key={item.key}
             href={item.href}
             aria-current={isActive ? "page" : undefined}
-            className={`-mb-px border-b-2 px-3 py-1.5 font-medium transition-colors ${
-              isActive
-                ? "border-brick text-navy"
-                : "border-transparent text-navy/55 hover:text-navy"
+            className={`relative -mb-px border-b-2 border-transparent px-3 py-1.5 font-medium transition-colors ${
+              isActive ? "text-navy" : "text-navy/55 hover:text-navy"
             }`}
           >
+            {/* The brick underline is a shared-layout element: moving between
+                sub-pages slides it from the old tab to the new one. */}
+            {isActive && (
+              <SlidingPill
+                group="player-nav-underline"
+                className="inset-x-0 -bottom-0.5 h-0.5 bg-brick"
+              />
+            )}
             {item.label}
           </Link>
         );

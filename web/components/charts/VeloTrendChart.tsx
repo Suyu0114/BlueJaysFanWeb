@@ -5,6 +5,7 @@
 // only (release-frame, plate_alignment-agnostic). The explorer computes the
 // points (lib/pitch-arsenal.ts::veloTrend) and hides this below 5 games.
 
+import { useReducedMotion } from "motion/react";
 import {
   Line,
   LineChart,
@@ -13,6 +14,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import WhenInView from "@/components/motion/WhenInView";
 import type { VeloTrendPoint } from "@/lib/pitch-arsenal";
 import { colorFor } from "@/lib/pitch-colors";
 
@@ -32,10 +34,12 @@ export default function VeloTrendChart({
   data: VeloTrendPoint[];
   pitchType: string;
 }) {
+  const reduce = useReducedMotion();
   if (data.length === 0) return null;
 
   return (
-    <div className="h-[140px] w-full">
+    // Mounted on scroll-in so the line visibly draws left → right.
+    <WhenInView className="h-[140px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 6, right: 6, bottom: 0, left: 0 }}>
           <XAxis
@@ -59,6 +63,8 @@ export default function VeloTrendChart({
           />
           <Tooltip
             cursor={{ stroke: "var(--color-steel)", strokeWidth: 1 }}
+            animationDuration={350}
+            animationEasing="ease-out"
             contentStyle={{
               borderRadius: 8,
               border: "1px solid var(--color-navy)",
@@ -77,10 +83,13 @@ export default function VeloTrendChart({
             stroke={colorFor(pitchType)}
             strokeWidth={2}
             dot={{ r: 2.5, fill: colorFor(pitchType), strokeWidth: 0 }}
-            isAnimationActive={false}
+            activeDot={{ r: 4.5, fill: colorFor(pitchType), stroke: "var(--color-papaya)", strokeWidth: 2 }}
+            isAnimationActive={!reduce}
+            animationDuration={900}
+            animationEasing="ease-out"
           />
         </LineChart>
       </ResponsiveContainer>
-    </div>
+    </WhenInView>
   );
 }

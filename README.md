@@ -39,6 +39,7 @@
 - **Frontend:** Next.js 16 (App Router) + TypeScript + Tailwind + shadcn/ui
 - **i18n:** `next-intl` — default `en`, optional `zh-TW`
 - **Charts:** D3.js (spray / pitch zone / pitch movement / fielding) + Recharts (WAR breakdown diverging stacked bar, rolling OPS / ERA sparklines, velocity trend) + rough.js (hand-drawn schedule calendar)
+- **Motion:** `motion` (framer-motion) — scroll reveals, card hover springs, sliding toggle highlights, tab/panel crossfades, chart tooltips that glide between marks; CSS keyframes for the rough.js "ink" draw-in and chart mark entrances. Honours `prefers-reduced-motion`.
 - **Database:** Supabase Postgres
 - **ETL:** Python + pybaseball, scheduled via GitHub Actions (daily)
 - **Deploy:** Vercel
@@ -70,6 +71,7 @@
 ├── web/                          # Next.js app
 │   ├── app/[locale]/
 │   │   ├── page.tsx              # Home: standings + schedule calendar + "Today's Blue Jays"
+│   │   ├── template.tsx          # page-to-page fade (skipped on first load)
 │   │   ├── standings/            # Divisions + wild card + clinch legend
 │   │   ├── games/[gamePk]/       # Per-game box score detail
 │   │   └── players/
@@ -88,13 +90,16 @@
 │   │   ├── StandingsTabs.tsx    # AL / NL / Wild Card view switcher (client)
 │   │   ├── TeamLogo.tsx          # recoloured cap logo + TeamCell
 │   │   ├── SketchDefs.tsx        # shared SVG #sketch filter (hand-drawn wobble)
+│   │   ├── motion/               # MotionProvider, Reveal/RevealGroup/RevealItem, CountUp,
+│   │   │                         # SlidingPill, WhenInView
 │   │   └── charts/               # SprayChart, ArsenalTable, PitchMovementChart, PitchZoneHeatmap,
-│   │                             # FieldingDiagram, WarBreakdown, ExitVeloChart,
+│   │                             # FieldingDiagram, WarBreakdown, ExitVeloChart, ChartTooltip,
 │   │                             # RollingOpsSparkline, RollingEraSparkline, VeloTrendChart
 │   ├── lib/                      # db, players, batting/pitching/fielding, season-stats,
 │   │                             # recent-game, field-geometry, games, team-abbr,
 │   │                             # batter-game-log, batting-form, exit-velo-stats,
-│   │                             # pitcher-game-log, pitching-form, pitch-arsenal, pitch-colors
+│   │                             # pitcher-game-log, pitching-form, pitch-arsenal, pitch-colors,
+│   │                             # motion (timing tokens), ink-draw, use-lingering-hover
 │   └── messages/{en,zh-TW}.json
 ├── .github/workflows/etl.yml     # two-job cron: ~09:00 ET full refresh + ~11:30 PM ET finals
 ├── ETL_update_flow.md            # backfill + manual re-run steps

@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import SprayChart, { type BattedBallEvent } from "@/components/charts/SprayChart";
 import ExitVeloChart from "@/components/charts/ExitVeloChart";
 import { computeExitVeloStats } from "@/lib/exit-velo-stats";
+import { Reveal } from "@/components/motion/Reveal";
 
 type Outcome = "all" | "hit" | "xbh" | "hr";
 type Hand = "all" | "L" | "R";
@@ -41,7 +42,7 @@ function Chip({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`rounded-full border px-3 py-0.5 text-xs font-medium transition-colors ${
+      className={`rounded-full border px-3 py-0.5 text-xs font-medium transition-[color,background-color,border-color,transform] active:scale-95 ${
         active
           ? "border-navy bg-navy text-papaya"
           : "border-steel/40 text-navy/70 hover:border-steel hover:text-navy"
@@ -254,7 +255,7 @@ export default function SprayChartExplorer({
         <SprayChart events={filtered} labels={labels} />
       </div>
 
-      <section className="border-t border-navy/10 pt-4">
+      <Reveal as="section" className="border-t border-navy/10 pt-4">
         <h2 className="text-lg font-semibold tracking-tight text-navy">
           {t("exitVeloTitle")}
         </h2>
@@ -275,7 +276,7 @@ export default function SprayChartExplorer({
         <div className="mt-3">
           <ExitVeloChart events={filtered} labels={evLabels} />
         </div>
-      </section>
+      </Reveal>
     </div>
   );
 }
