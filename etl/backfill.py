@@ -17,6 +17,10 @@ Order matters per season:
   6. pull_fielding       -> season-aggregate OAA/FRV per position
   7. pull_season_stats   -> OPS/wRC+/ERA/FIP/WAR + Value components (MLB Stats API)
   8. pull_boxscore       -> web_player_game_stats for every final game
+
+Jays seasons only. A roster's seasons with OTHER clubs (P12) are a separate
+one-shot: pull_player_splits.py, then pull_statcast / pull_pitcher with
+--cohort-season (see ETL_update_flow.md, Step 4).
 """
 
 from __future__ import annotations

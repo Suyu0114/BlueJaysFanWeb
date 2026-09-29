@@ -10,9 +10,9 @@ the columns that **don't** exist so nobody assumes them.
 > update this file in the same change.** To re-verify, dump the columns for every
 > table below and diff — the verification recipe is at the bottom.
 >
-> **Verified against live DB: 2026-09-06** (migrations `001`–`012` applied;
+> **Verified against live DB: 2026-09-29** (migrations `001`–`014` applied;
 > `web_player_season_stats` at 32 columns, `web_statcast_events` at 29,
-> `web_standings` at 38).
+> `web_standings` at 38, `web_games` at 17, `web_player_team_season_stats` at 37).
 >
 > This Supabase project is **shared** with other projects, so every table here is
 > prefixed `web_`. See CLAUDE.md → "Supabase tables are shared — prefix everything
@@ -20,18 +20,19 @@ the columns that **don't** exist so nobody assumes them.
 
 ---
 
-## Table index (live row counts @ 2026-06-03)
+## Table index (live row counts @ 2026-09-29)
 
 | Table | Rows | Grain | Source |
 |---|---:|---|---|
-| [`web_players`](#web_players) | 1,576 | one row per MLBAM player | MLB Stats API roster + bio |
-| [`web_statcast_events`](#web_statcast_events) | 132,502 | one row per pitch | Baseball Savant (Statcast) |
-| [`web_player_season_stats`](#web_player_season_stats) | 189 | one row per (player, season) | MLB Stats API `season` + `sabermetrics` (FanGraphs-licensed); nightly |
-| [`web_player_seasons`](#web_player_seasons) | 157 | one row per (player, season, team) | derived during ETL |
-| [`web_fielding_frv`](#web_fielding_frv) | 1,570 | one row per (player, season, position) | Baseball Savant OAA leaderboard |
+| [`web_players`](#web_players) | 1,828 | one row per MLBAM player | MLB Stats API roster + bio |
+| [`web_statcast_events`](#web_statcast_events) | 235,474 | one row per pitch | Baseball Savant (Statcast) |
+| [`web_player_season_stats`](#web_player_season_stats) | 178 | one row per (player, season) — **Jays only** | MLB Stats API `season` + `sabermetrics` (FanGraphs-licensed); nightly |
+| [`web_player_team_season_stats`](#web_player_team_season_stats) | 324 | one row per (player, season, club) + season total (`team_id = 0`) — **every club** | MLB Stats API `/people/{id}/stats`; history one-shot + nightly (P12) |
+| [`web_player_seasons`](#web_player_seasons) | 178 | one row per (player, season, team) | derived during ETL |
+| [`web_fielding_frv`](#web_fielding_frv) | 1,808 | one row per (player, season, position) | Baseball Savant OAA leaderboard |
 | [`web_id_map`](#web_id_map) | 0 | one row per MLBAM id | Chadwick register (lazy cache) |
-| [`web_games`](#web_games) | 342 | one row per game_pk | MLB Stats API schedule |
-| [`web_player_game_stats`](#web_player_game_stats) | 984 | one row per (game, player, stat group) | MLB Stats API boxscore |
+| [`web_games`](#web_games) | 504 | one row per game_pk | MLB Stats API schedule |
+| [`web_player_game_stats`](#web_player_game_stats) | 7,716 | one row per (game, player, stat group) | MLB Stats API boxscore |
 | [`web_standings`](#web_standings) | 90 | one row per (team, season) — snapshot | MLB Stats API standings |
 
 ---
@@ -58,7 +59,7 @@ and is genuinely absent:
 
 **Not just Blue Jays.** `web_statcast_events.batter_id` and `.pitcher_id` are FKs
 into this table, so **every opponent batter/pitcher a Jay has faced is also here**
-— that's why it holds ~1,576 rows, not ~26. To identify actual Jays use
+— that's why it holds ~1,800 rows, not ~26. To identify actual Jays use
 [`web_player_seasons`](#web_player_seasons) / `is_active_26`, not membership in this table.
 
 | Column | Type | Null | Meaning |
@@ -83,7 +84,7 @@ detail: `pfx_x`/`pfx_z`/`release_extension`/`estimated_woba`/`balls`/`strikes`).
 Writer: [`etl/db.py`](../etl/db.py) `upsert_statcast_events`. Conflict key:
 `(game_pk, batter_id, pitcher_id, at_bat_number, pitch_number)`.*
 
-The big one (~132k rows). One row per pitch. **The writer inserts a hardcoded
+The big one (~235k rows). One row per pitch. **The writer inserts a hardcoded
 column list** (`STATCAST_COLUMNS`, [etl/db.py:245-256](../etl/db.py)) — it does
 **not** take the df∩table intersection, so a column added to the table is *not*
 written until that list is also updated.
@@ -99,7 +100,7 @@ written until that list is also updated.
 | `at_bat_number` | int | NO | Part of the unique key. |
 | `pitch_number` | int | NO | Part of the unique key. |
 | `event` | text | yes | At-bat outcome (`single` / `home_run` / `field_out` / …); null on non-terminal pitches. |
-| `description` | text | yes | Per-pitch result (`called_strike` / `ball` / `hit_into_play` / …). |
+| `description` | text | yes | Per-pitch result (`called_strike` / `ball` / `hit_into_play` / …). Includes pitch-clock `automatic_ball` / `automatic_strike` rows, which are **not thrown pitches** — exclude them when counting pitches (they are exactly the gap to the API's `numberOfPitches`). |
 | `pitch_type` | text | yes | `FF` / `SL` / `CH` / … |
 | `release_speed` | numeric | yes | mph. |
 | `spin_rate` | numeric | yes | rpm. |
@@ -134,7 +135,11 @@ paid membership lapsed. The `sabermetrics` block is FanGraphs data licensed to
 MLB, so `war` / `wrc_plus` / `fip` / the `war_*` Value components are the same
 numbers the CSVs carried (verified vs the 2025 export: WAR ±0.05, the rest within
 rounding). Refreshed for the current season by the ~09:00 ET cron. Rows are
-**team-scoped** (a traded player's row covers his Blue Jays games only). The
+**team-scoped** (a traded player's row covers his Blue Jays games only; his line
+with other clubs is in [`web_player_team_season_stats`](#web_player_team_season_stats)).
+The team leaderboard only **enumerates** players — each player's numbers come from
+his own `/people/{id}/stats` split for Toronto, because the leaderboard's
+sabermetrics block can lag (Known gaps #7). The
 `war_*` block and the basic line (`avg`…`pa`) are batter-only; the pitcher line
 (`w`…`bb_pct`) is pitcher-only. Upsert is `coalesce` per column — a NULL from the
 API never erases a stored value, and rows are **never deleted** (see Known gaps #5).
@@ -176,6 +181,46 @@ API never erases a stored value, and rows are **never deleted** (see Known gaps 
 
 ---
 
+## `web_player_team_season_stats`
+*Migration: `014` (P12). Writer: [`etl/pull_player_splits.py`](../etl/pull_player_splits.py)
+(mapping shared with `pull_season_stats.py` via [`etl/season_line.py`](../etl/season_line.py)).
+Conflict key: `(mlbam_id, season, team_id)`.*
+
+**Full-MLB season lines, every club** (P12 D13/D14). Cohort = the **2026
+`fullSeason` roster** (traded in *and* out, 64 players), seasons **2024–2026** —
+including seasons spent entirely with other clubs (Dylan Cease 2025 = SD). Source:
+`/people/{id}/stats?stats=season,sabermetrics&group=hitting,pitching` (one split per
+club + a team-less total) and `stats=gameLog` (games + first/last date per club).
+Seasons with no MLB line (Okamoto before 2026 = NPB) have **no rows**. Nightly for
+the current season (`--cohort-season $SEASON --season $SEASON`); the 2024/2025
+history is a one-shot (`ETL_update_flow.md`).
+
+- **`team_id = 0` is the MLB season total and is always written** (copied from the
+  only split for a one-club season). Read `team_id = 0` for "his season"; never sum
+  the club rows yourself. Σ club `pa` / `g` = the total (M0 check).
+- **`team_id = 141` rows equal `web_player_season_stats`** (same API split, same
+  mapping) — that table stays the Jays-only source for the existing pages.
+- Stat columns have the **same names, units and caveats** as
+  [`web_player_season_stats`](#web_player_season_stats) (`ip` is baseball notation,
+  `k_pct`/`bb_pct` are pitcher SO/BF, BB/BF raw fractions, `war_fielding` = `rar` −
+  the other five). No `wpa`. Coalesce upsert, never deleted.
+
+| Column | Type | Null | Meaning |
+|---|---|---|---|
+| `mlbam_id` | bigint | NO | **PK** part. FK → `web_players`. |
+| `season` | int | NO | **PK** part. |
+| `team_id` | int | NO | **PK** part. MLB club id (141 = Jays); **`0` = season total**. |
+| `g` | numeric | yes | Games (distinct gamePks in the game log; a two-way day counts once). |
+| `first_game` `last_game` | date | yes | First / last game with that club — orders a traded player's clubs (`TOR → HOU`). On `team_id = 0`: the season's first / last game. |
+| `ops` `wrc_plus` `war` `war_batting` `war_baserunning` `war_fielding` `war_positional` `war_league` `war_replacement` `rar` `avg` `obp` `slg` `hr` `rbi` `sb` `pa` | numeric | yes | Batting line — as in `web_player_season_stats` (NULL when 0 PA). `war` is batting + pitching (two-way sum). |
+| `bat_k_pct` `bat_bb_pct` | numeric | yes | Batter K% / BB% = SO / PA, BB / PA, raw fractions. Batter-only (the pitcher `k_pct` is per BF). |
+| `era` `fip` `k_per_9` `w` `l` `sv` `gs` `ip` `whip` `k_pct` `bb_pct` | numeric | yes | Pitching line — as in `web_player_season_stats`. |
+| `updated_at` | timestamptz | NO | default `now()`. |
+
+Index: `idx_web_player_team_season_stats_season (season, team_id)`.
+
+---
+
 ## `web_player_seasons`
 *Migration: `003`. Writer: [`etl/db.py`](../etl/db.py) `upsert_player_seasons`.
 Conflict key: `(mlbam_id, season, team_id)`.*
@@ -183,6 +228,11 @@ Conflict key: `(mlbam_id, season, team_id)`.*
 Per-season participation. Drives (a) which years to query during backfill /
 nightly refresh and (b) which of the Batting/Pitching/Fielding subpages to render
 on the player overview. The boolean upserts are **OR-merged** (once true, stays true).
+
+**Jays-only (P12 D15)** — every row is `team_id = 141`, despite the column. A
+player's seasons with other clubs are **not** written here (it drives the roster,
+`getPlayerAvailability` and the Statcast pull lists); read other-club membership
+from [`web_player_team_season_stats`](#web_player_team_season_stats).
 
 | Column | Type | Null | Meaning |
 |---|---|---|---|
@@ -245,7 +295,10 @@ it's a lazy cache, populated only on a lookup miss.
 `pull_schedule.py`). Conflict key: `(game_pk)`.*
 
 Blue Jays schedule + results — the calendar source. **Doubleheaders → two rows**
-(distinct `game_pk`, same `game_date`, different `game_number`).
+(distinct `game_pk`, same `game_date`, different `game_number`). **Jays games only**
+(P11: never widen it). Seasons 2024–2026 (2024 added in P12 M0 so its box scores
+exist); 2025 = 162 regular + 18 postseason — **filter `game_type = 'R'`** for the
+regular-season record.
 
 | Column | Type | Null | Meaning |
 |---|---|---|---|
@@ -265,6 +318,7 @@ Blue Jays schedule + results — the calendar source. **Doubleheaders → two ro
 | `result` | char(1) | yes | `W` / `L` / null (derived on final). |
 | `venue` | text | yes | |
 | `updated_at` | timestamptz | NO | default `now()`. |
+| `game_type` | char(1) | yes | `R` regular season, `F`/`D`/`L`/`W` postseason rounds (`013`). pull_schedule keeps only these five. Index `(season, game_type)`. |
 
 ---
 
@@ -272,7 +326,10 @@ Blue Jays schedule + results — the calendar source. **Doubleheaders → two ro
 *Migration: `007`. Writer: [`etl/db.py`](../etl/db.py) `upsert_player_game_stats`
 (built by `pull_boxscore.py`). Conflict key: `(game_pk, mlbam_id, stat_group)`.*
 
-Per-game box-score lines. **One row per (game, player, stat group)** — a two-way
+Per-game box-score lines for **the Jays' side only** (2024–2026, every final
+incl. the 2025 postseason). Because only Toronto's players are stored, a row here
+**defines "as a Blue Jay"** for Statcast scoping (invariant 7).
+**One row per (game, player, stat group)** — a two-way
 player gets two rows (`batting` + `pitching`). Hitting columns are NULL on
 pitching rows and vice-versa (the writer fills absent columns with NULL). The FK
 on `mlbam_id` means an unknown call-up must be inserted into `web_players` first.
@@ -382,6 +439,16 @@ Indexes: `idx_web_standings_div (season, division_id, division_rank)`,
 6. **Statcast writer is a hardcoded column list.** Adding a column to
    `web_statcast_events` does nothing until `STATCAST_COLUMNS` in
    [etl/db.py](../etl/db.py) is also extended.
+7. **Statcast holds non-Jays games; "as a Blue Jay" = box-score membership.**
+   Statcast is pulled **by player id**, so a row can be from any club: a deadline
+   departure's games with his new club, and (P12) the 2026 roster's whole
+   2024/2025 seasons elsewhere. `game_pk ∈ web_games` is **not** the test — Varsho
+   as an Astro faced Toronto 2026-08-03→05, inside Jays games. Use
+   `exists (select 1 from web_player_game_stats s where s.game_pk = e.game_pk and
+   s.mlbam_id = e.batter_id)` (or `e.pitcher_id` from the pitcher's side). The
+   existing Batting / Pitching pages show **all** rows (club-labelled seasons, P12 D16).
+8. **`web_player_seasons` and `web_player_season_stats` are Jays-only;**
+   `web_player_team_season_stats` is the all-clubs table (P12 D14/D15).
 
 ---
 
@@ -413,6 +480,19 @@ Indexes: `idx_web_standings_div (season, division_id, division_rank)`,
    they survived; `pickLatest` then shows those players' 2025 line labelled 2026.
    Identify with `season = 2026 and updated_at::date = '2026-06-05' and not exists
    (web_player_seasons row for 2026)` → delete.
+6. **2026 Statcast detail hole — RESOLVED 2026-09-29.** 15,824 rows dated
+   2026-07-08 → 2026-08-30 had NULL `balls`/`strikes`/`pfx_*`/`release_extension`/
+   `estimated_woba`: the P10 re-backfill ran locally ~07-07 but the P10 ETL code was
+   only pushed 09-06, so the cron inserted rows with the pre-P10 column list in
+   between. Fixed by a full-season re-pull of every 2026 Jay (P12 M0), which also
+   filled mid-season arrivals' pre-trade 2026 games.
+7. **Team leaderboard sabermetrics can lag — RESOLVED 2026-09-29.** Right after the
+   2026 season, `/stats?teamId=141`'s `sabermetrics` block (FIP / WAR / wRC+ …) was
+   computed from stale counts for some players (Scherzer FIP 5.43 vs 5.11 on
+   `/people` and on the league leaderboard; implied FIP constant 3.11–3.43 vs a
+   uniform 3.101). `fetch_team_season_stats` now takes every player's numbers from
+   his `/people/{id}/stats` Toronto split and uses the leaderboard only to enumerate.
+   Settled seasons agree across all three sources.
 
 ---
 
@@ -430,7 +510,8 @@ for line in Path(".env").read_text().splitlines():
     if m: os.environ["DATABASE_URL"] = m.group(1).strip().strip('"').strip("'")
 tables = ["web_players","web_statcast_events","web_player_season_stats",
           "web_player_seasons","web_fielding_frv","web_id_map",
-          "web_games","web_player_game_stats"]
+          "web_games","web_player_game_stats","web_standings",
+          "web_player_team_season_stats"]
 with psycopg.connect(os.environ["DATABASE_URL"], prepare_threshold=None) as c:
     for t in tables:
         cols = c.execute("""select column_name, data_type, is_nullable
@@ -440,5 +521,5 @@ with psycopg.connect(os.environ["DATABASE_URL"], prepare_threshold=None) as c:
 ```
 
 Run: `conda run -n MLBxBaZi python <script>.py`. Expect the column counts in the
-table index above (11 / 29 / 32 / 7 / 12 / 6 / 16 / 27). Re-confirm the anti-index
+table index above (11 / 29 / 32 / 7 / 12 / 6 / 17 / 27 / 38 / 37). Re-confirm the anti-index
 holds (`bb_type`, `launch_speed_angle` still absent).

@@ -168,17 +168,18 @@ def upsert_games(conn, rows: Iterable[dict]) -> int:
 
     Each row: game_pk, season, game_date, first_pitch_utc, game_number,
     doubleheader, is_home, opponent_id, opponent_name, jays_score, opp_score,
-    status, is_final, result, venue. (pull_schedule.py builds these.)
+    status, is_final, result, venue, game_type. (pull_schedule.py builds these.)
     """
     sql = """
         insert into web_games
           (game_pk, season, game_date, first_pitch_utc, game_number,
            doubleheader, is_home, opponent_id, opponent_name,
-           jays_score, opp_score, status, is_final, result, venue)
+           jays_score, opp_score, status, is_final, result, venue, game_type)
         values
           (%(game_pk)s, %(season)s, %(game_date)s, %(first_pitch_utc)s, %(game_number)s,
            %(doubleheader)s, %(is_home)s, %(opponent_id)s, %(opponent_name)s,
-           %(jays_score)s, %(opp_score)s, %(status)s, %(is_final)s, %(result)s, %(venue)s)
+           %(jays_score)s, %(opp_score)s, %(status)s, %(is_final)s, %(result)s, %(venue)s,
+           %(game_type)s)
         on conflict (game_pk) do update set
           season          = excluded.season,
           game_date       = excluded.game_date,
@@ -194,6 +195,7 @@ def upsert_games(conn, rows: Iterable[dict]) -> int:
           is_final        = excluded.is_final,
           result          = excluded.result,
           venue           = excluded.venue,
+          game_type       = excluded.game_type,
           updated_at      = now()
     """
     rows = list(rows)

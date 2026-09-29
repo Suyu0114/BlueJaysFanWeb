@@ -424,6 +424,13 @@ def fetch_team_season_stats(
     One record per player: {mlbam_id, name, position_code, stat}. `stat` is
     the raw merged API dict; rate stats arrive as strings ('.292', '3.59',
     '-.--' when undefined) and `inningsPitched` in baseball notation ('170.1').
+
+    The team leaderboard is used to ENUMERATE players; each player's numbers
+    are then taken from his own /people/{id}/stats split for this team. The
+    leaderboard's sabermetrics block can lag: on 2026-09-29 its FIP / WAR for
+    several Jays were computed from stale counting stats (implied FIP constant
+    3.11-3.43 across pitchers vs a uniform 3.101 on /people and on the
+    league-wide leaderboard). For settled seasons all three sources agree.
     """
     types = {"season", "sabermetrics"}
     r = requests.get(
@@ -442,7 +449,6 @@ def fetch_team_season_stats(
     )
     r.raise_for_status()
     by_id: dict[int, dict] = {}
-    have: dict[int, set[str]] = {}
     for block in r.json().get("stats", []):
         for s in block.get("splits", []):
             pid = s["player"]["id"]
@@ -456,39 +462,104 @@ def fetch_team_season_stats(
                 },
             )
             rec["stat"].update(s.get("stat", {}))
-            have.setdefault(pid, set()).add(block["type"]["displayName"])
 
-    # The team leaderboard sometimes drops one stat type for a player traded
-    # AWAY mid-season (2024: Jansen + Kikuchi kept their sabermetrics line but
-    # lost the traditional one). The per-player endpoint still has the split
-    # for this team, so patch those few players one request each.
+    # Prefer the per-player split for this team (see docstring: the
+    # leaderboard's sabermetrics can be stale). This also covers the case of
+    # the leaderboard dropping one stat type for a player traded AWAY
+    # mid-season (2024: Jansen + Kikuchi lost their traditional line). The
+    # leaderboard values stay as the fallback if the split is missing.
     for pid, rec in by_id.items():
-        missing = types - have[pid]
-        if missing:
-            rec["stat"].update(
-                _fetch_player_team_split(pid, season, group, missing, team_id)
-            )
+        rec["stat"].update(
+            _fetch_player_team_split(pid, season, group, types, team_id)
+        )
     return list(by_id.values())
 
 
 def _fetch_player_team_split(
     mlbam_id: int, season: int, group: str, types: set[str], team_id: int
 ) -> dict:
+    splits = fetch_player_season_splits(mlbam_id, season, groups=(group,), types=types)
+    return splits.get(team_id, {}).get(group, {})
+
+
+# ---------------------------------------------------------------------------
+# P12: full-MLB season lines per club (other-club history for the roster)
+# ---------------------------------------------------------------------------
+
+SEASON_TOTAL = 0  # team_id used for the all-clubs season total
+
+
+def fetch_player_season_splits(
+    mlbam_id: int,
+    season: int,
+    groups: Iterable[str] = ("hitting", "pitching"),
+    types: Iterable[str] = ("season", "sabermetrics"),
+) -> dict[int, dict[str, dict]]:
+    """Regular-season line per club for one player, with every club -- not just
+    the Jays.
+
+    Returns {team_id: {group: merged stat dict}} where team_id SEASON_TOTAL (0)
+    is the all-clubs total. The API sends one split per club plus a team-less
+    total only when a player changed clubs; for a one-club season the total is
+    the club split, so it is copied to 0 and callers never have to sum.
+    {} when the player has no MLB line that season (e.g. NPB, minors only).
+    """
     r = requests.get(
         f"{PEOPLE_URL}/{mlbam_id}/stats",
         params={
             "stats": ",".join(sorted(types)),
-            "group": group,
+            "group": ",".join(groups),
             "season": season,
             "gameType": "R",
         },
         timeout=30,
     )
     r.raise_for_status()
-    out: dict = {}
+    out: dict[int, dict[str, dict]] = {}
+    clubs: dict[str, set[int]] = {}
     for block in r.json().get("stats", []):
+        group = block.get("group", {}).get("displayName")
         for s in block.get("splits", []):
             # Traded players get one split per team plus a team-less total.
-            if s.get("team", {}).get("id") == team_id:
-                out.update(s.get("stat", {}))
+            team_id = s.get("team", {}).get("id", SEASON_TOTAL)
+            out.setdefault(team_id, {}).setdefault(group, {}).update(s.get("stat", {}))
+            if team_id != SEASON_TOTAL:
+                clubs.setdefault(group, set()).add(team_id)
+    for group, ids in clubs.items():
+        if len(ids) == 1 and group not in out.get(SEASON_TOTAL, {}):
+            (only,) = ids
+            out.setdefault(SEASON_TOTAL, {})[group] = dict(out[only][group])
     return out
+
+
+def fetch_player_team_dates(mlbam_id: int, season: int) -> dict[int, dict]:
+    """First / last game date and games played per club from the game log.
+
+    Returns {team_id: {"first": 'YYYY-MM-DD', "last": ..., "g": int}}, including
+    SEASON_TOTAL. Hitting and pitching logs are merged by gamePk so a two-way
+    appearance counts once. Orders a traded player's clubs ("TOR -> HOU").
+    """
+    r = requests.get(
+        f"{PEOPLE_URL}/{mlbam_id}/stats",
+        params={
+            "stats": "gameLog",
+            "group": "hitting,pitching",
+            "season": season,
+            "gameType": "R",
+        },
+        timeout=30,
+    )
+    r.raise_for_status()
+    games: dict[int, dict[int, str]] = {}  # team_id -> {gamePk: date}
+    for block in r.json().get("stats", []):
+        for s in block.get("splits", []):
+            team_id = s.get("team", {}).get("id")
+            pk = s.get("game", {}).get("gamePk")
+            if team_id is None or pk is None:
+                continue
+            for key in (team_id, SEASON_TOTAL):
+                games.setdefault(key, {})[pk] = s["date"]
+    return {
+        team_id: {"first": min(d.values()), "last": max(d.values()), "g": len(d)}
+        for team_id, d in games.items()
+    }

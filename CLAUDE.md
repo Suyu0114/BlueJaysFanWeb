@@ -29,9 +29,9 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 
 ### Supabase tables are shared — prefix everything with `web_`
 - This Supabase project is **shared with other projects** that already have a `players` table.
-- **Every table for this app is prefixed `web_`**: `web_players`, `web_statcast_events`, `web_player_season_stats`, `web_player_seasons`, `web_fielding_frv`, `web_id_map`.
+- **Every table for this app is prefixed `web_`**: `web_players`, `web_statcast_events`, `web_player_season_stats`, `web_player_team_season_stats`, `web_player_seasons`, `web_fielding_frv`, `web_id_map`, `web_games`, `web_player_game_stats`, `web_standings`.
 - Never create an unprefixed table here; it will collide.
-- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6) → `006_games.sql` + `007_player_game_stats.sql` + `008_war_components.sql` (P7) → `009_basic_season_stats.sql` (P9) → `010_pitching_season_stats.sql` + `011_statcast_pitch_detail.sql` (P10) → `012_standings.sql` (P11). One concern per migration file.
+- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6) → `006_games.sql` + `007_player_game_stats.sql` + `008_war_components.sql` (P7) → `009_basic_season_stats.sql` (P9) → `010_pitching_season_stats.sql` + `011_statcast_pitch_detail.sql` (P10) → `012_standings.sql` (P11) → `013_games_game_type.sql` + `014_player_team_season_stats.sql` (P12). One concern per migration file.
 
 ### Audience & language
 - **Primary audience: English-speaking Toronto locals**, including non-Chinese speakers curious about BaZi. Chinese (TW/HK) fans are secondary.
@@ -72,8 +72,14 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 ### FanGraphs scraping is dead — use these workarounds
 - `pybaseball.team_batting` / `team_pitching` / `batting_stats` / `pitching_stats` return **HTTP 403**. The block is server-side; updating pybaseball won't help.
 - **Player enumeration** for "who appeared for the Jays in season X" now uses MLB Stats API `rosterType=fullSeason` (`etl/mlb_api.py::fetch_full_season_roster`). It includes 40-man members who never debuted — accept the small over-inclusion. Run via `python etl/pull_team_players.py --season YEAR`.
-- **Season stats** (OPS / wRC+ / ERA / FIP / K/9 / WAR + Value components + batter basic line + P10 pitcher line W/L/SV/GS/IP/WHIP/K%/BB%) come from the **MLB Stats API** `/stats?stats=season,sabermetrics&teamId=141` (`etl/mlb_api.py::fetch_team_season_stats`, free, no key) and refresh in the ~09:00 ET cron. The `sabermetrics` block is FanGraphs data licensed to MLB, so WAR matches the FanGraphs leaderboard (±0.05). This replaced the manual FanGraphs CSV export on 2026-09-23 (membership lapsed) — **don't reintroduce a CSV path.** Gotchas: (a) `playerPool=ALL` is required (default = qualified only); (b) the team leaderboard can drop one stat type for a player traded *away* mid-season — `fetch_team_season_stats` patches those from `/people/{id}/stats`; (c) catcher framing is in the API's `rar`/`war` but not its `fielding`, so `war_fielding` is derived as `rar` − the other five components; (d) no WPA in the API — `wpa` is frozen at the last CSV import.
+- **Season stats** (OPS / wRC+ / ERA / FIP / K/9 / WAR + Value components + batter basic line + P10 pitcher line W/L/SV/GS/IP/WHIP/K%/BB%) come from the **MLB Stats API** `/stats?stats=season,sabermetrics&teamId=141` (`etl/mlb_api.py::fetch_team_season_stats`, free, no key) and refresh in the ~09:00 ET cron. The `sabermetrics` block is FanGraphs data licensed to MLB, so WAR matches the FanGraphs leaderboard (±0.05). This replaced the manual FanGraphs CSV export on 2026-09-23 (membership lapsed) — **don't reintroduce a CSV path.** Gotchas: (a) `playerPool=ALL` is required (default = qualified only); (b) the team leaderboard is only used to *enumerate* players — each player's numbers come from his own `/people/{id}/stats` Toronto split, because right after the season the leaderboard's sabermetrics were computed from stale counts (Scherzer 2026 FIP 5.43 vs 5.11) and it can drop a stat type for a player traded *away*; (c) catcher framing is in the API's `rar`/`war` but not its `fielding`, so `war_fielding` is derived as `rar` − the other five components; (d) no WPA in the API — `wpa` is frozen at the last CSV import.
 - Statcast event pulls (`statcast_batter` / `statcast_pitcher`) and fielding leaderboard (`statcast_outs_above_average`) hit Baseball Savant directly — these are **unaffected**.
+
+### Other clubs: Jays-only tables vs the all-clubs table (P12)
+- **`web_player_season_stats`, `web_player_seasons`, `web_games`, `web_player_game_stats` are Jays-only.** Never write another club's season into `web_player_seasons` — it drives the roster, tab availability and the Statcast pull lists.
+- **`web_player_team_season_stats`** holds the 2026 roster's full-MLB lines 2024–2026, one row per club **plus `team_id = 0` = season total** (always written; read it instead of summing). Written by `etl/pull_player_splits.py` (history one-shot + nightly for the current season); mapping shared with `pull_season_stats.py` via `etl/season_line.py`.
+- **Statcast holds other clubs' games** (it is pulled by player id): deadline departures' post-trade games, and the 2026 roster's whole 2024/2025 seasons elsewhere (`pull_statcast.py` / `pull_pitcher.py --cohort-season 2026`). **"As a Blue Jay" = the player is in that game's Jays box score** (`exists web_player_game_stats (game_pk, mlbam_id)`), **not** `game_pk ∈ web_games` — Varsho as an Astro faced Toronto 2026-08-03→05.
+- `web_games.game_type` (`013`): 2025 = 162 `R` + 18 postseason. Any team record must filter `game_type = 'R'`.
 
 ---
 
@@ -105,12 +111,14 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   db.py                        # psycopg3 connection + upserts (incl. player_seasons, id_map)
   roster.py                    # 26-man active roster (sets is_active_26)
   pull_team_players.py         # full-season Jays enumeration (MLB Stats API)
-  pull_statcast.py             # batter Statcast; --all-batters / --include-postseason
-  pull_pitcher.py              # pitcher Statcast; --all-pitchers / --include-postseason
+  pull_statcast.py             # batter Statcast; --all-batters / --include-postseason / --cohort-season (P12 other-club history)
+  pull_pitcher.py              # pitcher Statcast; --all-pitchers / --include-postseason / --cohort-season
   pull_fielding.py             # OAA / FRV per position (Savant leaderboard)
   pull_standings.py            # MLB standings snapshot, both leagues (MLB Stats API)
   fetch_team_logos.py          # ONE-SHOT: cap logos -> web/public/team-logos (recoloured, committed)
   pull_season_stats.py         # OPS/wRC+/ERA/FIP/WAR + Value components + basic line + pitcher line (MLB Stats API)
+  season_line.py               # P12: shared API season line -> stat columns mapping (season stats + splits)
+  pull_player_splits.py        # P12: full-MLB lines per club + season total for a roster (web_player_team_season_stats)
   backfill.py                  # one-shot orchestrator for 2024 + 2025 (and optional 2026)
 /db/migrations/                # plain SQL, apply via psql or Supabase Studio
   001_initial_schema.sql       # web_players, web_statcast_events, web_player_season_stats
@@ -125,6 +133,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   010_pitching_season_stats.sql # web_player_season_stats: w/l/sv/gs/ip/whip/k_pct/bb_pct (pitcher line, P10)
   011_statcast_pitch_detail.sql # web_statcast_events: pfx_x/pfx_z/release_extension/estimated_woba/balls/strikes (P10)
   012_standings.sql            # web_standings (MLB standings snapshot, all 30 clubs, P11)
+  013_games_game_type.sql      # web_games.game_type (R vs postseason rounds, P12)
+  014_player_team_season_stats.sql # web_player_team_season_stats (per-club + total season lines, P12)
 /.github/workflows/etl.yml     # daily cron (rolling 7-day window for current season)
 /ETL_update_flow.md            # backfill + manual re-run steps
 /web/                          # Next.js app

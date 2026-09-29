@@ -8,8 +8,9 @@ Usage:
 
 Game-type filter: only regular season + postseason rounds (R / F / D / L / W)
 are kept. Spring training ('S'), exhibition ('E') and all-star ('A') games are
-skipped so the calendar reflects the real season. web_games has no game_type
-column by design (locked spec §2); the filter lives here.
+skipped so the calendar reflects the real season. The kept type is stored in
+web_games.game_type (migration 013, P12) so the regular-season record can be
+separated from the postseason.
 """
 
 from __future__ import annotations
@@ -82,6 +83,7 @@ def _to_row(g: dict) -> dict:
         "is_final": is_final,
         "result": result,
         "venue": g["venue"],
+        "game_type": g["game_type"],
     }
 
 

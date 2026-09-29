@@ -14,14 +14,10 @@ column within rounding). This replaced the CSV path once the paid FanGraphs
 membership lapsed -- and unlike the CSVs (gitignored, so never present on the
 CI runner) it runs in the nightly cron.
 
-Two quirks the mapping handles:
-  * Catcher framing. FanGraphs folds framing runs into `Fld`; the API's
-    `fielding` excludes them while its `rar` / `war` include them. We store
-    war_fielding = rar - (batting + baseRunning + positional + wLeague +
-    replacement), which reproduces FanGraphs' Fld and keeps the WarBreakdown
-    chart reconciling exactly to RAR.
-  * No WPA in the API. `wpa` is left out of the upsert, so values from the old
-    CSV imports survive and newer seasons stay NULL (not rendered anywhere).
+The column mapping (incl. the catcher-framing war_fielding derivation and
+the absent WPA) lives in season_line.py, shared with pull_player_splits.py.
+`wpa` is left out of the upsert, so values from the old CSV imports survive
+and newer seasons stay NULL (not rendered anywhere).
 """
 
 from __future__ import annotations
@@ -39,53 +35,12 @@ load_dotenv(_HERE.parent / ".env")
 
 from db import connect, upsert_players  # noqa: E402
 from mlb_api import fetch_team_season_stats  # noqa: E402
+from season_line import STAT_COLS, has_batting, to_row  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s | %(message)s"
 )
 log = logging.getLogger("pull_season_stats")
-
-# API stat key -> web_player_season_stats column. Rate stats arrive as strings
-# ('.292', '3.59'); IP stays in baseball notation ('170.1' = 170 1/3), same as
-# the FanGraphs export did -- the web layer formats it.
-BATTING_COLS = {
-    "ops":              "ops",
-    "wRcPlus":          "wrc_plus",
-    "batting":          "war_batting",
-    "baseRunning":      "war_baserunning",
-    "positional":       "war_positional",
-    "wLeague":          "war_league",
-    "replacement":      "war_replacement",
-    "rar":              "rar",
-    "avg":              "avg",
-    "obp":              "obp",
-    "slg":              "slg",
-    "homeRuns":         "hr",
-    "rbi":              "rbi",
-    "stolenBases":      "sb",
-    "plateAppearances": "pa",
-}
-PITCHING_COLS = {
-    "era":               "era",
-    "fip":               "fip",
-    "strikeoutsPer9Inn": "k_per_9",
-    "wins":              "w",
-    "losses":            "l",
-    "saves":             "sv",
-    "gamesStarted":      "gs",
-    "inningsPitched":    "ip",
-    "whip":              "whip",
-}
-# Summed against RAR to derive war_fielding (see module docstring).
-NON_FIELDING_COMPONENTS = ("batting", "baseRunning", "positional", "wLeague", "replacement")
-
-STAT_COLS = [
-    "ops", "wrc_plus", "war", "era", "fip", "k_per_9",
-    "war_batting", "war_baserunning", "war_fielding", "war_positional",
-    "war_league", "war_replacement", "rar",
-    "avg", "obp", "slg", "hr", "rbi", "sb", "pa",
-    "w", "l", "sv", "gs", "ip", "whip", "k_pct", "bb_pct",
-]
 
 UPSERT_SQL = f"""
     insert into web_player_season_stats (mlbam_id, season, {", ".join(STAT_COLS)})
@@ -96,72 +51,29 @@ UPSERT_SQL = f"""
 """
 
 
-def _num(v) -> float | None:
-    """API numbers come as int, float or string; '-.--' / '.---' mean undefined."""
-    if v is None:
-        return None
-    try:
-        return float(v)
-    except (TypeError, ValueError):
-        return None
-
-
-def _war_fielding(s: dict) -> float | None:
-    rar = _num(s.get("rar"))
-    parts = [_num(s.get(k)) for k in NON_FIELDING_COMPONENTS]
-    if rar is None or any(p is None for p in parts):
-        return _num(s.get("fielding"))
-    return rar - sum(parts)
-
-
-def _rate(num, den) -> float | None:
-    """Stored as a raw fraction (0.245), matching the FanGraphs K% / BB% export."""
-    n, d = _num(num), _num(den)
-    return n / d if n is not None and d else None
-
-
 def run(season: int) -> None:
     batting = fetch_team_season_stats(season, "hitting")
     pitching = fetch_team_season_stats(season, "pitching")
     log.info("%s: API returned %d hitting / %d pitching lines",
              season, len(batting), len(pitching))
 
-    by_mlbam: dict[int, dict] = {}
+    lines: dict[int, dict] = {}
     names: dict[int, str] = {}
+    for group, recs in (("hitting", batting), ("pitching", pitching)):
+        for rec in recs:
+            lines.setdefault(rec["mlbam_id"], {})[group] = rec["stat"]
+            names[rec["mlbam_id"]] = rec["name"]
 
-    skipped = 0
-    for rec in batting:
-        s = rec["stat"]
-        # Pitchers who never batted still get a hitting split (PA 0, WAR 0.0);
-        # storing it would give them an OPS row and flip the overview to batter.
-        if not s.get("plateAppearances"):
-            skipped += 1
-            continue
-        entry = by_mlbam.setdefault(rec["mlbam_id"], {"mlbam_id": rec["mlbam_id"], "season": season})
-        names[rec["mlbam_id"]] = rec["name"]
-        for api_key, col in BATTING_COLS.items():
-            entry[col] = _num(s.get(api_key))
-        entry["war_fielding"] = _war_fielding(s)
-        entry["war"] = _num(s.get("war"))
-
-    for rec in pitching:
-        s = rec["stat"]
-        entry = by_mlbam.setdefault(rec["mlbam_id"], {"mlbam_id": rec["mlbam_id"], "season": season})
-        names[rec["mlbam_id"]] = rec["name"]
-        for api_key, col in PITCHING_COLS.items():
-            entry[col] = _num(s.get(api_key))
-        entry["k_pct"] = _rate(s.get("strikeOuts"), s.get("battersFaced"))
-        entry["bb_pct"] = _rate(s.get("baseOnBalls"), s.get("battersFaced"))
-        # Two-way players (incl. position players in mop-up duty): WAR may
-        # already be set from batting; sum, as FanGraphs' player total does.
-        pit_war = _num(s.get("war"))
-        if pit_war is not None:
-            entry["war"] = (entry.get("war") or 0.0) + pit_war
-
+    skipped = sum(1 for rec in batting if not has_batting(rec["stat"]))
     if skipped:
         log.info("Skipped %d hitting line(s) with 0 PA", skipped)
 
-    rows = [{c: None for c in STAT_COLS} | entry for entry in by_mlbam.values()]
+    rows = []
+    for pid, g in lines.items():
+        row = to_row(g.get("hitting"), g.get("pitching"))
+        if row is not None:
+            rows.append({"mlbam_id": pid, "season": season} | row)
+    names = {pid: names[pid] for pid in (r["mlbam_id"] for r in rows)}
     if not rows:
         log.warning("No season stats for %s (season not started?); nothing to upsert.", season)
         return
