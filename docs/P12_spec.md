@@ -68,7 +68,7 @@ standings history, player-vs-player `/compare`, BaZi (v2), WPA (frozen, no sourc
 | D8 | Colours for two seasons | Current season **brick**, comparison season **steel** (muted / dashed / hollow). Deltas: improvement **grass**, decline **brick** — per-stat direction (ERA/WHIP/BB%/Chase%-as-batter: lower is better). Brand tokens only. |
 | D9 | Article pack output | Markdown + CSV under `reports/season-review-<year>/`, **git-ignored** (add `reports/` to `.gitignore`). Numbers + definitions + caveats only — prose is the owner's. |
 | D10 | Dependencies | **None new.** pybaseball already has the Savant functions; PNG export uses native `XMLSerializer` + canvas; `motion` is already installed. |
-| D11 | New season page placement | `/[locale]/season/[year]`, `generateStaticParams` from seasons in `web_games`, `revalidate = 3600`; nav label "Season". |
+| D11 | New season page placement | `/[locale]/season/[year]`, `generateStaticParams` from seasons in `web_games`, `revalidate = 3600`. *(amended 2026-09-29, owner / P13 coordination)* Nav: **one** link `Nav.team` ("Team" / 球隊) in `Header.tsx` right after Standings → `/season/<latest>` (newest season with regular-season games in `web_games`, same resolver as the M5 page); **no "Season" link**. P13 repoints the same link to `/team`. |
 | D12 | Sample thresholds for "same player, both seasons" | **Batters ≥ 150 PA, pitchers ≥ 40 IP** as Jays in *each* season (≥300 PA / ≥60 IP leaves only 6 batters / 2 pitchers — §1). Thresholds are constants, printed in the report header. The Compare tab reuses them for its "small sample" badge (in the selected scope). |
 | D13 | History cohort | *(2026-09-29)* **Every player on the 2026 `fullSeason` roster** (`web_player_seasons` season 2026 — traded in **and** out; 64 players), **full MLB regular season 2024–2026** with every club. No minor leagues, no NPB/KBO (Okamoto has 2026 only). Other rosters' players are not backfilled. |
 | D14 | Per-team season lines | *(2026-09-29)* New table `web_player_team_season_stats` (migration `014`), PK `(mlbam_id, season, team_id)`, from MLB Stats API `/people/{id}/stats` (per-team splits + the team-less total). **`team_id = 0` = MLB season total** and is **always written** (copied from the single split for one-team seasons), so "full season" readers never sum. `web_player_season_stats` is **unchanged** (Jays-only, existing pages keep reading it); the `team_id = 141` rows of the new table must equal it (M0 check). |
@@ -348,8 +348,17 @@ from `web_games` (`game_type='R'`), `web_standings`, `web_player_season_stats`:
 7. **WAR by position group** (C, 1B, 2B, 3B, SS, OF, DH, SP, RP) — 2025 vs 2026
    bars. SP/RP split by `gs` share.
 
-Header nav gains "Season" (→ latest season). `/zh-TW` mirrors; labels translated,
-jargon English.
+**Nav** *(amended 2026-09-29, D11)*: `Nav.team` ("Team" / 球隊) in `Header.tsx`
+right after Standings → `/season/<latest>`, resolved by the same helper the M5 page
+uses (newest season with `game_type = 'R'` games in `web_games`). No "Season" link.
+P13 (team trends) later changes only this link's href to `/team` — same key, label and
+position. `/zh-TW` mirrors; labels translated, jargon English.
+
+**Pure helpers** (P13 reuses them across 5 seasons): games-above-.500 /
+cumulative run differential series, monthly record and the splits (home/away,
+one-run, blowouts, vs division, vs ≥ .500) live in `web/lib/` as pure functions —
+game rows in, series / records out — never inlined in the components. The season
+resolver is a helper too.
 
 ## 8. M6 — League context (ETL + web)
 
@@ -367,7 +376,8 @@ jargon English.
   put_away, woba, xwoba, hard_hit_pct.
 - `019_league_season.sql` → `web_league_season` PK `(season, league)` with
   `league in ('AL','NL','MLB')`: PA, OBP, SLG, OPS, ERA, K%, BB% (aggregate the 30
-  teams' counting stats, then compute rates — never average the rates).
+  teams' counting stats, then compute rates — never average the rates). P13's checks
+  depend on the `MLB` row being computed this way.
 
 Savant values are season totals across clubs (full-MLB scope), which is what the
 Compare tab's `mlb` scope shows; label them so on the Jays-scoped overview.
@@ -398,6 +408,9 @@ job (pybaseball is only installed there) and to `backfill.py`; backfill
   discipline, season-page tables) for pasting into the articles.
 - Every M3/M5 view is already a stable URL — list the article-ready URLs in the
   report README.
+- Keep both **generic** (P13 reuses them): the PNG export takes any `<svg>` (or a
+  ref) plus a caption, and copy-table takes plain `headers + rows`, so any chart or
+  table can use them — no per-chart special cases inside the helpers.
 
 ## 10. i18n
 
@@ -446,7 +459,7 @@ shipping M1. Report numbers and site numbers must agree (§13, M2 item 3).
 | `web_player_seasons` | Stays Jays-only (D15) — it drives the roster, availability and pull lists. |
 | `web_games` / `web_player_game_stats` | Stay Jays-only (P11). Adding **2024 Jays games** is backfill, not widening. |
 | `web_standings` grain | Stays a snapshot. Games-above-.500 comes from `web_games`, so no history table is needed. |
-| Migrations `001`–`012` | Never edited or reordered; `013`–`019` are additive. |
+| Migrations `001`–`012` | Never edited or reordered; `013`–`019` are additive. **`020`–`022` are reserved for P13** — if P12 ever needs a migration past `019`, tell the owner so P13 can renumber. |
 | FanGraphs | No CSV path, no scraping (CLAUDE.md). Savant + MLB Stats API only. |
 | `name_tc` / localized team names | Still forbidden. |
 | `ScorecardFrame` / motion internals | Consume them; follow the CLAUDE.md **Motion** rules (tooltips via `ChartTooltip`, CSS keyframes for marks with `backwards` fill, `Reveal` for entrances). |
@@ -467,7 +480,7 @@ shipping M1. Report numbers and site numbers must agree (§13, M2 item 3).
 | M2-3 | Site numbers == report numbers for Vladdy 2026 Chase% and Gausman 2026 CSW%. |
 | M3 | en + zh-TW: `/players/662139/compare` (Varsho, 2026 TOR→HOU vs 2025; `?scope=jays` ≈ 365 PA), `/players/656302/compare` (Cease, 2026 TOR vs 2025 SD; `jays` disabled), `/players/592332/compare` (pitcher), `/players/665489/compare?season=2025&vs=2024`; no Compare tab for Okamoto (672960); Cease's pitching season chips read `2025 · SD`; Tale-of-the-tape numbers == `roster_moves.md`. |
 | M4 | Sparklines show a dashed 2025 line on a game-number axis. |
-| M5 | `/en/season/2026` and `/zh-TW/season/2026` render all 7 modules; 2025 page also works; nav link present. |
+| M5 | `/en/season/2026` and `/zh-TW/season/2026` render all 7 modules; 2025 page also works; `Nav.team` link (Team / 球隊, after Standings) → latest season page; **no "Season" link**; season-page logic lives in pure `web/lib` helpers. |
 | M6 | Four new tables populated for 2024–2026 (Jays players only); cron wired; percentile bars show "not qualified" for a low-PA player. |
 | M7 | PNG export produces a correctly coloured image for the spray chart and a Recharts chart; copy-table pastes cleanly into a spreadsheet. |
 | All | `tsc --noEmit`, `pnpm lint`, `pnpm build` clean; **no new npm/pip deps**; docs reconciled via `docs/DOC_MAINTENANCE.md` (CLAUDE.md phases row P12, folder tree, migrations line; README; DATA_MODEL for every new column/view/table). |
