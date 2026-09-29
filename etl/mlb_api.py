@@ -6,6 +6,7 @@ pull_team_players.py, future BaZi loader) can share one code path.
 
 from __future__ import annotations
 
+import time
 from typing import Iterable
 
 import requests
@@ -563,3 +564,138 @@ def fetch_player_team_dates(mlbam_id: int, season: int) -> dict[int, dict]:
         team_id: {"first": min(d.values()), "last": max(d.values()), "g": len(d)}
         for team_id, d in games.items()
     }
+
+
+# --- P13: team season stats (all 30 clubs) ---
+
+TEAMS_URL = f"{BASE_URL}/teams"
+TEAMS_STATS_URL = f"{BASE_URL}/teams/stats"
+
+
+def _get_json(url: str, params: dict, tries: int = 3) -> dict:
+    """GET with a small retry, for the P13 fetchers (~90 calls per season).
+
+    The stats endpoints occasionally time out, 5xx, or answer 200 with a body
+    like {"messageNumber": 13, "message": "Operation taking longer than
+    expected - please try again"} -- all retried with backoff. The older
+    helpers above keep their single call.
+    """
+    last: Exception | None = None
+    for attempt in range(tries):
+        try:
+            r = requests.get(url, params=params, timeout=60)
+            r.raise_for_status()
+            data = r.json()
+            if "messageNumber" in data:
+                raise RuntimeError(data.get("message"))
+            return data
+        except (requests.RequestException, RuntimeError, ValueError) as exc:
+            last = exc
+            if attempt < tries - 1:
+                time.sleep(2 ** attempt)
+    raise RuntimeError(f"{url} {params} failed after {tries} tries: {last}")
+
+
+def fetch_teams(season: int) -> list[dict]:
+    """The MLB clubs of `season`: {id, abbreviation, team_name, name}.
+
+    `team_name` is the short name ('Blue Jays', 'Athletics') -- the key Savant's
+    team leaderboards can be joined on (their abbreviations are retroactive).
+    """
+    data = _get_json(TEAMS_URL, {"sportId": 1, "season": season})
+    return [
+        {
+            "id": t["id"],
+            "abbreviation": t.get("abbreviation"),
+            "team_name": t.get("teamName"),
+            "name": t.get("name"),
+        }
+        for t in data.get("teams", [])
+    ]
+
+
+def fetch_all_team_stats(season: int) -> dict[int, dict]:
+    """Regular-season team lines for every club, in ONE call.
+
+    Returns {team_id: {"hitting": {"season": stat, "seasonAdvanced": stat},
+                       "pitching": {...}}}. The two stat types are kept apart
+    because both carry keys like `groundOuts` with different meanings.
+    """
+    data = _get_json(
+        TEAMS_STATS_URL,
+        {
+            "season": season,
+            "sportIds": 1,
+            "group": "hitting,pitching",
+            "stats": "season,seasonAdvanced",
+            "gameType": "R",
+        },
+    )
+    out: dict[int, dict] = {}
+    for block in data.get("stats", []):
+        group = block["group"]["displayName"]
+        type_ = block["type"]["displayName"]
+        for s in block.get("splits", []):
+            team = out.setdefault(s["team"]["id"], {})
+            team.setdefault(group, {})[type_] = s.get("stat", {})
+    return out
+
+
+def fetch_team_role_splits(season: int, team_id: int) -> dict[str, dict]:
+    """Starter / reliever pitching lines for one club: {"sp": stat, "rp": stat}.
+
+    Per club on purpose: the all-teams variant (/teams/stats?stats=statSplits)
+    returned only 50 of 60 splits on 2026-09-29.
+    """
+    data = _get_json(
+        f"{TEAMS_URL}/{team_id}/stats",
+        {
+            "stats": "statSplits",
+            "sitCodes": "sp,rp",
+            "group": "pitching",
+            "season": season,
+            "gameType": "R",
+        },
+    )
+    out: dict[str, dict] = {}
+    for block in data.get("stats", []):
+        for s in block.get("splits", []):
+            code = s.get("split", {}).get("code")
+            if code in ("sp", "rp"):
+                out[code] = s.get("stat", {})
+    return out
+
+
+def fetch_team_player_leaderboard(
+    season: int, group: str, team_id: int
+) -> list[dict]:
+    """Every player's `season` + `sabermetrics` line for one club, as the plain
+    team leaderboard returns it: [{mlbam_id, stat}].
+
+    Unlike fetch_team_season_stats this does NOT re-fetch each player from
+    /people (that would be ~1,200 calls per season for 30 clubs). Used only for
+    team aggregates (P13 T6), which tolerate the leaderboard's small post-season
+    lag; pull_team_stats.py checks the Jays aggregate against
+    web_player_season_stats.
+    """
+    data = _get_json(
+        STATS_URL,
+        {
+            "stats": "season,sabermetrics",
+            "group": group,
+            "season": season,
+            "teamId": team_id,
+            "sportId": 1,
+            "gameType": "R",
+            "playerPool": "ALL",
+            "limit": 500,
+        },
+    )
+    by_id: dict[int, dict] = {}
+    for block in data.get("stats", []):
+        for s in block.get("splits", []):
+            pid = s["player"]["id"]
+            by_id.setdefault(pid, {"mlbam_id": pid, "stat": {}})["stat"].update(
+                s.get("stat", {})
+            )
+    return list(by_id.values())

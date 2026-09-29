@@ -100,6 +100,30 @@ python etl/pull_league_averages.py     --season 2024 --season 2025 --season 2026
 > - **Pitch run value 正值 = 對投手好**（已用 2025 全聯盟資料驗證）。
 > - 聯盟平均是把 30 隊的計數數據加總後再算比率，不是 30 隊比率的平均。
 
+**Step 7（P13）：五季球隊數據（30 隊，給 `/team` 頁的排名 + MLB 平均）**
+
+球隊層級的資料**不需要** Statcast 逐球回補，任何年份都能直接抓，所以視窗是 2022–2026
+（球員層級還是 2024–2026）。2026-09-29 已跑過一次，以下是重建 / 補新年度的步驟：
+```powershell
+# 1) 2022–2023 的戰績排名 + 賽程（2024 起已由 backfill / P12 補齊；不用 box score）
+python etl/pull_standings.py --season 2022
+python etl/pull_standings.py --season 2023
+python etl/pull_schedule.py  --season 2022
+python etl/pull_schedule.py  --season 2023
+# 2) 30 隊的球隊成績（MLB Stats API，每季 ~91 次呼叫，約 1–1.5 分鐘）
+python etl/pull_team_stats.py    --season 2022 --season 2023 --season 2024 --season 2025 --season 2026
+# 3) 30 隊的 Savant 排行榜（Barrel% / Hard-hit% / xwOBA / OAA，每季 5 個 CSV）
+python etl/pull_team_statcast.py --season 2022 --season 2023 --season 2024 --season 2025 --season 2026
+```
+> - **不要**把 2022/2023 加進 `backfill.py`——它是 Statcast 重型流程，只認 2024–2026。
+> - `pull_team_stats` 最後會把藍鳥的 wRC+ / WAR 跟 `web_player_season_stats` 對一次
+>   （容許 ±1 wRC+ / ±1.0 WAR）。剛打完球季的那幾天 MLB 排行榜的 sabermetrics 可能
+>   還沒更新（P12 看過），如果出現 `OUT OF TOLERANCE` 警告，過幾天再跑一次即可。
+> - `pull_team_statcast` 用**隊名**對 MLB team id（Savant 的縮寫會回溯改，2022 的運動家
+>   也寫 `ATH`）。有對不上的隊名會**直接失敗**，要去 `pull_team_statcast.py` 補對應，
+>   不要跳過。
+> - 當季兩支都已排進 09:00 ET cron。
+
 ---
 
 ## 注意事項
@@ -140,7 +164,8 @@ P7 起 GitHub Actions 有**兩個**排程（都 idempotent、都會 upsert）：
 - **~09:00 ET**：2026 rolling 7 天 Statcast、守備、`web_games` 賽程 refresh、
   `web_standings` 排名 refresh、近 ~3 天 box score 補抓（West-Coast / 晚場 final
   在這裡補完）、season stats（WAR / OPS / ERA …，MLB Stats API）、當季名單的每隊
-  season line（`pull_player_splits`，被交易走的球員在新球隊的成績也會每天更新）。
+  season line（`pull_player_splits`，被交易走的球員在新球隊的成績也會每天更新）、
+  30 隊球隊成績 + Savant 球隊排行榜（`pull_team_stats` / `pull_team_statcast`，P13）。
 - **~23:30 ET**：今天的賽程 refresh + 排名 refresh + 今天 final 場次的 box score。
 
 > 兩班的順序都是 **schedule → standings → boxscore → revalidate**。
@@ -158,6 +183,13 @@ SELECT COUNT(*) FROM web_player_seasons WHERE season = 2026;
 
 -- P11 排名：每季應該剛好 30 列、6 個分區
 SELECT season, COUNT(*), COUNT(DISTINCT division_id) FROM web_standings GROUP BY season;
+
+-- P13 球隊表：每季 30 列、先發 + 牛棚出局數 = 全隊出局數（bad_split 應為 0）
+SELECT season, COUNT(*) AS clubs,
+       COUNT(*) FILTER (WHERE sp_outs + rp_outs <> pit_outs) AS bad_split
+FROM web_team_season_stats GROUP BY season ORDER BY season;
+SELECT season, COUNT(*) AS clubs, COUNT(oaa) AS with_oaa
+FROM web_team_statcast_season GROUP BY season ORDER BY season;
 
 -- wild_card_rank 應該剛好在 6 支分區龍頭上是 NULL（上游本來就沒有這個欄位）
 SELECT COUNT(*) FILTER (WHERE wild_card_rank IS NULL) AS wc_null,

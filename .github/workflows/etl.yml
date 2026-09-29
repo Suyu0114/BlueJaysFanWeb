@@ -4,8 +4,10 @@
 #     window), roster/participation, fielding, season stats (MLB Stats API
 #     sabermetrics -- WAR etc.; no FanGraphs CSV needed), per-club season lines
 #     for the roster incl. other clubs (P12, pull_player_splits), Savant
-#     leaderboards + league averages (P12 M6), THEN a current-
-#     season schedule refresh + a 3-day box-score re-pull. The box-score re-pull
+#     leaderboards + league averages (P12 M6), THEN a current-season schedule +
+#     standings refresh, all 30 clubs' team lines + Savant team leaderboards
+#     (P13, pull_team_stats / pull_team_statcast), and a 3-day box-score
+#     re-pull. The box-score re-pull
 #     is the West-Coast / late-final backfill: games still in progress at the
 #     11:30 PM ET run get completed here.
 #   * `30 3 * * *` (~11:30 PM ET): a LIGHT freshness run -- today's schedule
@@ -122,6 +124,15 @@ jobs:
 
       - name: Refresh standings (web_standings, both leagues)
         run: python etl/pull_standings.py --season "$SEASON"
+
+      # P13: all 30 clubs' team lines (MLB Stats API, ~91 calls) + Savant team
+      # leaderboards (5 CSVs) -- the /team page's ranks and MLB averages.
+      # Refresh job only: team totals don't need the 11:30 PM freshness run.
+      - name: Pull team season lines, all clubs (web_team_season_stats)
+        run: python etl/pull_team_stats.py --season "$SEASON"
+
+      - name: Pull Savant team leaderboards, all clubs (web_team_statcast_season)
+        run: python etl/pull_team_statcast.py --season "$SEASON"
 
       - name: Pull box scores (last 3 days of finals)
         run: python etl/pull_boxscore.py --recent 3

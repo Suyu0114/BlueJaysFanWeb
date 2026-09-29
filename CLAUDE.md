@@ -31,7 +31,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 - This Supabase project is **shared with other projects** that already have a `players` table.
 - **Every table for this app is prefixed `web_`**: `web_players`, `web_statcast_events`, `web_player_season_stats`, `web_player_team_season_stats`, `web_player_seasons`, `web_fielding_frv`, `web_id_map`, `web_games`, `web_player_game_stats`, `web_standings`, `web_savant_percentiles`, `web_savant_season`, `web_pitch_arsenal_rv`, `web_league_season`.
 - Never create an unprefixed table here; it will collide.
-- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6) → `006_games.sql` + `007_player_game_stats.sql` + `008_war_components.sql` (P7) → `009_basic_season_stats.sql` (P9) → `010_pitching_season_stats.sql` + `011_statcast_pitch_detail.sql` (P10) → `012_standings.sql` (P11) → `013_games_game_type.sql` + `014_player_team_season_stats.sql` + `015_metric_views.sql` + `016_savant_percentiles.sql` + `017_savant_season.sql` + `018_pitch_arsenal_rv.sql` + `019_league_season.sql` (P12). `020`–`022` are reserved for P13. One concern per migration file.
+- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6) → `006_games.sql` + `007_player_game_stats.sql` + `008_war_components.sql` (P7) → `009_basic_season_stats.sql` (P9) → `010_pitching_season_stats.sql` + `011_statcast_pitch_detail.sql` (P10) → `012_standings.sql` (P11) → `013_games_game_type.sql` + `014_player_team_season_stats.sql` + `015_metric_views.sql` + `016_savant_percentiles.sql` + `017_savant_season.sql` + `018_pitch_arsenal_rv.sql` + `019_league_season.sql` (P12) → `020_team_season_stats.sql` + `021_team_statcast_season.sql` (P13; `022` reserved for the P13 views). One concern per migration file.
 
 ### Audience & language
 - **Primary audience: English-speaking Toronto locals**, including non-Chinese speakers curious about BaZi. Chinese (TW/HK) fans are secondary.
@@ -82,6 +82,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 - `web_games.game_type` (`013`): 2025 = 162 `R` + 18 postseason. Any team record must filter `game_type = 'R'`.
 - **Discipline / batted-ball definitions live only in the `015` views** (`web_v_pitch_scoped`, `web_v_batter_discipline`, `web_v_pitcher_discipline`, `web_v_batted_ball_profile`), each with a `scope` column (`'mlb'` | `'jays'`). Don't re-derive Chase% / CSW% / Hard-hit% in TS or Python — read the views. Pitch counts exclude pitch-clock `automatic_ball`/`automatic_strike` rows (not thrown); PA/K/BB keep them.
 - **Savant tables (`016`–`018`) are MLB-wide season values stored as Savant publishes them** — label them "all MLB clubs" next to Jays-scoped modules. An absent percentile row = **not qualified**, never 0. Percentiles: 100 = best for every metric. `web_savant_season` / `web_pitch_arsenal_rv` percentages are in **percent units** (6.9 = 6.9%). **Pitch run value: positive = good for the pitcher** (verified; the opposite of what one might assume). `web_league_season` rates come from summed team counts — keep it that way (P13 checks the MLB row).
+- **Team tables (P13) hold all 30 clubs, 2022–2026**: `web_team_season_stats` (MLB Stats API counts + `bat_wrc_plus` PA-weighted / `bat_war` / `pit_war` summed from the **per-club** player leaderboard — no team sabermetrics endpoint exists, and the league-wide leaderboard merges traded players) and `web_team_statcast_season` (Savant team leaderboards mapped by team **name** because Savant's abbreviations are retroactive). ⚠️ Its percentages are **fractions** (0.085), *unlike* P12's Savant tables above (percent units) — the P13 views output fractions like the `015` views. Counts only — team rates, FIP (counts + league constant), MLB averages (Σ counts → rate, never averaged rates) and ranks belong in the P13 views. `web_games` / `web_standings` also reach back to 2022 (no box scores / player data for 2022–2023).
 - **2026 `zone` is not comparable to earlier seasons.** Zone% fell ~3.4 pts and Chase% rose ~2.8 pts across every pitch on file while Whiff% didn't move — a Savant definition change (inferred). Never present a raw 2025→2026 Chase% / Z-Swing% / Zone% delta without that caveat or a "net of shift" figure. See `docs/DATA_MODEL.md` Known gaps #8.
 
 ---
@@ -125,6 +126,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   season_report.py             # P12: SELECT-only article data pack -> reports/season-review-<year>/ (git-ignored)
   pull_savant_leaderboards.py  # P12 M6: Savant percentiles / xStats + barrels / pitch run value (league-wide, filtered to the roster)
   pull_league_averages.py      # P12 M6: MLB / AL / NL averages from summed team counting stats
+  pull_team_stats.py           # P13: all 30 clubs' team lines + SP/RP split + wRC+/WAR aggregates (web_team_season_stats)
+  pull_team_statcast.py        # P13: Savant team leaderboards, all 30 clubs (web_team_statcast_season)
   backfill.py                  # one-shot orchestrator for 2024 + 2025 (and optional 2026)
 /db/migrations/                # plain SQL, apply via psql or Supabase Studio
   001_initial_schema.sql       # web_players, web_statcast_events, web_player_season_stats
@@ -146,6 +149,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   017_savant_season.sql        # web_savant_season (P12 M6)
   018_pitch_arsenal_rv.sql     # web_pitch_arsenal_rv (P12 M6)
   019_league_season.sql        # web_league_season (P12 M6)
+  020_team_season_stats.sql    # web_team_season_stats (all 30 clubs, counts + wRC+/WAR aggregates, P13)
+  021_team_statcast_season.sql # web_team_statcast_season (Savant team leaderboards, all 30 clubs, P13)
 /.github/workflows/etl.yml     # daily cron (rolling 7-day window for current season)
 /ETL_update_flow.md            # backfill + manual re-run steps
 /web/                          # Next.js app

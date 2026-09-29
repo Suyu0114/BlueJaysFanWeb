@@ -335,3 +335,76 @@ def upsert_standings(conn, rows: Iterable[dict]) -> int:
     with conn.cursor() as cur:
         cur.executemany(sql, rows)
         return cur.rowcount
+
+
+# --- P13: team season tables (30 clubs per season) ---
+
+# Every column of web_team_season_stats except updated_at, in DDL order.
+TEAM_SEASON_COLUMNS = [
+    "season", "team_id", "games",
+    "bat_pa", "bat_ab", "bat_h", "bat_2b", "bat_3b", "bat_hr", "bat_bb",
+    "bat_ibb", "bat_hbp", "bat_so", "bat_sf", "bat_sb", "bat_cs", "bat_r",
+    "bat_gidp",
+    "bat_pitches", "bat_swings", "bat_whiffs",
+    "bat_gb", "bat_fb", "bat_ld", "bat_pu",
+    "pit_outs", "pit_bf", "pit_ab", "pit_h", "pit_r", "pit_er", "pit_hr",
+    "pit_bb", "pit_ibb", "pit_hbp", "pit_so", "pit_sf", "pit_sv", "pit_bs",
+    "pit_hld",
+    "pit_pitches", "pit_swings", "pit_whiffs", "pit_qs",
+    "pit_gb", "pit_fb", "pit_ld", "pit_pu",
+    "sp_gs", "sp_outs", "sp_bf", "sp_h", "sp_er", "sp_hr", "sp_bb", "sp_hbp",
+    "sp_so",
+    "rp_outs", "rp_bf", "rp_h", "rp_er", "rp_hr", "rp_bb", "rp_hbp", "rp_so",
+    "bat_wrc_plus", "bat_war", "pit_war",
+]
+
+# Every column of web_team_statcast_season except updated_at, in DDL order.
+_STATCAST_SIDE = [
+    "bbe", "barrels", "ev95plus", "brl_pct", "brl_pa", "hard_hit_pct",
+    "sweet_spot_pct", "avg_ev", "avg_la",
+    "xpa", "ba", "xba", "slg", "xslg", "woba", "xwoba",
+]
+TEAM_STATCAST_COLUMNS = (
+    ["season", "team_id"]
+    + [f"bat_{c}" for c in _STATCAST_SIDE]
+    + [f"pit_{c}" for c in _STATCAST_SIDE]
+    + ["oaa"]
+)
+
+
+def _upsert_team_season(conn, table: str, columns: list[str], rows) -> int:
+    """Upsert (season, team_id)-keyed rows. Plain overwrite, like standings:
+    the feeds are complete and a corrected value must win (no coalesce).
+    Missing keys are written as NULL."""
+    cols = ", ".join(columns)
+    placeholders = ", ".join(f"%({c})s" for c in columns)
+    set_clause = ",\n          ".join(
+        f"{c} = excluded.{c}" for c in columns if c not in ("season", "team_id")
+    )
+    sql = f"""
+        insert into {table} ({cols})
+        values ({placeholders})
+        on conflict (season, team_id) do update set
+          {set_clause},
+          updated_at = now()
+    """
+    rows = [{c: r.get(c) for c in columns} for r in rows]
+    if not rows:
+        return 0
+    with conn.cursor() as cur:
+        cur.executemany(sql, rows)
+        return cur.rowcount
+
+
+def upsert_team_season_stats(conn, rows: Iterable[dict]) -> int:
+    """web_team_season_stats (db/migrations/020_team_season_stats.sql)."""
+    return _upsert_team_season(
+        conn, "web_team_season_stats", TEAM_SEASON_COLUMNS, rows
+    )
+
+
+def upsert_team_statcast_season(conn, rows: Iterable[dict]) -> int:
+    """web_team_statcast_season (db/migrations/021_team_statcast_season.sql)."""
+    return _upsert_team_season(
+        conn, "web_team_statcast_season", TEAM_STATCAST_COLUMNS, rows
+    )

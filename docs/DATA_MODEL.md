@@ -10,9 +10,11 @@ the columns that **don't** exist so nobody assumes them.
 > update this file in the same change.** To re-verify, dump the columns for every
 > table below and diff — the verification recipe is at the bottom.
 >
-> **Verified against live DB: 2026-09-30** (migrations `001`–`019` applied;
+> **Verified against live DB: 2026-09-30** (migrations `001`–`019` applied, plus
+> P13's `020`–`021`;
 > `web_player_season_stats` at 32 columns, `web_statcast_events` at 29,
-> `web_standings` at 38, `web_games` at 17, `web_player_team_season_stats` at 37).
+> `web_standings` at 38, `web_games` at 17, `web_player_team_season_stats` at 37,
+> `web_team_season_stats` at 69, `web_team_statcast_season` at 36).
 >
 > This Supabase project is **shared** with other projects, so every table here is
 > prefixed `web_`. See CLAUDE.md → "Supabase tables are shared — prefix everything
@@ -31,13 +33,15 @@ the columns that **don't** exist so nobody assumes them.
 | [`web_player_seasons`](#web_player_seasons) | 178 | one row per (player, season, team) | derived during ETL |
 | [`web_fielding_frv`](#web_fielding_frv) | 1,808 | one row per (player, season, position) | Baseball Savant OAA leaderboard |
 | [`web_id_map`](#web_id_map) | 0 | one row per MLBAM id | Chadwick register (lazy cache) |
-| [`web_games`](#web_games) | 504 | one row per game_pk | MLB Stats API schedule |
+| [`web_games`](#web_games) | 832 | one row per game_pk | MLB Stats API schedule |
 | [`web_player_game_stats`](#web_player_game_stats) | 7,716 | one row per (game, player, stat group) | MLB Stats API boxscore |
 | [`web_standings`](#web_standings) | 150 | one row per (team, season) — snapshot | MLB Stats API standings |
 | `web_savant_percentiles` | 205 | (player, season, role) | Savant percentile ranks (P12 M6) |
 | `web_savant_season` | 87 | (player, season) | Savant expected stats + barrels (P12 M6) |
 | `web_pitch_arsenal_rv` | 595 | (player, season, pitch type) | Savant pitch run value (P12 M6) |
 | `web_league_season` | 9 | (season, league) | MLB Stats API team totals, summed (P12 M6) |
+| [`web_team_season_stats`](#web_team_season_stats) | 150 | one row per (season, club) — **all 30 clubs**, counts | MLB Stats API team stats + per-club player leaderboard (P13) |
+| [`web_team_statcast_season`](#web_team_statcast_season) | 150 | one row per (season, club) — **all 30 clubs** | Baseball Savant team leaderboards (P13) |
 
 ---
 
@@ -53,6 +57,7 @@ and is genuinely absent:
 | `name_tc` (Chinese name) | `web_players` | **Intentionally absent.** Single English `name` field by design — see CLAUDE.md → "What stays English even in zh-TW". Do not add it. |
 | `woba` / `babip` / per-event run value | `web_statcast_events` | **Absent.** Only the raw Statcast fields below are stored; sabermetric aggregates live in `web_player_season_stats` (season grain), not per pitch. |
 | `games_back` as a **number** | `web_standings` | **It is `text`, not numeric** — and deliberately so. MLB sends display strings with sentinels: `'-'` (this team *is* the reference), `'+9.5'` (ahead of the wild card cut line), `'E'` (eliminated, on `elimination_number`). Same for `wc_games_back`, `elimination_number`, `wc_elimination_number`, `magic_number`. Never cast or arithmetic them; **order by the `*_rank` columns instead.** |
+| `fip` / `era` / any rate or rank | `web_team_season_stats`, `web_team_statcast_season` | **Absent by design (P13 T4).** The team tables hold counts (+ `bat_wrc_plus` / `bat_war` / `pit_war`); team rates, FIP (from counts + the league constant), MLB averages and ranks are computed in the P13 `022` views. Don't add rate columns — they'd drift from the views the article pack reads. |
 | `standings_date` / any date dimension | `web_standings` | **Absent by design (P11 D2).** The table is a *snapshot*, overwritten nightly — 30 rows per season, not one row per day. A GB-over-time race chart needs a new column + PK change first. |
 
 ---
@@ -360,11 +365,14 @@ on `mlbam_id` means an unknown call-up must be inserted into `web_players` first
 `pull_standings.py` from `mlb_api.fetch_standings`). Conflict key: `(season, team_id)`.*
 
 **A snapshot, not a history.** One row per team per season, overwritten by every
-nightly run — 30 rows/season. There is no date dimension (P11 D2), so you can read
-"where do the Jays stand right now", never "where did they stand in June".
+nightly run — 30 rows/season, seasons 2022–2026 (2022–2023 backfilled in P13 N0).
+There is no date dimension (P11 D2), so you can read "where do the Jays stand right
+now", never "where did they stand in June".
 
 **All 30 clubs, both leagues** — unlike [`web_games`](#web_games), which is
-Jays-only. This is the only table holding other clubs' records.
+Jays-only. The only other tables holding other clubs are the P13 team tables
+([`web_team_season_stats`](#web_team_season_stats) /
+[`web_team_statcast_season`](#web_team_statcast_season)); W/L/RS/RA/x-W-L stay here.
 
 ⚠️ **`games_back` / `wc_games_back` / `*_number` are `text` on purpose.** MLB
 returns display strings carrying sentinels, and they are stored verbatim:
@@ -435,6 +443,82 @@ leaderboard's qualifier loses his row: **an absent row means "not qualified", ne
 | `web_savant_season` | `(mlbam_id, season)` | Batters: `pa bip ba xba slg xslg woba xwoba` (decimals), `barrels`, `brl_percent brl_pa sweet_spot_pct ev95_pct` (**percent units**, 6.9 = 6.9%), `avg_ev max_ev` (mph). The **only** source of official Barrel% (never computed locally, P12 D5). |
 | `web_pitch_arsenal_rv` | `(mlbam_id, season, pitch_type)` | `pitches`, `usage whiff_pct put_away hard_hit_pct` (**percent units**), `run_value run_value_per_100`, `woba xwoba`. One row per pitch type for the whole MLB season (a traded pitcher's clubs combined). ⚠️ **Run value is from the pitcher's view: POSITIVE = runs saved = good** — verified 2026-09-30, corr(RV/100, wOBA) = −0.78 over 1,253 pitch rows. |
 | `web_league_season` | `(season, league)`, `league in ('AL','NL','MLB')` | `teams` (15/15/30), `pa`, `obp slg ops era k_pct bb_pct`. **Rates from summed team counting stats, never averaged team rates** (P13 relies on the MLB row). `k_pct`/`bb_pct` are raw fractions (SO/PA, BB/PA). League membership from MLB `/teams` for that season. |
+
+---
+
+## `web_team_season_stats`
+*Migration: `020` (P13). Writer: [`etl/db.py`](../etl/db.py) `upsert_team_season_stats`
+(built by `pull_team_stats.py`). Conflict key: `(season, team_id)`. Plain overwrite.*
+
+Every club's **regular-season team line** — 30 rows per season, 2022–2026 — so
+the `/team` page can rank the Jays and compute MLB averages. **Raw counts only**:
+every rate, MLB average and rank is computed in the P13 `022` views (N1), never
+stored. Sources (MLB Stats API, `gameType=R`): `/teams/stats` `season` +
+`seasonAdvanced` (1 call, all clubs), `/teams/{id}/stats?stats=statSplits&sitCodes=sp,rp`
+(per club — the all-teams variant returned 50 of 60 splits), and the per-club
+player leaderboard `/stats?stats=season,sabermetrics&teamId={id}&playerPool=ALL`.
+
+⚠️ **Three columns are aggregates of player values, not counts** (there is no
+team-level sabermetrics endpoint, and the league-wide player leaderboard merges a
+traded player's clubs into one row, so it can't be split by team):
+`bat_wrc_plus` = PA-weighted mean of the club's players' wRC+ (exact — one park
+and league constant per club); `bat_war` / `pit_war` = sums. The per-club
+leaderboard can **lag right after a season** (P12 M0 saw stale FIP/WAR on
+2026-09-29), so `pull_team_stats` cross-checks the Jays row against
+[`web_player_season_stats`](#web_player_season_stats) and logs a warning outside
+±1 wRC+ / ±1.0 WAR (2026-09-29: 2024 101.1 vs 100.8, 2025 exact, 2026 94.2 vs 94.3,
+WAR 34.8 vs 35.3). **FIP is deliberately not stored** — the view computes it from
+counts + the season's league constant, which is exact and lag-free.
+
+| Column | Type | Null | Meaning |
+|---|---|---|---|
+| `season` `team_id` | int | NO | **PK.** MLB Stats API team id (141 = Jays). |
+| `games` | int | yes | `gamesPlayed` (hitting). |
+| `bat_pa` `bat_ab` `bat_h` `bat_2b` `bat_3b` `bat_hr` `bat_bb` `bat_ibb` `bat_hbp` `bat_so` `bat_sf` `bat_sb` `bat_cs` `bat_r` `bat_gidp` | int | yes | Batting counts (`stats=season`). `bat_bb` **includes** IBB. |
+| `bat_pitches` `bat_swings` `bat_whiffs` | int | yes | `seasonAdvanced` `numberOfPitches` / `totalSwings` / `swingAndMisses`. |
+| `bat_gb` `bat_fb` `bat_ld` `bat_pu` | int | yes | MLB's **own** batted-ball classification, outs + hits per type; the four sum to `ballsInPlay` (= Savant BBE; 4,354 for the 2022 Jays). Not the P12 launch-angle proxy. |
+| `pit_outs` | int | yes | **Outs**, never IP strings — IP = `pit_outs / 3`. |
+| `pit_bf` `pit_ab` `pit_h` `pit_r` `pit_er` `pit_hr` `pit_bb` `pit_ibb` `pit_hbp` `pit_so` `pit_sf` `pit_sv` `pit_bs` `pit_hld` | int | yes | Pitching counts. `pit_hbp` = `hitBatsmen`; `pit_bb` includes IBB. |
+| `pit_pitches` `pit_swings` `pit_whiffs` `pit_qs` `pit_gb` `pit_fb` `pit_ld` `pit_pu` | int | yes | `seasonAdvanced` from the mound (`pit_qs` = quality starts). |
+| `sp_gs` `sp_outs` `sp_bf` `sp_h` `sp_er` `sp_hr` `sp_bb` `sp_hbp` `sp_so` | int | yes | Starters' line (`sitCodes=sp`). |
+| `rp_outs` `rp_bf` `rp_h` `rp_er` `rp_hr` `rp_bb` `rp_hbp` `rp_so` | int | yes | Relievers' line (`sitCodes=rp`). **`sp_outs + rp_outs = pit_outs`** (checked every run). |
+| `bat_wrc_plus` | numeric | yes | PA-weighted player wRC+ (see ⚠️). 30-club PA-weighted mean ≈ 100 (2022: 100.09). |
+| `bat_war` `pit_war` | numeric | yes | Σ player WAR (see ⚠️). |
+| `updated_at` | timestamptz | NO | default `now()`. |
+
+Index: `web_team_season_stats_season_idx (season)`.
+
+---
+
+## `web_team_statcast_season`
+*Migration: `021` (P13). Writer: [`etl/db.py`](../etl/db.py) `upsert_team_statcast_season`
+(built by `pull_team_statcast.py`). Conflict key: `(season, team_id)`. Plain overwrite.*
+
+Baseball Savant's **team leaderboards** for all 30 clubs, 2022–2026: contact
+quality (`leaderboard/statcast?type={batter|pitcher}-team`), expected stats
+(`leaderboard/expected_statistics?type={batter|pitcher}-team`) and team OAA
+(`leaderboard/outs_above_average?type=Fielding_Team`). `bat_*` = the club's hitters;
+`pit_*` = contact **allowed** by its pitchers.
+
+⚠️ **Savant's team abbreviations are retroactive** (`ATH` for the 2022 Athletics,
+whose MLB abbreviation that year was `OAK`). Rows are mapped by Savant's short name
+(`'Blue Jays'`) → MLB `/teams` `teamName`, and an unmapped name **fails the run**.
+The OAA CSV carries numeric MLB ids directly.
+
+⚠️ **Percentages are stored as fractions** (Savant's `8.5` → `0.085`), matching
+`web_player_season_stats.k_pct`. Absent = NULL, never 0.
+
+| Column | Type | Null | Meaning |
+|---|---|---|---|
+| `season` `team_id` | int | NO | **PK.** MLB Stats API team id. |
+| `bat_bbe` `bat_barrels` `bat_ev95plus` | int | yes | Batted-ball events (`attempts`), barrels, balls ≥ 95 mph. |
+| `bat_brl_pct` `bat_brl_pa` `bat_hard_hit_pct` `bat_sweet_spot_pct` | numeric | yes | Fractions: barrels/BBE, barrels/PA, ev95plus/BBE, LA 8–32°/BBE. |
+| `bat_avg_ev` `bat_avg_la` | numeric | yes | mph / degrees. |
+| `bat_xpa` | int | yes | Savant's PA behind the expected stats (the weight for MLB averages). |
+| `bat_ba` `bat_xba` `bat_slg` `bat_xslg` `bat_woba` `bat_xwoba` | numeric | yes | Actual vs expected. |
+| `pit_*` | — | yes | The same 16 columns, allowed by the club's pitchers. |
+| `oaa` | int | yes | Team Outs Above Average. |
+| `updated_at` | timestamptz | NO | default `now()`. |
 
 ---
 
