@@ -57,3 +57,6 @@ etl/data/
 
 # --- Claude Code (local, per-machine) ---
 .claude/settings.local.json
+
+# --- P12 article data packs (etl/season_report.py) ---
+reports/

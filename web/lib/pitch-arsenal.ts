@@ -30,7 +30,8 @@ export type PitchEvent = {
 
 // Savant swing/whiff convention: foul tips count as whiffs, regular fouls as
 // contact. Bunt attempts are swings. (Verify against a Savant player page —
-// values should land within ~1%.)
+// values should land within ~1%.) MIRRORED in db/migrations/015_metric_views.sql
+// (web_v_pitch_scoped.is_whiff / is_swing) — change both together.
 const WHIFFS = new Set([
   "swinging_strike",
   "swinging_strike_blocked",

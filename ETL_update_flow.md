@@ -77,6 +77,18 @@ python etl/pull_pitcher.py  --all-pitchers --season 2025 --cohort-season 2026
 > - 當季（`--cohort-season $SEASON --season $SEASON`）已排進 09:00 ET cron；
 >   明年要補 2027 名單的歷史，把 2026 換成 2027 再跑一次即可。
 
+**Step 5（P12）：產生季末文章數據包（唯讀，不會寫 DB）**
+```powershell
+python etl/season_report.py --season 2026 --vs 2025
+```
+輸出到 `reports/season-review-2026/`（已 git-ignore）：`README.md`（凍結時間、定義、
+注意事項）、`team.md`、`batters.*`、`pitchers.*`、`pitchers_arsenal.csv`、`movers.md`、
+`roster_moves.md`（新加入 / 季中交易進出，含在其他隊的成績）、`league_context.md`。
+> - 要在 season stats / splits 都刷新過之後再跑（季末：兩班 cron 都跑過最後一場之後）。
+> - Chase% / Zone% 這類「看好壞球帶」的數字，2026 跟之前的季**不能直接比**（Savant
+>   2026 的 zone 定義變了，全體樣本 Chase% 自己就 +2.8）。報告裡有「扣掉整體位移」
+>   的欄位，寫文章時請用那個。
+
 ---
 
 ## 注意事項

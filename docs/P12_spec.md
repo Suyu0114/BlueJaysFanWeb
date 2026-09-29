@@ -156,6 +156,12 @@ returns 30 teams with counting stats (PA, AB, H, BB, HBP, SO, HR, TB, runs, era�
 - **Size:** DB 100 MB (Statcast 62 MB / 167k rows); the history backfill adds an
   estimated ~100k rows (~40 MB) — fine on the free tier.
 - All 30 club logos exist in `web/public/team-logos/`; `web/lib/team-abbr.ts::teamAbbr`.
+- **`zone` shifted in 2026** (found while building M1): across every pitch on file,
+  Zone% 49.6 / 50.0 / 46.6 and Chase% 28.8 / 29.0 / 31.8 for 2024 / 2025 / 2026, Whiff%
+  flat at 24.0 / 24.0 / 24.1. So D3's "use `zone` buckets across seasons" still avoids
+  the plate-coordinate smear, but zone-based **rates** carry a definitional shift:
+  every 2025→2026 Chase% / Z-Swing% / Zone% comparison (report, M2 cards, M3 tab) shows
+  the season reference rate or a "net of shift" value. DATA_MODEL Known gaps #8.
 
 ---
 

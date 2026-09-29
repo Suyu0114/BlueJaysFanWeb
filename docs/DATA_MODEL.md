@@ -10,7 +10,7 @@ the columns that **don't** exist so nobody assumes them.
 > update this file in the same change.** To re-verify, dump the columns for every
 > table below and diff — the verification recipe is at the bottom.
 >
-> **Verified against live DB: 2026-09-29** (migrations `001`–`014` applied;
+> **Verified against live DB: 2026-09-29** (migrations `001`–`015` applied;
 > `web_player_season_stats` at 32 columns, `web_statcast_events` at 29,
 > `web_standings` at 38, `web_games` at 17, `web_player_team_season_stats` at 37).
 >
@@ -412,6 +412,28 @@ Indexes: `idx_web_standings_div (season, division_id, division_rank)`,
 
 ---
 
+## Views (migration `015`, P12)
+
+Read-only metric views — **the one place** the plate-discipline and batted-ball
+definitions live. The web app (`lib/discipline.ts`, M2) and `etl/season_report.py`
+both read them, so the site and the article pack cannot drift. Regular season only.
+Rates are raw fractions. Filter on `mlbam_id` (+ `scope`): both push down through the
+`union all` / `group by` (~0.1–0.2 s per player).
+
+| View | Grain | What |
+|---|---|---|
+| `web_v_pitch_scoped` | one row per pitch | `web_statcast_events` (`game_type = 'R'`) + `season`, `is_auto` (pitch-clock automatic ball/strike), `is_whiff`, `is_swing` (mirror `lib/pitch-arsenal.ts`), `is_pa`, `batter_as_jay`, `pitcher_as_jay` (box-score membership, invariant 7). |
+| `web_v_batter_discipline` | (mlbam_id, season, scope) | counts (pitches, swings, whiffs, z/o pitches & swings, first pitches/swings, pa, k, bb) + `chase_pct`, `z_swing_pct`, `whiff_pct`, `contact_pct`, `swing_pct`, `first_swing_pct`, `k_pct`, `bb_pct`. |
+| `web_v_pitcher_discipline` | (mlbam_id, season, scope) | same counts from the mound + `called_strikes`, `zoned_pitches`, `first_strikes` → `csw_pct`, `zone_pct`, `chase_pct`, `whiff_pct`, `first_strike_pct`, `k_pct`, `bb_pct`, `k_minus_bb_pct`. |
+| `web_v_batted_ball_profile` | (mlbam_id, season, scope) | population `hc_x_feet is not null` (= the batting page, invariant 2): `bip`, `avg_ev`, `max_ev`, `hard_hit_pct`, GB/LD/FB/PU **approx.** from launch angle (<10 / 10–25 / 25–50 / >50), `sweet_spot_pct` (8–32°), `pull_pct` / `center_pct` / `oppo_pct` (±15° by `stand`), `xwoba_con` (gated on `hit_into_play`). |
+
+- **`scope`**: `'mlb'` = every row; `'jays'` = only games in the player's Jays box score.
+- **Pitch counts exclude `is_auto` rows** (not thrown, no zone, no pitch type), but
+  PA / K / BB keep them — 218 of the 915 end a plate appearance.
+- ⚠️ **Zone-based rates are not comparable raw across 2025 → 2026** — Known gaps #8.
+
+---
+
 ## Cross-cutting invariants (the ETL relies on these)
 
 1. **Regular season = `game_type = 'R'`.** pybaseball returns postseason by
@@ -493,6 +515,17 @@ Indexes: `idx_web_standings_div (season, division_id, division_rank)`,
    uniform 3.101). `fetch_team_season_stats` now takes every player's numbers from
    his `/people/{id}/stats` Toronto split and uses the leaderboard only to enumerate.
    Settled seasons agree across all three sources.
+8. **`zone` is not defined the same way in 2026 (open, cannot be fixed locally).**
+   Across every regular-season pitch on file, Zone% 49.6 / 50.0 / **46.6** and Chase%
+   28.8 / 29.0 / **31.8** for 2024 / 2025 / 2026, while Whiff% stays 24.0 / 24.0 / 24.1.
+   A population-wide move with no change in swing-and-miss points to Savant assigning
+   `zone` differently in 2026 — the season it moved `plate_x`/`plate_z` to the middle of
+   the plate (the ABS-zone reference). Inferred, not confirmed. `sz_top`/`sz_bot` are
+   not stored, so the zone can't be recomputed. **Any cross-season Chase% / Z-Swing% /
+   Zone% delta must be read against this shift** (`season_report.py` prints the
+   reference rates and a "net of shift" column). Whiff% / CSW% / K% / BB% / velo / spin /
+   movement / batted-ball metrics are unaffected. Savant percentiles (M6) are
+   within-season and sidestep it.
 
 ---
 

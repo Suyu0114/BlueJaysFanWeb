@@ -31,7 +31,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 - This Supabase project is **shared with other projects** that already have a `players` table.
 - **Every table for this app is prefixed `web_`**: `web_players`, `web_statcast_events`, `web_player_season_stats`, `web_player_team_season_stats`, `web_player_seasons`, `web_fielding_frv`, `web_id_map`, `web_games`, `web_player_game_stats`, `web_standings`.
 - Never create an unprefixed table here; it will collide.
-- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6) → `006_games.sql` + `007_player_game_stats.sql` + `008_war_components.sql` (P7) → `009_basic_season_stats.sql` (P9) → `010_pitching_season_stats.sql` + `011_statcast_pitch_detail.sql` (P10) → `012_standings.sql` (P11) → `013_games_game_type.sql` + `014_player_team_season_stats.sql` (P12). One concern per migration file.
+- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6) → `006_games.sql` + `007_player_game_stats.sql` + `008_war_components.sql` (P7) → `009_basic_season_stats.sql` (P9) → `010_pitching_season_stats.sql` + `011_statcast_pitch_detail.sql` (P10) → `012_standings.sql` (P11) → `013_games_game_type.sql` + `014_player_team_season_stats.sql` + `015_metric_views.sql` (P12). One concern per migration file.
 
 ### Audience & language
 - **Primary audience: English-speaking Toronto locals**, including non-Chinese speakers curious about BaZi. Chinese (TW/HK) fans are secondary.
@@ -80,6 +80,8 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 - **`web_player_team_season_stats`** holds the 2026 roster's full-MLB lines 2024–2026, one row per club **plus `team_id = 0` = season total** (always written; read it instead of summing). Written by `etl/pull_player_splits.py` (history one-shot + nightly for the current season); mapping shared with `pull_season_stats.py` via `etl/season_line.py`.
 - **Statcast holds other clubs' games** (it is pulled by player id): deadline departures' post-trade games, and the 2026 roster's whole 2024/2025 seasons elsewhere (`pull_statcast.py` / `pull_pitcher.py --cohort-season 2026`). **"As a Blue Jay" = the player is in that game's Jays box score** (`exists web_player_game_stats (game_pk, mlbam_id)`), **not** `game_pk ∈ web_games` — Varsho as an Astro faced Toronto 2026-08-03→05.
 - `web_games.game_type` (`013`): 2025 = 162 `R` + 18 postseason. Any team record must filter `game_type = 'R'`.
+- **Discipline / batted-ball definitions live only in the `015` views** (`web_v_pitch_scoped`, `web_v_batter_discipline`, `web_v_pitcher_discipline`, `web_v_batted_ball_profile`), each with a `scope` column (`'mlb'` | `'jays'`). Don't re-derive Chase% / CSW% / Hard-hit% in TS or Python — read the views. Pitch counts exclude pitch-clock `automatic_ball`/`automatic_strike` rows (not thrown); PA/K/BB keep them.
+- **2026 `zone` is not comparable to earlier seasons.** Zone% fell ~3.4 pts and Chase% rose ~2.8 pts across every pitch on file while Whiff% didn't move — a Savant definition change (inferred). Never present a raw 2025→2026 Chase% / Z-Swing% / Zone% delta without that caveat or a "net of shift" figure. See `docs/DATA_MODEL.md` Known gaps #8.
 
 ---
 
@@ -119,6 +121,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   pull_season_stats.py         # OPS/wRC+/ERA/FIP/WAR + Value components + basic line + pitcher line (MLB Stats API)
   season_line.py               # P12: shared API season line -> stat columns mapping (season stats + splits)
   pull_player_splits.py        # P12: full-MLB lines per club + season total for a roster (web_player_team_season_stats)
+  season_report.py             # P12: SELECT-only article data pack -> reports/season-review-<year>/ (git-ignored)
   backfill.py                  # one-shot orchestrator for 2024 + 2025 (and optional 2026)
 /db/migrations/                # plain SQL, apply via psql or Supabase Studio
   001_initial_schema.sql       # web_players, web_statcast_events, web_player_season_stats
@@ -135,6 +138,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   012_standings.sql            # web_standings (MLB standings snapshot, all 30 clubs, P11)
   013_games_game_type.sql      # web_games.game_type (R vs postseason rounds, P12)
   014_player_team_season_stats.sql # web_player_team_season_stats (per-club + total season lines, P12)
+  015_metric_views.sql         # web_v_* discipline / batted-ball views with mlb|jays scope (P12)
 /.github/workflows/etl.yml     # daily cron (rolling 7-day window for current season)
 /ETL_update_flow.md            # backfill + manual re-run steps
 /web/                          # Next.js app
