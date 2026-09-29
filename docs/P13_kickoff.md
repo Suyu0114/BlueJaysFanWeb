@@ -77,7 +77,9 @@ articles can use the numbers via `season_report.py` before the page exists.
 - Drive the pages in a real browser (dev server + headless Chrome) for `/en/team`
   and `/zh-TW/team` at desktop and 375 px: every module, the Value | vs MLB toggle,
   keyboard focus on grid cells, season highlight on the trajectory chart, the
-  Season strip links, and the "← Team trends" back-link on `/en/season/2025`.
+  Season strip links, the `Nav.team` link now pointing to `/team` (P12 shipped it
+  pointing to `/season/<latest>` — spec T7), and the "← Team trends" back-link on
+  `/en/season/2025`.
 - Site numbers == `reports/season-review-2026/team_trends.csv` for the spot cells.
 - **Stop any dev server you start** before finishing.
 

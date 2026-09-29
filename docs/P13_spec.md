@@ -74,7 +74,7 @@ seasons before 2022.
 | T4 | Where definitions live | Rates, MLB averages and **ranks** live in **SQL views** (migration `022`), read by both the web app and the Python report (P12 D4) — so article numbers and site numbers cannot drift. The TS registry (`lib/team-metrics.ts`) holds only display concerns (label, format, direction for colouring, hint key) with a cross-reference comment to the view; N1 checks the two directions agree. |
 | T5 | Ranking | **1 = best**, direction per metric (§10 table). `rank()` (competition ranking) — ties display as "T-3rd". NULL value → NULL rank ("—"), never last. Neutral profile metrics (GB% / FB% / LD% / PU%) get **no rank and no colour** and are excluded from callouts. |
 | T6 | Team sabermetrics | No team-level endpoint exists (`/teams/stats?stats=sabermetrics` → empty), and the league-wide player leaderboard merges traded players into one row. So **wRC+ and WAR** aggregate the **per-team player leaderboard** (`/stats?stats=season,sabermetrics&teamId=T&playerPool=ALL`): wRC+ = PA-weighted mean, WAR = sum. **FIP is not aggregated** — it is computed in the view from team counting stats + the season's league constant (§10), which is exact and immune to the leaderboard staleness P12 found. |
-| T7 | Nav | **One "Team" link** (zh-TW 球隊) → `/team`, placed after Standings. If P12 M5 added a "Season" link, **replace it** — `/season/[year]` is reached from the Season strip and gets a "← Team trends" back-link. |
+| T7 | Nav | **One "Team" link** (zh-TW 球隊), placed after Standings. Agreed with P12 on 2026-09-29: P12 M5 ships it as **`Nav.team` → `/season/<latest season>`** (no "Season" link), and P13 only **repoints its `href` to `/team`** — same key, same label, same position. `/season/[year]` is then reached from the Season strip and gets a "← Team trends" back-link. (If P12's §15 says otherwise, replace whatever nav entry it added.) |
 | T8 | Counting stats as rates | Shown per game / per PA (R/G, HR%, SB/G) so a season in progress compares fairly with finished ones. Raw totals appear only in tooltips. |
 | T9 | Colours | Brand tokens only. Jays = **brick** line/marks; MLB average = **navy dashed** reference. Rank shading Savant-style: ranks 1–3 `bg-brick/35`, 4–10 `bg-brick/15`, 11–20 none, 21–27 `bg-steel/20`, 28–30 `bg-steel/40` (matches P12 M6 PercentileBars: high → brick, low → steel); the ordinal is always printed too (never colour-only). Run sources: offense **brick**, run prevention **navy**, net marker **lava**. Five-season overlay: highlighted season brick, others `steel` at 35 % opacity. Luck / Δ numbers are signed text, not coloured good/bad. |
 | T10 | Dependencies | **None new.** Savant team CSVs via `requests` + stdlib `csv` (so the scripts don't need pandas); charts via Recharts; motion via existing components. |
@@ -238,7 +238,8 @@ Statcast-heavy) — **don't extend it**; P13 loops the light scripts.
 - **`web/app/[locale]/team/page.tsx`**: `setRequestLocale`, `getTranslations("Team")`, the
   standings-page skeleton (`max-w-5xl`, `Reveal` header), one `ScorecardFrame variant="panel"`
   per module (content `relative z-10`), `revalidate = 3600`, empty state when < 1 season.
-- **`Header.tsx`**: "Team" link after Standings (T7). **`Nav.team`** in both locales.
+- **`Header.tsx`**: repoint P12's `Nav.team` link from `/season/<latest>` to `/team` (T7);
+  the key and both locale strings already exist.
 - **`components/team/SeasonStrip.tsx`** (server): one cell per season — W-L, finish
   ("2nd · AL East"), postseason result, run diff; links to `/season/[year]`; current season
   marked "in progress" when `games < 162` and not final.
@@ -383,7 +384,7 @@ postseason result  = from web_games rows with game_type in (F, D, L, W):
 | N0-2 | `web_standings` + `web_games` (162 R each, W/L = standings) present for 2022 and 2023. |
 | N0-3 | Staleness check passes for 2024–2026 (or the 2026 exception is documented). Cron wired in the refresh job. |
 | N1 | `web_v_mlb_season` == `web_league_season` MLB row (±0.0005); rank directions and tie handling verified; run sources sum to run diff. |
-| N2 | `/en/team` and `/zh-TW/team` render the Season strip and module ①; nav shows one "Team" link; `/season/[year]` links back. |
+| N2 | `/en/team` and `/zh-TW/team` render the Season strip and module ①; the one `Nav.team` link now points to `/team` (no "Season" link anywhere); `/season/[year]` links back. |
 | N3 | Offense grid + toggle + keyboard-focus tooltip + small multiples render; the Jays 2022 wRC+ cell reads 118 and its ordinal equals `bat_wrc_plus_rank` in the view. |
 | N4 | Prevention grid, rotation / bullpen table with ranks, ERA − FIP notes render. |
 | N5 | Trajectory shows 5 seasons with a working highlight; splits table matches `season_report.py`'s `team.md` for 2025 and 2026. |
