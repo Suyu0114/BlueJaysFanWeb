@@ -1,0 +1,156 @@
+import { delta, deltaTone, type Direction } from "@/lib/season-deltas";
+
+// P12: one card, two season columns + a Δ chip per metric. Server component,
+// no hooks — the discipline / batted-ball cards (overview, M2) and the Compare
+// tab (M3) all render through it. Season A is the newer / focus season (brick
+// dot), B the comparison (steel dot) — D8. Δ tone follows each metric's own
+// direction (lower Chase% is better, lower Whiff% is better for a batter but
+// worse for a pitcher…); `neutral` metrics are never coloured.
+
+export type CompareFormat = "pct" | "mph" | "rate3";
+
+export type CompareRow = {
+  key: string;
+  label: string; // stat name — stays English in every locale (Chase%, CSW%…)
+  hint?: string; // translated plain-language one-liner
+  a: number | null;
+  b?: number | null;
+  format: CompareFormat;
+  direction: Direction;
+  // Zone-based rates across the 2026 zone change: the population-wide change
+  // (a − b) to subtract. Set → the Δ is shown net of it and marked with †.
+  shift?: number | null;
+};
+
+function value(v: number | null | undefined, format: CompareFormat): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  if (format === "pct") return `${(v * 100).toFixed(1)}%`;
+  if (format === "mph") return v.toFixed(1);
+  const s = v.toFixed(3);
+  return s.startsWith("0.") ? s.slice(1) : s;
+}
+
+function change(d: number, format: CompareFormat): string {
+  const sign = d > 0 ? "+" : d < 0 ? "−" : "±";
+  const x = Math.abs(d);
+  if (format === "pct") return `${sign}${(x * 100).toFixed(1)}`;
+  if (format === "mph") return `${sign}${x.toFixed(1)}`;
+  const s = x.toFixed(3);
+  return `${sign}${s.startsWith("0.") ? s.slice(1) : s}`;
+}
+
+// Changes smaller than this are noise at these sample sizes: shown, never coloured.
+const FLAT_BELOW: Record<CompareFormat, number> = { pct: 0.002, mph: 0.1, rate3: 0.002 };
+
+const TONE_CLASS = {
+  better: "bg-grass/25 text-navy",
+  worse: "bg-brick/15 text-lava",
+  flat: "bg-navy/5 text-navy/60",
+} as const;
+
+export default function SeasonCompareCard({
+  title,
+  subtitle,
+  seasonA,
+  seasonB,
+  sample,
+  rows,
+  notes,
+  labels,
+}: {
+  title: string;
+  subtitle?: string;
+  seasonA: number;
+  seasonB: number | null;
+  // Volume row shown first (PA, pitches, batted balls) so small samples are visible.
+  sample?: { label: string; a: number | null; b: number | null; small?: boolean };
+  rows: CompareRow[];
+  notes?: string[];
+  labels: { metric: string; change: string; changeUnit: string; smallSample: string };
+}) {
+  const hasB = seasonB != null;
+  return (
+    <div className="rounded-lg border border-navy/10 bg-white/50 p-4">
+      <h3 className="text-sm font-semibold text-navy">
+        {title}
+        {subtitle && <span className="font-normal text-navy/45"> · {subtitle}</span>}
+      </h3>
+      <table className="mt-3 w-full text-sm tabular-nums">
+        <thead>
+          <tr className="border-b border-navy/10 text-[11px] uppercase tracking-wide text-navy/50">
+            <th className="py-1 pr-2 text-left font-semibold">{labels.metric}</th>
+            <th className="px-2 py-1 text-right font-semibold">
+              <span className="mr-1 inline-block h-2 w-2 rounded-full bg-brick align-middle" aria-hidden />
+              {seasonA}
+            </th>
+            {hasB && (
+              <th className="px-2 py-1 text-right font-semibold">
+                <span className="mr-1 inline-block h-2 w-2 rounded-full bg-steel align-middle" aria-hidden />
+                {seasonB}
+              </th>
+            )}
+            {hasB && (
+              <th className="whitespace-nowrap py-1 pl-2 text-right font-semibold">
+                {labels.change}
+                <span className="ml-1 hidden font-normal normal-case text-navy/40 sm:inline">
+                  {labels.changeUnit}
+                </span>
+              </th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {sample && (
+            <tr className="border-b border-navy/5 text-xs text-navy/55">
+              <td className="py-1 pr-2">
+                {sample.label}
+                {sample.small && (
+                  <span className="ml-2 rounded bg-dirt/40 px-1 py-px text-[10px] text-navy/70">
+                    {labels.smallSample}
+                  </span>
+                )}
+              </td>
+              <td className="px-2 py-1 text-right">{sample.a ?? "—"}</td>
+              {hasB && <td className="px-2 py-1 text-right">{sample.b ?? "—"}</td>}
+              {hasB && <td />}
+            </tr>
+          )}
+          {rows.map((r) => {
+            const raw = delta(r.a, r.b);
+            const d = raw != null && r.shift != null ? raw - r.shift : raw;
+            const tone = deltaTone(d, r.direction, FLAT_BELOW[r.format]);
+            return (
+              <tr key={r.key} className="border-b border-navy/5 last:border-0 align-top">
+                <td className="py-1.5 pr-2">
+                  <div className="font-semibold text-navy">{r.label}</div>
+                  {r.hint && <div className="text-[11px] leading-tight text-navy/50">{r.hint}</div>}
+                </td>
+                <td className="px-2 py-1.5 text-right text-navy">{value(r.a, r.format)}</td>
+                {hasB && <td className="px-2 py-1.5 text-right text-navy/70">{value(r.b, r.format)}</td>}
+                {hasB && (
+                  <td className="py-1.5 pl-2 text-right">
+                    {d == null ? (
+                      <span className="text-navy/40">—</span>
+                    ) : (
+                      <span className={`inline-block rounded-full px-1.5 text-xs ${TONE_CLASS[tone]}`}>
+                        {change(d, r.format)}
+                        {r.shift != null && "†"}
+                      </span>
+                    )}
+                  </td>
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {notes && notes.length > 0 && (
+        <div className="mt-2 space-y-0.5 text-[11px] leading-snug text-navy/50">
+          {notes.map((n) => (
+            <p key={n}>{n}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

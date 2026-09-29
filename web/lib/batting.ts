@@ -16,8 +16,14 @@ export async function getBattedBalls(
       event,
       pitch_type,
       p_throws,
-      to_char(game_date, 'YYYY-MM-DD') as game_date
-    from web_statcast_events
+      to_char(game_date, 'YYYY-MM-DD') as game_date,
+      -- P12: "as a Blue Jay" = in that game's Jays box score, not merely a
+      -- Jays game (a traded player can face Toronto). DATA_MODEL invariant 7.
+      exists (
+        select 1 from web_player_game_stats s
+        where s.game_pk = e.game_pk and s.mlbam_id = e.batter_id
+      ) as as_jay
+    from web_statcast_events e
     where batter_id = ${batterId}
       and game_type = 'R'
       and hc_x_feet is not null

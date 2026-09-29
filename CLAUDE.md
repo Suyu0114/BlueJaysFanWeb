@@ -147,7 +147,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     template.tsx               # page-to-page fade on client navigation (skipped on first load)
     players/page.tsx           # roster list with Current 26-man / All 2024-2026 toggle
     players/[mlbam_id]/
-      page.tsx                 # overview: batter = KPI + RecentForm + RollingOpsSparkline + SeasonProgressBar + SeasonStatTable + ContactQualityCard + WarBreakdown + GameLog; pitcher (P10) = KPI(W-L/SV/IP/ERA/WHIP/K%/WAR + hints) + PitcherRecentForm + RollingEraSparkline + SeasonProgressBar + PitcherSeasonStatTable + PitcherGameLog
+      page.tsx                 # overview: batter = KPI + RecentForm + RollingOpsSparkline + SeasonProgressBar + SeasonStatTable + ContactQualityCard + DisciplineCard + BattedBallProfileCard + WarBreakdown + GameLog; pitcher (P10) = KPI(W-L/SV/IP/ERA/WHIP/K%/WAR + hints) + PitcherRecentForm + PitcherDisciplineCard + RollingEraSparkline + SeasonProgressBar + PitcherSeasonStatTable + PitcherGameLog. Overview modules are Jays-scoped (P12).
       batting/page.tsx         # spray chart + EV/LA scatter
       pitching/page.tsx        # P10: arsenal table + movement chart + zone heatmap + velo trend
       fielding/page.tsx        # FRV table + multi-position diagram
@@ -163,7 +163,9 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     SeasonStatTable.tsx        # P9 year-by-year basic+advanced table (overview, batter-only)
     RecentForm.tsx             # P9 Last 7 / Last 30 / Season slash lines (overview)
     GameLog.tsx                # P9 last-10 game log (overview)
-    ContactQualityCard.tsx     # P9 Avg/Max EV + Hard-Hit% (reuses computeExitVeloStats)
+    ContactQualityCard.tsx     # P9 Avg/Max EV + Hard-Hit% (reuses computeExitVeloStats; as-a-Jay batted balls)
+    SeasonCompareCard.tsx      # P12 generic season A vs B table + Δ chips (per-metric direction, † = net of 2026 zone shift)
+    DisciplineCards.tsx        # P12 DisciplineCard / BattedBallProfileCard / PitcherDisciplineCard (read the 015 views; scope prop)
     PitcherSeasonStatTable.tsx # P10 year-by-year pitching line (overview, pitcher-only)
     PitcherRecentForm.tsx      # P10 Last 5 outings / Last 30 / Season (ERA/IP/K/BB/WHIP)
     PitcherGameLog.tsx         # P10 last-10 outings log (overview)
@@ -199,6 +201,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     players.ts                 # roster modes + getPlayerAvailability
     batting.ts / pitching.ts / fielding.ts
     season-stats.ts            # web_player_season_stats (incl. P9 basic line + P10 pitcher line) + batter games-played
+    discipline.ts              # P12 015-view readers (batter/pitcher discipline, batted-ball profile, zone reference), scope 'mlb'|'jays'
+    season-deltas.ts           # P12 pure: delta / per-metric tone / 2026 zone-change helpers (M3 "What changed" extends it)
     batter-game-log.ts         # P9 per-game batting log (web_player_game_stats + web_games), current season
     batting-form.ts            # P9 pure helpers: summarize / windowByDays (generic) / rollingOps
     pitcher-game-log.ts        # P10 per-appearance pitching log (mirrors batter-game-log)

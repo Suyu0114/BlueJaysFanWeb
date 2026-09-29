@@ -40,6 +40,9 @@ export type BattedBallEvent = {
   pitch_type: string | null;
   p_throws: string | null; // pitcher handedness: "L" | "R"
   game_date: string; // YYYY-MM-DD
+  // P12: in that game's Blue Jays box score (DATA_MODEL invariant 7). Optional so
+  // hard-coded fixtures stay valid; getBattedBalls always sets it.
+  as_jay?: boolean;
 };
 
 // UI strings passed in so the chart stays framework-pure (no next-intl import).

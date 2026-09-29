@@ -13,6 +13,11 @@ import PitcherSeasonStatTable from "@/components/PitcherSeasonStatTable";
 import PitcherRecentForm from "@/components/PitcherRecentForm";
 import PitcherGameLog from "@/components/PitcherGameLog";
 import RollingEraSparkline from "@/components/charts/RollingEraSparkline";
+import {
+  BattedBallProfileCard,
+  DisciplineCard,
+  PitcherDisciplineCard,
+} from "@/components/DisciplineCards";
 import CountUp from "@/components/motion/CountUp";
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
@@ -26,6 +31,14 @@ import { rollingOps, summarize, windowByDays } from "@/lib/batting-form";
 import { getBattedBalls } from "@/lib/batting";
 import { computeExitVeloStats } from "@/lib/exit-velo-stats";
 import { getPitcherGameLog } from "@/lib/pitcher-game-log";
+import {
+  getBattedBallProfile,
+  getBatterDiscipline,
+  getPitcherDiscipline,
+  getZoneReference,
+  type ZoneReference,
+} from "@/lib/discipline";
+import { crossesZoneChange } from "@/lib/season-deltas";
 import {
   lastNAppearances,
   rollingEra,
@@ -79,6 +92,12 @@ function KpiCard({
       {hint && <div className="mt-0.5 text-[10px] leading-tight text-navy/45">{hint}</div>}
     </RevealItem>
   );
+}
+
+// The comparison season for the M2 cards: the newest season with data that is
+// older than `season` (rows arrive newest first).
+function priorSeason(rows: { season: number }[], season: number): number | null {
+  return rows.find((r) => r.season < season)?.season ?? null;
 }
 
 function pickLatest(stats: SeasonStats[]): {
@@ -139,21 +158,25 @@ export default async function PlayerOverviewPage({
   // balls drive the contact-quality card. Pitchers skip all of this.
   const isBatter = role === "batter" && latest != null;
   const today = new Date().toISOString().slice(0, 10);
-  const [gameLog, battedBalls] = isBatter
+  const [gameLog, battedBalls, discipline, profile] = isBatter
     ? await Promise.all([
         getBatterGameLog(playerId, latest!.season),
         getBattedBalls(playerId),
+        getBatterDiscipline(playerId, "jays"),
+        getBattedBallProfile(playerId, "jays"),
       ])
-    : [[], []];
+    : [[], [], [], []];
 
   const last7 = summarize(windowByDays(gameLog, 7, today));
   const last30 = summarize(windowByDays(gameLog, 30, today));
   const seasonSplit = summarize(gameLog);
   const rolling = rollingOps(gameLog, 15);
   const recentGames = [...gameLog].reverse().slice(0, 10);
+  // As a Blue Jay, like every other overview module (and the Hard-Hit% on the
+  // batted-ball card below, which reads the same population from the 015 view).
   const evStats = computeExitVeloStats(
     battedBalls.filter(
-      (e) => e.game_date.slice(0, 4) === String(latest?.season),
+      (e) => e.as_jay && e.game_date.slice(0, 4) === String(latest?.season),
     ),
   );
 
@@ -162,14 +185,27 @@ export default async function PlayerOverviewPage({
   // sparkline, and the last-10 log. The year-by-year table reads the same
   // season stats already fetched above.
   const isPitcher = role === "pitcher" && latest != null;
-  const pitcherLog = isPitcher
-    ? await getPitcherGameLog(playerId, latest!.season)
-    : [];
+  const [pitcherLog, pitcherDiscipline] = isPitcher
+    ? await Promise.all([
+        getPitcherGameLog(playerId, latest!.season),
+        getPitcherDiscipline(playerId, "jays"),
+      ])
+    : [[], []];
   const pitcherLast5 = summarizePitching(lastNAppearances(pitcherLog, 5));
   const pitcherLast30 = summarizePitching(windowByDays(pitcherLog, 30, today));
   const pitcherSeason = summarizePitching(pitcherLog);
   const eraTrend = rollingEra(pitcherLog, 5);
   const recentApps = [...pitcherLog].reverse().slice(0, 10);
+
+  // P12 M2: newest Jays season vs the one before it. Zone-based rates straddling
+  // the 2026 zone change are shown net of the population-wide shift.
+  const cardSeasonB = latest
+    ? priorSeason(isPitcher ? pitcherDiscipline : discipline, latest.season)
+    : null;
+  const zoneRef: ZoneReference[] | undefined =
+    latest && cardSeasonB != null && crossesZoneChange(latest.season, cardSeasonB)
+      ? await getZoneReference()
+      : undefined;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
@@ -291,6 +327,18 @@ export default async function PlayerOverviewPage({
 
           {isPitcher && (
             <Reveal>
+              <PitcherDisciplineCard
+                rows={pitcherDiscipline}
+                seasonA={latest!.season}
+                seasonB={cardSeasonB}
+                scope="jays"
+                zoneRef={zoneRef}
+              />
+            </Reveal>
+          )}
+
+          {isPitcher && (
+            <Reveal>
               <RollingEraSparkline data={eraTrend} />
             </Reveal>
           )}
@@ -323,6 +371,29 @@ export default async function PlayerOverviewPage({
           {isBatter && (
             <Reveal>
               <ContactQualityCard stats={evStats} season={latest!.season} />
+            </Reveal>
+          )}
+
+          {isBatter && (
+            <Reveal>
+              <DisciplineCard
+                rows={discipline}
+                seasonA={latest!.season}
+                seasonB={cardSeasonB}
+                scope="jays"
+                zoneRef={zoneRef}
+              />
+            </Reveal>
+          )}
+
+          {isBatter && (
+            <Reveal>
+              <BattedBallProfileCard
+                rows={profile}
+                seasonA={latest!.season}
+                seasonB={priorSeason(profile, latest!.season)}
+                scope="jays"
+              />
             </Reveal>
           )}
 
