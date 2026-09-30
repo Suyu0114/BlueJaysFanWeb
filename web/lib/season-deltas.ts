@@ -107,12 +107,43 @@ export function overlayByGame<T extends { game: number; date: string }>(
   prior: T[] | undefined,
   pick: (p: T) => number,
 ): OverlayPoint[] {
-  const byGame = new Map<number, OverlayPoint>();
-  for (const p of current) byGame.set(p.game, { game: p.game, value: pick(p), prior: null, date: p.date });
-  for (const p of prior ?? []) {
-    const row = byGame.get(p.game) ?? { game: p.game, value: null, prior: null, date: null };
-    row.prior = pick(p);
-    byGame.set(p.game, row);
+  return mergeByGame(
+    [
+      { key: "value", points: current },
+      { key: "prior", points: prior ?? [] },
+    ],
+    pick,
+  ).map((r) => ({
+    game: r.game,
+    value: r.values.value ?? null,
+    prior: r.values.prior ?? null,
+    date: r.dates.value ?? null,
+  }));
+}
+
+/**
+ * The N-series form of overlayByGame (P13's five-season trajectory): any number
+ * of series lined up by game number. `values[key]` / `dates[key]` are absent
+ * when that series has no point at that game number.
+ */
+export type MergedGamePoint = {
+  game: number;
+  values: Record<string, number>;
+  dates: Record<string, string>;
+};
+
+export function mergeByGame<T extends { game: number; date: string }>(
+  series: { key: string; points: T[] }[],
+  pick: (p: T) => number,
+): MergedGamePoint[] {
+  const byGame = new Map<number, MergedGamePoint>();
+  for (const s of series) {
+    for (const p of s.points) {
+      const row = byGame.get(p.game) ?? { game: p.game, values: {}, dates: {} };
+      row.values[s.key] = pick(p);
+      row.dates[s.key] = p.date;
+      byGame.set(p.game, row);
+    }
   }
   return [...byGame.values()].sort((a, b) => a.game - b.game);
 }

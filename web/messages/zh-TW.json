@@ -248,7 +248,16 @@
     "eraFipNote": "FIP 只用投手自己能控制的項目——三振、保送、觸身球、全壘打——來估算 ERA。球隊 ERA 明顯高於 FIP，通常代表守備或失分時機不佳；明顯低於 FIP 則相反。守備方面同時列出球隊 OAA（高於平均的出局數）。差距小於 0.15 視為雜訊。",
     "eraFipEven": "ERA 與 FIP 相符：實際失分與三振、保送、全壘打的表現一致。",
     "eraFipWorse": "每 9 局比 FIP 預期多失 {gap} 分——守備或失分時機拖累了投手。",
-    "eraFipBetter": "每 9 局比 FIP 預期少失 {gap} 分——守備或失分時機幫了投手。"
+    "eraFipBetter": "每 9 局比 FIP 預期少失 {gap} 分——守備或失分時機幫了投手。",
+    "trajectoryTitle": "逐場走勢與分項戰績",
+    "trajectoryQuestion": "每一季在什麼時候轉折？又是在哪些情境下贏球？",
+    "aboveTitle": "勝場減敗場，五季對照",
+    "aboveNote": "每場比賽後的勝場減敗場，依場次對齊：線在 0 以上代表勝率超過五成。選一季（或點那條線）可突顯它，其他球季留在背景對照。",
+    "pickSeason": "突顯球季",
+    "gameLabel": "第 {n} 場",
+    "splitsTitle": "分項戰績",
+    "splitsNote": "與各季單季頁相同的分項。對手依當季最終勝率分組；大比分是指分差 5 分以上的比賽。",
+    "colSplit": "分項"
   },
   "Game": {
     "battingTitle": "打擊",

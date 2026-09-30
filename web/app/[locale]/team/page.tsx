@@ -9,13 +9,16 @@ import RankKey from "@/components/team/RankKey";
 import RotationBullpenTable from "@/components/team/RotationBullpenTable";
 import RunSourcesChart from "@/components/team/RunSourcesChart";
 import SeasonStrip from "@/components/team/SeasonStrip";
+import SeasonTrajectoryChart from "@/components/team/SeasonTrajectoryChart";
 import TeamPanel, { PanelBlock } from "@/components/team/TeamPanel";
+import TeamSplitsTable from "@/components/team/TeamSplitsTable";
 import TrendSmallMultiples from "@/components/team/TrendSmallMultiples";
 import { ordinal } from "@/lib/ordinal";
-import { TORONTO_TEAM_ID } from "@/lib/standings";
+import { mergeByGame } from "@/lib/season-deltas";
+import { DIVISION_KEY, TORONTO_TEAM_ID } from "@/lib/standings";
 import { buildGrid, toTrends } from "@/lib/team-grid";
 import { metricsIn, tiedRank } from "@/lib/team-metrics";
-import { postseasonResult, seasonSplits, type PostseasonResult, type WinLoss } from "@/lib/team-season";
+import { gamesAboveSeries, postseasonResult, seasonSplits, type PostseasonResult, type WinLoss } from "@/lib/team-season";
 import { getTeamGames } from "@/lib/team-season-data";
 import { getPostseasonGames, getTeamTrend, getTrendSeasons, type TeamSeasonRow } from "@/lib/team-trends";
 
@@ -24,7 +27,7 @@ import { getPostseasonGames, getTeamTrend, getTrendSeasons, type TeamSeasonRow }
 // MLB averages and ranks come only from the 022 views (lib/team-trends.ts);
 // game-level splits reuse P12's pure lib/team-season.ts per season.
 // Modules: season strip, ① record & run differential (N2), ② offense (N3),
-// ③ run prevention (N4); ④ trajectory & splits, ⑤ callouts, ⑥ glossary follow.
+// ③ run prevention (N4), ④ trajectory & splits (N5); ⑤ callouts, ⑥ glossary follow.
 
 export const revalidate = 3600;
 
@@ -42,6 +45,7 @@ export default async function TeamPage({ params }: { params: Promise<{ locale: s
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Team");
+  const tst = await getTranslations("Standings");
 
   const seasons = await getTrendSeasons();
   const [{ clubs, mlb }, postGames, games] = await Promise.all([
@@ -66,9 +70,12 @@ export default async function TeamPage({ params }: { params: Promise<{ locale: s
   const post: Record<number, PostseasonResult> = Object.fromEntries(
     seasons.map((s) => [s, postseasonResult(postGames.filter((g) => g.season === s))]),
   );
-  const oneRun: Record<number, WinLoss> = Object.fromEntries(
-    seasons.map((s, i) => [s, seasonSplits(games[i], splitContext(clubs.filter((r) => r.season === s))).oneRun]),
-  );
+  // Situational records per season (P12's seasonSplits, the /season/[year] numbers).
+  const splitsBySeason = seasons.map((s, i) => ({
+    season: s,
+    splits: seasonSplits(games[i], splitContext(clubs.filter((r) => r.season === s))),
+  }));
+  const oneRun: Record<number, WinLoss> = Object.fromEntries(splitsBySeason.map((x) => [x.season, x.splits.oneRun]));
   const runDiffTies: Record<number, boolean> = Object.fromEntries(
     jays.map((r) => [r.season, tiedRank(clubs, r.season, "run_diff", r.run_diff_rank)]),
   );
@@ -81,6 +88,24 @@ export default async function TeamPage({ params }: { params: Promise<{ locale: s
   // ③ run prevention: pitching + Statcast contact allowed + team defense (OAA)
   const preventionGrid = buildGrid(metricsIn("prevention", "contactAllowed", "defense"), clubs, mlb, seasons);
   const preventionTrends = toTrends(preventionGrid, ["ra_per_g", "fip", "pit_k_bb_pct", "pit_hard_hit_pct"]);
+
+  // ④ games above .500 by game number, every season lined up (mergeByGame).
+  const series = seasons.map((s, i) => ({ key: `y${s}`, points: gamesAboveSeries(games[i]) }));
+  const trajRows = mergeByGame(series, (p) => p.value).map((r) => ({
+    game: r.game,
+    ...Object.fromEntries(series.map((x) => [x.key, r.values[x.key] ?? null])),
+  }));
+  const lastIndexOf = (key: string) => {
+    for (let i = trajRows.length - 1; i >= 0; i--) if ((trajRows[i] as Record<string, unknown>)[key] != null) return i;
+    return -1;
+  };
+  const trajSeasons = jays.map((r) => ({
+    season: r.season,
+    key: `y${r.season}`,
+    record: `${r.w ?? "—"}-${r.l ?? "—"}`,
+    lastIndex: lastIndexOf(`y${r.season}`),
+  }));
+  const division = tst(DIVISION_KEY[jays[jays.length - 1].division_id ?? 201] ?? "alEast");
 
   const sources = jays.map((r) => ({
     season: String(r.season),
@@ -148,6 +173,22 @@ export default async function TeamPage({ params }: { params: Promise<{ locale: s
             <PanelBlock title={t("eraFipTitle")} note={t("eraFipNote")}>
               <EraFipGap rows={jays} clubs={clubs} locale={locale} />
             </PanelBlock>
+          </div>
+        </TeamPanel>
+
+        {/* ④ Game by game & splits */}
+        <TeamPanel seedKey="team-trajectory" title={t("trajectoryTitle")} question={t("trajectoryQuestion")}>
+          <div className="space-y-6">
+            <PanelBlock title={t("aboveTitle")} note={t("aboveNote")}>
+              <SeasonTrajectoryChart
+                rows={trajRows}
+                seasons={trajSeasons}
+                initial={last}
+                exportName={`blue jays games above 500 ${first}-${last}`}
+                exportCaption={`Blue Jays · ${t("aboveTitle")} · ${span}`}
+              />
+            </PanelBlock>
+            <TeamSplitsTable seasons={splitsBySeason} division={division} />
           </div>
         </TeamPanel>
       </div>

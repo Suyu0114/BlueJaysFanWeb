@@ -248,7 +248,16 @@
     "eraFipNote": "FIP estimates ERA from what pitchers control on their own — strikeouts, walks, hit batters and home runs. A team ERA well above its FIP usually points at the defense or bad sequencing; well below, the reverse. Team OAA (outs above average) is shown for the defense side. Gaps under 0.15 are noise.",
     "eraFipEven": "ERA matched FIP: results lined up with the strikeouts, walks and homers.",
     "eraFipWorse": "{gap} more runs per 9 innings than FIP predicted — defense or sequencing cost them.",
-    "eraFipBetter": "{gap} fewer runs per 9 innings than FIP predicted — defense or sequencing helped."
+    "eraFipBetter": "{gap} fewer runs per 9 innings than FIP predicted — defense or sequencing helped.",
+    "trajectoryTitle": "Game by game & splits",
+    "trajectoryQuestion": "When did each season turn — and in which situations did they win?",
+    "aboveTitle": "Games above .500, five seasons",
+    "aboveNote": "Wins minus losses after every game, lined up by game number: above the line is a winning record. Pick a season (or click its line) to highlight it; the others stay in the background for comparison.",
+    "pickSeason": "Highlight a season",
+    "gameLabel": "Game {n}",
+    "splitsTitle": "Situational records",
+    "splitsNote": "Same splits as each season page. Opponents are sorted by their final winning percentage that season; a blowout is a game decided by 5+ runs.",
+    "colSplit": "Split"
   },
   "Game": {
     "battingTitle": "Batting",

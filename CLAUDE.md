@@ -167,7 +167,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       compare/page.tsx         # P12: season vs season incl. other clubs; URL state ?season=&vs=&scope=mlb|jays; What changed + season line + by-club + arc + Statcast
     standings/page.tsx         # P11: three views (AL / NL / Wild Card) + clinch legend
     season/[year]/page.tsx     # P12 M5: team season vs prior (record strip, games above .500 + run diff by game number, months, splits, leaders, WAR by position); generateStaticParams = seasons with R finals; player modules hide when a season has no player rows (< 2024)
-    team/page.tsx              # P13: Blue Jays over the latest 5 seasons vs the MLB average + 30-club ranks (season strip, ① record & run differential, ② offense vs MLB, ③ run prevention vs MLB; N5+ add trajectory / callouts / glossary)
+    team/page.tsx              # P13: Blue Jays over the latest 5 seasons vs the MLB average + 30-club ranks (season strip, ① record & run differential, ② offense vs MLB, ③ run prevention vs MLB, ④ games above .500 trajectory + situational splits; N6 adds callouts / glossary)
     about/page.tsx
   components/
     PlayerNav.tsx              # tabs with `available` prop (compare = >= 2 MLB seasons, P12; bazi slot reserved for v2)
@@ -214,6 +214,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       ContactLuck.tsx          # per season wOBA vs xwOBA (same .010 threshold as the player luck line)
       RotationBullpenTable.tsx # per season rotation (IP share / ERA / FIP / K-BB%) vs bullpen, each ranked among 30; sticky season column; copy table
       EraFipGap.tsx            # per season ERA − FIP read in plain English (0.15 threshold) + team OAA and rank
+      SeasonTrajectoryChart.tsx # client: games above .500 by game number, all window seasons; chips / line click pick the highlight; end labels; PNG of the chart only
+      TeamSplitsTable.tsx      # situational records (P12 seasonSplits + Season labels), rows = splits, columns = seasons; copy table
     season/                    # P12 M5 charts
       SeasonTrendChart.tsx     # games above .500 / cumulative run diff by game number, prior season dashed
       WarByPositionChart.tsx   # team WAR by position group, season vs prior bars
@@ -247,7 +249,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     export-svg.ts              # P12 M7 any <svg> -> PNG: resolves var(--color-*), inlines class paint, 2x canvas, caption + source/date footer
     copy-table.ts              # P12 M7 toTsv (N-N record cells -> en dash so Excel/Sheets don't read dates) + copyText (clipboard w/ fallback)
     savant.ts                  # P12 M6 readers: percentiles, Savant season (xwOBA / Barrel%), pitch RV/100, league season
-    season-deltas.ts           # P12 pure: delta / per-metric tone / 2026 zone-change helpers, biggestChanges (What changed), overlayByGame (M4)
+    season-deltas.ts           # P12 pure: delta / per-metric tone / 2026 zone-change helpers, biggestChanges (What changed), overlayByGame (M4) — now built on P13's N-series mergeByGame
     batter-game-log.ts         # P9 per-game batting log (web_player_game_stats + web_games), any 2024-2026 season, game_type 'R' only
     batting-form.ts            # P9 pure helpers: summarize / windowByDays (generic) / rollingOps
     pitcher-game-log.ts        # P10 per-appearance pitching log (mirrors batter-game-log; 'R' only)
