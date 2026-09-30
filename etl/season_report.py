@@ -643,14 +643,26 @@ def reference_rates(conn, seasons: list[int]) -> dict[int, dict]:
     return out
 
 
-def league_md(ref: dict, seasons: list[int]) -> str:
+def league_md(ref: dict, seasons: list[int], league: list[dict]) -> str:
     rows = [[yr, f"{ref[yr]['pitches']:,}", pct(ref[yr]["zone_pct"]), pct(ref[yr]["chase_pct"]),
              pct(ref[yr]["z_swing_pct"]), pct(ref[yr]["whiff_pct"]), pct(ref[yr]["csw_pct"])]
             for yr in sorted(ref)]
+    lrows = [[r["season"], r["league"], r3(r["obp"]), r3(r["slg"]), r3(r["ops"]), num(r["era"], 2),
+              pct(r["k_pct"]), pct(r["bb_pct"])] for r in league]
     s, vs = seasons
     return f"""# League context
 
-**True league averages (OPS / ERA / K% / BB%) and Savant percentiles: pending M6.**
+## League averages (web_league_season)
+
+Regular season, all clubs. Rates are computed from the **summed** team counting
+stats (MLB Stats API), not averaged team rates. The Blue Jays are in the AL.
+
+{md_table(["Season", "League", "OBP", "SLG", "OPS", "ERA", "K%", "BB%"], lrows) if lrows else "Not loaded — run etl/pull_league_averages.py."}
+
+Savant percentile ranks, expected stats and pitch run value for every player
+are in the database (`web_savant_percentiles`, `web_savant_season`,
+`web_pitch_arsenal_rv`) and on each player's overview; they are MLB-wide season
+values (every club), 100 = best.
 
 ## Reference rates from every pitch on file
 
@@ -695,7 +707,7 @@ Numbers and definitions only — the prose is yours.
 | `pitchers.md` / `.csv` | Same for pitchers; `pitchers_arsenal.csv` per pitch type |
 | `movers.md` | Biggest risers / fallers in the cohort, velo changes, new pitches |
 | `roster_moves.md` | Newcomers, mid-season arrivals and departures **with every club** |
-| `league_context.md` | Reference rates + the {s} zone-definition caveat |
+| `league_context.md` | League averages (MLB / AL / NL) + reference rates + the {s} zone-definition caveat |
 
 ## Scopes
 
@@ -774,7 +786,11 @@ def run(season: int, vs: int, out_dir: Path) -> None:
             "pitchers.md": pitchers_md(pits, ars, seasons),
             "movers.md": movers_md(bats, pits, ars, seasons, shift),
             "roster_moves.md": roster_moves_md(conn, seasons),
-            "league_context.md": league_md(ref, seasons),
+            "league_context.md": league_md(ref, seasons, q(conn, """
+                select season, league, obp::float8 as obp, slg::float8 as slg, ops::float8 as ops,
+                       era::float8 as era, k_pct::float8 as k_pct, bb_pct::float8 as bb_pct
+                from web_league_season where season = any(%(s)s)
+                order by season desc, array_position(array['MLB','AL','NL'], league)""", {"s": seasons})),
             "README.md": readme_md(conn, seasons, team_stats, ref),
         }
     for name, text in files.items():
