@@ -11,7 +11,7 @@ the columns that **don't** exist so nobody assumes them.
 > table below and diff — the verification recipe is at the bottom.
 >
 > **Verified against live DB: 2026-09-30** (migrations `001`–`019` applied, plus
-> P13's `020`–`021`;
+> P13's `020`–`022`;
 > `web_player_season_stats` at 32 columns, `web_statcast_events` at 29,
 > `web_standings` at 38, `web_games` at 17, `web_player_team_season_stats` at 37,
 > `web_team_season_stats` at 69, `web_team_statcast_season` at 36).
@@ -39,7 +39,7 @@ the columns that **don't** exist so nobody assumes them.
 | `web_savant_percentiles` | 205 | (player, season, role) | Savant percentile ranks (P12 M6) |
 | `web_savant_season` | 87 | (player, season) | Savant expected stats + barrels (P12 M6) |
 | `web_pitch_arsenal_rv` | 595 | (player, season, pitch type) | Savant pitch run value (P12 M6) |
-| `web_league_season` | 9 | (season, league) | MLB Stats API team totals, summed (P12 M6) |
+| `web_league_season` | 15 | (season, league) | MLB Stats API team totals, summed (P12 M6; 2022–2023 added by P13 N1) |
 | [`web_team_season_stats`](#web_team_season_stats) | 150 | one row per (season, club) — **all 30 clubs**, counts | MLB Stats API team stats + per-club player leaderboard (P13) |
 | [`web_team_statcast_season`](#web_team_statcast_season) | 150 | one row per (season, club) — **all 30 clubs** | Baseball Savant team leaderboards (P13) |
 
@@ -442,7 +442,7 @@ leaderboard's qualifier loses his row: **an absent row means "not qualified", ne
 | `web_savant_percentiles` | `(mlbam_id, season, role)`, `role in ('batter','pitcher')` | One nullable `smallint` 0–100 per metric: `xwoba xba xslg brl_percent exit_velocity hard_hit_percent k_percent bb_percent whiff_percent chase_percent sprint_speed oaa arm_strength bat_speed squared_up_rate xera fb_velocity fb_spin curve_spin`. **100 = best for every metric** (Savant already orients K% / BB% / Chase% to the role). Metrics that don't apply to the role are NULL. Within-season, so the 2026 zone change (Known gaps #8) doesn't affect them. |
 | `web_savant_season` | `(mlbam_id, season)` | Batters: `pa bip ba xba slg xslg woba xwoba` (decimals), `barrels`, `brl_percent brl_pa sweet_spot_pct ev95_pct` (**percent units**, 6.9 = 6.9%), `avg_ev max_ev` (mph). The **only** source of official Barrel% (never computed locally, P12 D5). |
 | `web_pitch_arsenal_rv` | `(mlbam_id, season, pitch_type)` | `pitches`, `usage whiff_pct put_away hard_hit_pct` (**percent units**), `run_value run_value_per_100`, `woba xwoba`. One row per pitch type for the whole MLB season (a traded pitcher's clubs combined). ⚠️ **Run value is from the pitcher's view: POSITIVE = runs saved = good** — verified 2026-09-30, corr(RV/100, wOBA) = −0.78 over 1,253 pitch rows. |
-| `web_league_season` | `(season, league)`, `league in ('AL','NL','MLB')` | `teams` (15/15/30), `pa`, `obp slg ops era k_pct bb_pct`. **Rates from summed team counting stats, never averaged team rates** (P13 relies on the MLB row). `k_pct`/`bb_pct` are raw fractions (SO/PA, BB/PA). League membership from MLB `/teams` for that season. |
+| `web_league_season` | `(season, league)`, `league in ('AL','NL','MLB')` | `teams` (15/15/30), `pa`, `obp slg ops era k_pct bb_pct`. **Rates from summed team counting stats, never averaged team rates** (P13 relies on the MLB row). `k_pct`/`bb_pct` are raw fractions (SO/PA, BB/PA). League membership from MLB `/teams` for that season. Seasons 2022–2026 (2022–2023 added in P13 N1; the MLB row equals `web_v_mlb_season`). |
 
 ---
 
@@ -541,6 +541,43 @@ Rates are raw fractions. Filter on `mlbam_id` (+ `scope`): both push down throug
 - **Pitch counts exclude `is_auto` rows** (not thrown, no zone, no pitch type), but
   PA / K / BB keep them — 218 of the 915 end a plate appearance.
 - ⚠️ **Zone-based rates are not comparable raw across 2025 → 2026** — Known gaps #8.
+
+---
+
+## Team views (migration `022`, P13)
+
+**The one place** team rates, MLB averages and 30-club ranks are defined — read by
+the `/team` page (`lib/team-trends.ts`) and `etl/season_report.py`
+(`team_trends.*`). Built on [`web_team_season_stats`](#web_team_season_stats) +
+[`web_team_statcast_season`](#web_team_statcast_season) (+ `web_standings` for the
+record). Every formula is written **once** and applied to the 30 clubs and to an MLB
+row alike, so the MLB average is always Σ counts → rate. Rates are `float8`
+fractions; IP = outs / 3.
+
+| View | Grain | What |
+|---|---|---|
+| `web_v_team_counts` | (season, team_id) + MLB row `team_id = 0` | The counts the rates need. The MLB row **sums** the clubs; Savant averages travel as weighted sums (`bat_ev_sum = avg_ev × BBE`, `bat_xwoba_sum = xwOBA × xpa` …). Exceptions: `bat_war` / `pit_war` / `oaa` = **mean per club** on the MLB row; wRC+ via `bat_wrc_sum` / `bat_wrc_pa` (PA-weighted). |
+| `web_v_team_rates` | same 31 rows | `cfip` (season FIP constant) and every rate: offense `r_per_g wrc_plus avg obp slg ops iso babip k_pct bb_pct hr_pct sb_per_g sb_pct whiff_pct gb_pct fb_pct ld_pct pu_pct brl_pct hard_hit_pct sweet_spot_pct avg_ev woba xwoba bat_war`; prevention `ra_per_g era fip whip pit_k_pct pit_bb_pct pit_k_bb_pct hr9 pit_babip pit_whiff_pct pit_brl_pct pit_hard_hit_pct pit_woba pit_xwoba oaa pit_war`; roles `sp_era sp_fip sp_k_bb_pct sp_ip_share rp_era rp_fip rp_k_bb_pct`; raw `games pa bf ip hr sb rs ra`. |
+| `web_v_mlb_season` | season | The MLB row + `lg_rpg` (runs per team-game). |
+| `web_v_team_season` | (season, team_id), 30 clubs | Rates + `web_standings` (`team_name team_abbrev league_id division_id division_name division_rank w l pct x_w x_l runs_scored runs_allowed run_diff`) + `luck` (`w − x_w`) + `offense_runs` (`rs − lg_rpg × games`) / `prevention_runs` (`lg_rpg × games − ra`) — they sum to the run differential exactly — + `woba_minus_xwoba` + a **`<metric>_rank`** for every ranked metric. |
+
+- **FIP** = `(13 HR + 3 (BB + HBP) − 2 SO) / IP + cfip`, BB incl. IBB;
+  `cfip = lgERA − (13 lgHR + 3 (lgBB + lgHBP) − 2 lgSO) / lgIP` → 2022 **3.106**,
+  2023 3.249, 2024 3.160, 2025 3.128, 2026 3.094. MLB FIP = MLB ERA by construction.
+- **Ranks**: 1 = best, `rank()` (ties share a rank and the next is skipped: three
+  clubs at 11th → next is 14th), NULL metric → NULL rank. **Lower is better** for
+  `k_pct whiff_pct ra_per_g era fip whip pit_bb_pct hr9 pit_babip pit_brl_pct
+  pit_hard_hit_pct pit_xwoba sp_era sp_fip rp_era rp_fip`; higher for every other
+  ranked metric. `gb/fb/ld/pu_pct`, `woba_minus_xwoba`, `luck` and the offense /
+  prevention run sources are **not ranked** (`run_diff_rank` and `pct_rank` are).
+  The directions mirror `web/lib/team-metrics.ts` (P13 N2) — change both together.
+- **Reconciled 2026-09-30**: `web_v_mlb_season` OBP / SLG / OPS / ERA / K% / BB% equal
+  `web_league_season` (MLB row) for all five seasons to 1e-15 (SLG from the derived
+  TB equals the API's `totalBases`); `offense_runs + prevention_runs = rs − ra` and
+  `rs / ra = web_standings` for all 150 club-seasons; Σ `offense_runs` = 0 per season;
+  MLB wRC+ 99.4–100.2.
+- The MLB row's wOBA / xwOBA are weighted by Savant's `xpa` (an approximation; club
+  rows are Savant's own values).
 
 ---
 

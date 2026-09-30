@@ -15,6 +15,11 @@
 > Every data fact in §1 was **measured against the live endpoints on
 > 2026-09-29** with read-only probes. The 2026 regular season ended 2026-09-27,
 > so all five seasons in the window are complete.
+>
+> **Aligned with P12 as built (2026-09-30, P12 spec §15):** N0 was built on the P12
+> branch and rebased onto `main` after the merge. §1b now names the real P12
+> modules, and **T9's rank shading reuses P12's percentile colour scale** instead of
+> fixed Tailwind tints (same steel → neutral → brick meaning, one implementation).
 
 ---
 
@@ -76,7 +81,7 @@ seasons before 2022.
 | T6 | Team sabermetrics | No team-level endpoint exists (`/teams/stats?stats=sabermetrics` → empty), and the league-wide player leaderboard merges traded players into one row. So **wRC+ and WAR** aggregate the **per-team player leaderboard** (`/stats?stats=season,sabermetrics&teamId=T&playerPool=ALL`): wRC+ = PA-weighted mean, WAR = sum. **FIP is not aggregated** — it is computed in the view from team counting stats + the season's league constant (§10), which is exact and immune to the leaderboard staleness P12 found. |
 | T7 | Nav | **One "Team" link** (zh-TW 球隊), placed after Standings. Agreed with P12 on 2026-09-29: P12 M5 ships it as **`Nav.team` → `/season/<latest season>`** (no "Season" link), and P13 only **repoints its `href` to `/team`** — same key, same label, same position. `/season/[year]` is then reached from the Season strip and gets a "← Team trends" back-link. (If P12's §15 says otherwise, replace whatever nav entry it added.) |
 | T8 | Counting stats as rates | Shown per game / per PA (R/G, HR%, SB/G) so a season in progress compares fairly with finished ones. Raw totals appear only in tooltips. |
-| T9 | Colours | Brand tokens only. Jays = **brick** line/marks; MLB average = **navy dashed** reference. Rank shading Savant-style: ranks 1–3 `bg-brick/35`, 4–10 `bg-brick/15`, 11–20 none, 21–27 `bg-steel/20`, 28–30 `bg-steel/40` (matches P12 M6 PercentileBars: high → brick, low → steel); the ordinal is always printed too (never colour-only). Run sources: offense **brick**, run prevention **navy**, net marker **lava**. Five-season overlay: highlighted season brick, others `steel` at 35 % opacity. Luck / Δ numbers are signed text, not coloured good/bad. |
+| T9 | Colours | Brand tokens only. Jays = **brick** line/marks; MLB average = **navy dashed** reference. Rank shading Savant-style **via P12's `PercentileBars` scale** (`color-mix` steel → neutral → brick from brand tokens), extracted to `lib/percentile-color.ts` and fed `100 × (30 − rank) / 29`, so rank 1 = full brick and rank 30 = full steel — one scale for percentiles and ranks; the ordinal is always printed too (never colour-only). Run sources: offense **brick**, run prevention **navy**, net marker **lava**. Five-season overlay: highlighted season brick, others `steel` at 35 % opacity. Luck / Δ numbers are signed text, not coloured good/bad. |
 | T10 | Dependencies | **None new.** Savant team CSVs via `requests` + stdlib `csv` (so the scripts don't need pandas); charts via Recharts; motion via existing components. |
 
 ---
@@ -126,14 +131,19 @@ Statcast-heavy) — **don't extend it**; P13 loops the light scripts.
 
 ## 1b. What P13 takes from P12 (verify after the merge)
 
-| From P12 | Used by P13 |
+| From P12 (as built) | Used by P13 |
 |---|---|
-| `013` `web_games.game_type` + schedule 2024–2026 | ④ splits / trajectory (`game_type = 'R'`), Season-strip postseason result (F/D/L/W rows) |
-| `019` `web_league_season` (`pull_league_averages.py`, same `/teams/stats` source) | N1 reconciliation: `web_v_mlb_season` must **equal** its MLB row |
-| M5 `/season/[year]` + its games-above-.500 and splits helpers | Season-strip links; ④ **generalises those helpers from 2 to N seasons** instead of duplicating them |
-| M7 `lib/export-svg.ts` PNG export + copy-table | applied to every P13 chart and table |
+| `013` `web_games.game_type`; schedule + standings now 2022–2026 (2022–2023 loaded by P13 N0) | ④ splits / trajectory (`game_type = 'R'`), Season-strip postseason result (F/D/L/W rows) |
+| `019` `web_league_season` (`pull_league_averages.py`, same `/teams/stats` source; SLG from the API's `totalBases`) | N1 reconciliation: `web_v_mlb_season` must **equal** its MLB row. N1 also runs `pull_league_averages.py --season 2022 --season 2023` (additive rows) so all five seasons are checked and P12's 2022/2023 season pages get league context. |
+| `lib/team-season.ts` (pure): `TeamGame`, `winLoss`, `runs`, `gamesAboveSeries`, `seasonSplits` (`home away oneRun blowouts vsDivision vsWinning vsLosing`, `BLOWOUT_MARGIN = 5`) | ④ calls them **per season** — no second implementation. "vs AL East" = `vsDivision`. |
+| `lib/team-season-data.ts`: `getTeamSeasons()` (seasons with R finals, `cache`d), `getTeamGames(season)` | Loaders for ④ and the Season strip; `getTeamSeasons` also bounds the window. |
+| `components/season/SeasonTrendChart.tsx` (2 seasons via `overlayByGame`) | ④ **generalises it to N seasons** (or wraps a shared core) rather than forking; M5 keeps its 2-season look. |
+| `lib/season-deltas.ts`: `Direction` (`higher | lower | neutral`), `deltaTone` | `lib/team-metrics.ts` reuses the `Direction` type. |
+| `components/PercentileBars.tsx` `scaleColor` (steel → neutral → brick via `color-mix`) | Extracted to `lib/percentile-color.ts`; rank shading (T9). |
+| M7 `Exportable` (PNG of the largest `<svg>`), `CopyTableButton` (`headers`, `rows` → TSV) | Every P13 chart / table. |
+| `Header.tsx` `Nav.team` → `/season/<getLatestTeamSeason()>` | N2 repoints it to `/team` (T7). |
 | M1 `etl/season_report.py` | N6 adds `team_trends.md/.csv` |
-| `fetch_team_season_stats` now takes each player's numbers from `/people/{id}/stats` | **Not reused for 30 clubs** (≈ 1,200 calls/season). P13 has its own leaderboard-only fetcher (T6). |
+| `fetch_team_season_stats` takes each player's numbers from `/people/{id}/stats` | **Not reused for 30 clubs** (≈ 1,200 calls/season). P13 has its own leaderboard-only fetcher (T6). |
 | `web/lib/team-abbr.ts::teamAbbr`, `TeamLogo` | leader labels in tooltips |
 
 ---

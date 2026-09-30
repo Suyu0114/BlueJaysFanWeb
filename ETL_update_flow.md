@@ -92,7 +92,7 @@ python etl/season_report.py --season 2026 --vs 2025
 **Step 6（P12 M6）：聯盟脈絡（Savant 排行榜 + 聯盟平均）**
 ```powershell
 python etl/pull_savant_leaderboards.py --season 2024 --season 2025 --season 2026
-python etl/pull_league_averages.py     --season 2024 --season 2025 --season 2026
+python etl/pull_league_averages.py     --season 2022 --season 2023 --season 2024 --season 2025 --season 2026
 ```
 > - 兩支都已排進 09:00 ET cron（當季）和 `backfill.py`（第 9、10 步）。
 > - Savant 的數字是**整季、所有球隊合計**，照 Savant 原樣存；百分位 100 = 最好。
