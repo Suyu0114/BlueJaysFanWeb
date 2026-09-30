@@ -21,7 +21,9 @@ function tick(v: number, format: MetricFormat): string {
   // One decimal so close ticks (8.5% / 9%) never print twice; drop a bare ".0".
   if (format === "pct1") return `${(100 * v).toFixed(1).replace(/\.0$/, "")}%`;
   if (format === "rate3") return formatMetric(v, "rate3");
-  if (format === "dec2") return v.toFixed(1);
+  // Only the decimals the tick needs (4 / 4.2 / 4.25): a fixed toFixed(1) would
+  // print a 0.25-step tick as a misleading "4.3".
+  if (format === "dec2") return String(Number(v.toFixed(2)));
   return Math.round(v).toString();
 }
 

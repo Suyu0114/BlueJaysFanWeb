@@ -1,10 +1,12 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import Exportable from "@/components/Exportable";
 import ContactLuck from "@/components/team/ContactLuck";
+import EraFipGap from "@/components/team/EraFipGap";
 import { Reveal } from "@/components/motion/Reveal";
 import LuckTable from "@/components/team/LuckTable";
 import RankGrid from "@/components/team/RankGrid";
 import RankKey from "@/components/team/RankKey";
+import RotationBullpenTable from "@/components/team/RotationBullpenTable";
 import RunSourcesChart from "@/components/team/RunSourcesChart";
 import SeasonStrip from "@/components/team/SeasonStrip";
 import TeamPanel, { PanelBlock } from "@/components/team/TeamPanel";
@@ -21,8 +23,8 @@ import { getPostseasonGames, getTeamTrend, getTrendSeasons, type TeamSeasonRow }
 // number next to the MLB average and the Jays' rank among 30 clubs. Rates,
 // MLB averages and ranks come only from the 022 views (lib/team-trends.ts);
 // game-level splits reuse P12's pure lib/team-season.ts per season.
-// Modules: season strip, ① record & run differential (N2); ② offense,
-// ③ run prevention, ④ trajectory & splits, ⑤ callouts, ⑥ glossary follow.
+// Modules: season strip, ① record & run differential (N2), ② offense (N3),
+// ③ run prevention (N4); ④ trajectory & splits, ⑤ callouts, ⑥ glossary follow.
 
 export const revalidate = 3600;
 
@@ -76,6 +78,10 @@ export default async function TeamPage({ params }: { params: Promise<{ locale: s
   const offenseTrends = toTrends(offenseGrid, ["wrc_plus", "k_pct", "bb_pct", "brl_pct"]);
   const span = `${first}–${last}`;
 
+  // ③ run prevention: pitching + Statcast contact allowed + team defense (OAA)
+  const preventionGrid = buildGrid(metricsIn("prevention", "contactAllowed", "defense"), clubs, mlb, seasons);
+  const preventionTrends = toTrends(preventionGrid, ["ra_per_g", "fip", "pit_k_bb_pct", "pit_hard_hit_pct"]);
+
   const sources = jays.map((r) => ({
     season: String(r.season),
     offense: Math.round(r.offense_runs ?? 0),
@@ -125,6 +131,22 @@ export default async function TeamPage({ params }: { params: Promise<{ locale: s
             </PanelBlock>
             <PanelBlock title={t("contactLuckTitle")} note={t("contactLuckNote")}>
               <ContactLuck rows={jays} />
+            </PanelBlock>
+          </div>
+        </TeamPanel>
+
+        {/* ③ Run prevention vs MLB */}
+        <TeamPanel seedKey="team-prevention" title={t("preventionTitle")} question={t("preventionQuestion")}>
+          <div className="space-y-6">
+            <PanelBlock title={t("gridTitle")}>
+              <RankGrid seedKey="team-prevention-grid" rows={preventionGrid} seasons={seasons} copyName={t("preventionTitle")} />
+            </PanelBlock>
+            <RotationBullpenTable rows={jays} clubs={clubs} locale={locale} />
+            <PanelBlock title={t("trendsTitle")} note={t("preventionTrendsNote")}>
+              <TrendSmallMultiples items={preventionTrends} span={span} />
+            </PanelBlock>
+            <PanelBlock title={t("eraFipTitle")} note={t("eraFipNote")}>
+              <EraFipGap rows={jays} clubs={clubs} locale={locale} />
             </PanelBlock>
           </div>
         </TeamPanel>
