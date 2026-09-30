@@ -109,7 +109,8 @@
     "warTitle": "各守位 WAR",
     "warNote": "打者依主要守位分組；投手依先發比例分成先發（SP）與後援（RP）。全隊合計 {total} WAR{prior}。",
     "warPriorTotal": "（{season}：{total}）",
-    "noPlayerData": "球員數據（隊內領先者、各守位 WAR）從 2024 年開始；{season} 只顯示球隊戰績。"
+    "noPlayerData": "球員數據（隊內領先者、各守位 WAR）從 2024 年開始；{season} 只顯示球隊戰績。",
+    "leagueRef": "{season} 大聯盟平均：OPS {ops} · ERA {era}"
   },
   "Game": {
     "battingTitle": "打擊",
@@ -354,6 +355,46 @@
       }
     }
   },
+  "Percentiles": {
+    "title": "Savant 百分位排名",
+    "subtitle": "所有大聯盟球隊、整季合計 · 100 = 最好",
+    "season": "球季",
+    "notQualified": "{season} 未達門檻：Savant 只排名上場量超過最低標準的球員。",
+    "luckBad": "運氣不太好：實際成績比擊球品質應有的水準低了 {diff}。",
+    "luckGood": "表現超越擊球品質：實際成績比預期數據高了 {diff}。",
+    "luckEven": "實際成績與擊球品質相符。",
+    "mlbAvg": "大聯盟平均",
+    "group": {
+      "quality": "擊球品質",
+      "discipline": "選球",
+      "swing": "揮棒",
+      "field": "跑壘與守備",
+      "allowed": "被擊球品質",
+      "missing": "三振與揮空",
+      "stuff": "球威"
+    },
+    "metric": {
+      "xwoba": "xwOBA",
+      "xba": "xBA",
+      "xslg": "xSLG",
+      "brl_percent": "Barrel%",
+      "exit_velocity": "Avg Exit Velo",
+      "hard_hit_percent": "Hard-Hit%",
+      "k_percent": "K%",
+      "bb_percent": "BB%",
+      "whiff_percent": "Whiff%",
+      "chase_percent": "Chase%",
+      "sprint_speed": "Sprint Speed",
+      "oaa": "OAA",
+      "arm_strength": "Arm Strength",
+      "bat_speed": "Bat Speed",
+      "squared_up_rate": "Squared-Up%",
+      "xera": "xERA",
+      "fb_velocity": "FB Velo",
+      "fb_spin": "FB Spin",
+      "curve_spin": "Curve Spin"
+    }
+  },
   "Batting": {
     "sprayChart": "Spray Chart",
     "subtitle": "球員所有例行賽擊球紀錄。",
@@ -418,7 +459,9 @@
     "alignFront": "≤ 2025",
     "alignMiddle": "2026+",
     "zoneEraNote": "Savant 在 2026 年移動了 plate 座標原點，因此落點熱區一次只顯示一個年代。",
-    "zoneShowing": "{n} 球 · {era}"
+    "zoneShowing": "{n} 球 · {era}",
+    "colRv100": "RV/100",
+    "rvNote": "RV/100 = Savant 每 100 球的 run value（整季、所有球隊，正值 = 幫球隊省分 = 好）。只在選擇單一整季、且沒有月份或打者慣用手篩選時顯示。"
   },
   "PlayerNav": {
     "overview": "總覽",

@@ -89,6 +89,17 @@ python etl/season_report.py --season 2026 --vs 2025
 >   2026 的 zone 定義變了，全體樣本 Chase% 自己就 +2.8）。報告裡有「扣掉整體位移」
 >   的欄位，寫文章時請用那個。
 
+**Step 6（P12 M6）：聯盟脈絡（Savant 排行榜 + 聯盟平均）**
+```powershell
+python etl/pull_savant_leaderboards.py --season 2024 --season 2025 --season 2026
+python etl/pull_league_averages.py     --season 2024 --season 2025 --season 2026
+```
+> - 兩支都已排進 09:00 ET cron（當季）和 `backfill.py`（第 9、10 步）。
+> - Savant 的數字是**整季、所有球隊合計**，照 Savant 原樣存；百分位 100 = 最好。
+>   沒有那一列 = 未達門檻（不是 0）。每次跑會替換該季的列，所以掉出門檻的人會被移除。
+> - **Pitch run value 正值 = 對投手好**（已用 2025 全聯盟資料驗證）。
+> - 聯盟平均是把 30 隊的計數數據加總後再算比率，不是 30 隊比率的平均。
+
 ---
 
 ## 注意事項

@@ -3,7 +3,8 @@
 #   * `0 13 * * *`  (~09:00 ET): the FULL refresh -- Statcast (rolling 7-day
 #     window), roster/participation, fielding, season stats (MLB Stats API
 #     sabermetrics -- WAR etc.; no FanGraphs CSV needed), per-club season lines
-#     for the roster incl. other clubs (P12, pull_player_splits), THEN a current-
+#     for the roster incl. other clubs (P12, pull_player_splits), Savant
+#     leaderboards + league averages (P12 M6), THEN a current-
 #     season schedule refresh + a 3-day box-score re-pull. The box-score re-pull
 #     is the West-Coast / late-final backfill: games still in progress at the
 #     11:30 PM ET run get completed here.
@@ -101,6 +102,16 @@ jobs:
       # after pull_team_players (it reads web_player_seasons for the cohort).
       - name: Pull per-club season lines (web_player_team_season_stats)
         run: python etl/pull_player_splits.py --cohort-season "$SEASON" --season "$SEASON"
+
+      # P12 M6: league context. Savant leaderboards via pybaseball (percentiles,
+      # expected stats / barrels, pitch run value) and league averages from the
+      # MLB Stats API. Both are league-wide pulls filtered to the roster (the
+      # player splits above feed the filter), a handful of requests each.
+      - name: Pull Savant leaderboards (percentiles / xStats / arsenal run value)
+        run: python etl/pull_savant_leaderboards.py --season "$SEASON"
+
+      - name: Pull league averages (web_league_season)
+        run: python etl/pull_league_averages.py --season "$SEASON"
 
       # P7: schedule -> boxscore must run before revalidate. pull_boxscore guards
       # on web_games.is_final, so pull_schedule has to populate it first.

@@ -5,6 +5,7 @@ import { useReducedMotion } from "motion/react";
 import {
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -39,11 +40,17 @@ export default function RollingOpsSparkline({
   prior,
   season,
   priorSeason,
+  leagueAvg,
+  leagueLabel,
 }: {
   data: RollingOpsPoint[];
   prior?: RollingOpsPoint[];
   season?: number;
   priorSeason?: number;
+  // P12 M6: MLB average for the season (web_league_season), drawn as a faint
+  // reference line so "good or bad?" reads without knowing league norms.
+  leagueAvg?: number | null;
+  leagueLabel?: string;
 }) {
   const t = useTranslations("Overview");
   const reduce = useReducedMotion();
@@ -77,6 +84,22 @@ export default function RollingOpsSparkline({
                 (max: number) => max + 0.05,
               ]}
             />
+            {leagueAvg != null && (
+              <ReferenceLine
+                y={leagueAvg}
+                stroke="var(--color-navy)"
+                strokeOpacity={0.35}
+                strokeDasharray="2 3"
+                ifOverflow="extendDomain"
+                label={{
+                  value: `${leagueLabel ?? "MLB avg"} ${ops3(leagueAvg)}`,
+                  position: "insideTopRight",
+                  fontSize: 10,
+                  fill: "var(--color-navy)",
+                  fillOpacity: 0.55,
+                }}
+              />
+            )}
             <Tooltip
               cursor={{ stroke: "var(--color-steel)", strokeWidth: 1 }}
               animationDuration={350}

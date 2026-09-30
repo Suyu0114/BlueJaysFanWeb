@@ -109,7 +109,8 @@
     "warTitle": "WAR by position",
     "warNote": "Batters grouped by primary position; pitchers split into starters (SP) and relievers (RP) by share of games started. Team total {total} WAR{prior}.",
     "warPriorTotal": " ({season}: {total})",
-    "noPlayerData": "Player numbers (leaders, WAR by position) start in 2024; {season} shows the team record only."
+    "noPlayerData": "Player numbers (leaders, WAR by position) start in 2024; {season} shows the team record only.",
+    "leagueRef": "MLB average in {season}: OPS {ops} · ERA {era}"
   },
   "Game": {
     "battingTitle": "Batting",
@@ -354,6 +355,46 @@
       }
     }
   },
+  "Percentiles": {
+    "title": "Savant percentile rankings",
+    "subtitle": "all MLB clubs, season totals · 100 = best",
+    "season": "Season",
+    "notQualified": "Not qualified in {season}: Savant ranks only players above its playing-time minimum.",
+    "luckBad": "Hit into some bad luck: his results trailed the quality of his contact by {diff}.",
+    "luckGood": "Outperformed his contact: results beat the expected numbers by {diff}.",
+    "luckEven": "Results matched the quality of his contact.",
+    "mlbAvg": "MLB avg",
+    "group": {
+      "quality": "Quality of contact",
+      "discipline": "Plate discipline",
+      "swing": "Swing",
+      "field": "Running & defense",
+      "allowed": "Contact allowed",
+      "missing": "Missing bats",
+      "stuff": "Stuff"
+    },
+    "metric": {
+      "xwoba": "xwOBA",
+      "xba": "xBA",
+      "xslg": "xSLG",
+      "brl_percent": "Barrel%",
+      "exit_velocity": "Avg Exit Velo",
+      "hard_hit_percent": "Hard-Hit%",
+      "k_percent": "K%",
+      "bb_percent": "BB%",
+      "whiff_percent": "Whiff%",
+      "chase_percent": "Chase%",
+      "sprint_speed": "Sprint Speed",
+      "oaa": "OAA",
+      "arm_strength": "Arm Strength",
+      "bat_speed": "Bat Speed",
+      "squared_up_rate": "Squared-Up%",
+      "xera": "xERA",
+      "fb_velocity": "FB Velo",
+      "fb_spin": "FB Spin",
+      "curve_spin": "Curve Spin"
+    }
+  },
   "Batting": {
     "sprayChart": "Spray Chart",
     "subtitle": "Every regular-season batted ball on file.",
@@ -418,7 +459,9 @@
     "alignFront": "≤ 2025",
     "alignMiddle": "2026+",
     "zoneEraNote": "Savant moved its plate-coordinate origin in 2026, so the location heatmap shows one era at a time.",
-    "zoneShowing": "{n} pitches · {era}"
+    "zoneShowing": "{n} pitches · {era}",
+    "colRv100": "RV/100",
+    "rvNote": "RV/100 = Savant run value per 100 pitches for the whole season, every club (positive = runs saved = good). Shown only for a full single season without month or batter filters."
   },
   "PlayerNav": {
     "overview": "Overview",

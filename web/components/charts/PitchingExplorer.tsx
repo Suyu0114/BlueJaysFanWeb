@@ -63,8 +63,11 @@ function FilterGroup({ label, children }: { label: string; children: ReactNode }
 export default function PitchingExplorer({
   pitches,
   seasonClubs = {},
+  runValues = {},
 }: {
   pitches: PitchEvent[];
+  // P12 M6: season -> pitch type -> Savant RV/100 (season totals, every club).
+  runValues?: Record<string, Record<string, number | null>>;
   // P12: season -> club(s) he pitched for ("SD", "TOR/MIN"). Statcast rows cover
   // every club, so the season chips say whose uniform the pitches were thrown in.
   seasonClubs?: Record<string, string>;
@@ -159,7 +162,13 @@ export default function PitchingExplorer({
   const alignLabel = (a: string) =>
     a === "middle" ? t("alignMiddle") : t("alignFront");
 
+  // RV/100 is a full-season, all-clubs number: show it only when the table
+  // shows exactly that — one season, no month / batter-hand subset.
+  const seasonRv =
+    season !== "all" && month === "all" && batterHand === "all" ? runValues[season] : undefined;
+
   const arsenalLabels = {
+    rv100: t("colRv100"),
     usage: t("colUsage"),
     pitches: t("colCount"),
     avgVelo: t("colAvgVelo"),
@@ -267,8 +276,9 @@ export default function PitchingExplorer({
         <h2 className="mb-2 text-sm font-semibold text-navy">
           {t("arsenalTitle")}
         </h2>
-        <ArsenalTable pitches={filtered} labels={arsenalLabels} />
+        <ArsenalTable pitches={filtered} labels={arsenalLabels} runValues={seasonRv} />
         <p className="mt-2 text-xs text-navy/50">{t("arsenalStory")}</p>
+        {seasonRv && <p className="mt-0.5 text-xs text-navy/40">{t("rvNote")}</p>}
         <p className="mt-0.5 text-xs text-navy/40">{t("xwobaConNote")}</p>
       </Reveal>
 

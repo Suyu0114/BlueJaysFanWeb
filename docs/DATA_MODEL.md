@@ -10,7 +10,7 @@ the columns that **don't** exist so nobody assumes them.
 > update this file in the same change.** To re-verify, dump the columns for every
 > table below and diff — the verification recipe is at the bottom.
 >
-> **Verified against live DB: 2026-09-29** (migrations `001`–`015` applied;
+> **Verified against live DB: 2026-09-30** (migrations `001`–`019` applied;
 > `web_player_season_stats` at 32 columns, `web_statcast_events` at 29,
 > `web_standings` at 38, `web_games` at 17, `web_player_team_season_stats` at 37).
 >
@@ -33,7 +33,11 @@ the columns that **don't** exist so nobody assumes them.
 | [`web_id_map`](#web_id_map) | 0 | one row per MLBAM id | Chadwick register (lazy cache) |
 | [`web_games`](#web_games) | 504 | one row per game_pk | MLB Stats API schedule |
 | [`web_player_game_stats`](#web_player_game_stats) | 7,716 | one row per (game, player, stat group) | MLB Stats API boxscore |
-| [`web_standings`](#web_standings) | 90 | one row per (team, season) — snapshot | MLB Stats API standings |
+| [`web_standings`](#web_standings) | 150 | one row per (team, season) — snapshot | MLB Stats API standings |
+| `web_savant_percentiles` | 205 | (player, season, role) | Savant percentile ranks (P12 M6) |
+| `web_savant_season` | 87 | (player, season) | Savant expected stats + barrels (P12 M6) |
+| `web_pitch_arsenal_rv` | 595 | (player, season, pitch type) | Savant pitch run value (P12 M6) |
+| `web_league_season` | 9 | (season, league) | MLB Stats API team totals, summed (P12 M6) |
 
 ---
 
@@ -411,6 +415,26 @@ against the live feed — do not "correct" 203/204 from memory.
 
 Indexes: `idx_web_standings_div (season, division_id, division_rank)`,
 `idx_web_standings_wc (season, league_id, wild_card_rank)`.
+
+---
+
+## League context — `web_savant_percentiles`, `web_savant_season`, `web_pitch_arsenal_rv`, `web_league_season`
+*Migrations: `016`–`019` (P12 M6). Writers: [`etl/pull_savant_leaderboards.py`](../etl/pull_savant_leaderboards.py)
+(016–018) and [`etl/pull_league_averages.py`](../etl/pull_league_averages.py) (019). Both run in the
+~09:00 ET refresh job for the current season and in `backfill.py` (steps 9–10); 2024–2026 loaded.*
+
+**Savant tables (016–018) are stored exactly as Savant publishes them (P12 D6)** —
+MLB-wide *season* values across every club, **not** Jays-only. Kept players: that
+season's `web_player_seasons` ∪ the D13 cohort's `team_id = 0` rows. Each run
+**replaces** the season's rows for the kept players, so a player who falls below a
+leaderboard's qualifier loses his row: **an absent row means "not qualified", never 0**.
+
+| Table | PK | Contents / units |
+|---|---|---|
+| `web_savant_percentiles` | `(mlbam_id, season, role)`, `role in ('batter','pitcher')` | One nullable `smallint` 0–100 per metric: `xwoba xba xslg brl_percent exit_velocity hard_hit_percent k_percent bb_percent whiff_percent chase_percent sprint_speed oaa arm_strength bat_speed squared_up_rate xera fb_velocity fb_spin curve_spin`. **100 = best for every metric** (Savant already orients K% / BB% / Chase% to the role). Metrics that don't apply to the role are NULL. Within-season, so the 2026 zone change (Known gaps #8) doesn't affect them. |
+| `web_savant_season` | `(mlbam_id, season)` | Batters: `pa bip ba xba slg xslg woba xwoba` (decimals), `barrels`, `brl_percent brl_pa sweet_spot_pct ev95_pct` (**percent units**, 6.9 = 6.9%), `avg_ev max_ev` (mph). The **only** source of official Barrel% (never computed locally, P12 D5). |
+| `web_pitch_arsenal_rv` | `(mlbam_id, season, pitch_type)` | `pitches`, `usage whiff_pct put_away hard_hit_pct` (**percent units**), `run_value run_value_per_100`, `woba xwoba`. One row per pitch type for the whole MLB season (a traded pitcher's clubs combined). ⚠️ **Run value is from the pitcher's view: POSITIVE = runs saved = good** — verified 2026-09-30, corr(RV/100, wOBA) = −0.78 over 1,253 pitch rows. |
+| `web_league_season` | `(season, league)`, `league in ('AL','NL','MLB')` | `teams` (15/15/30), `pa`, `obp slg ops era k_pct bb_pct`. **Rates from summed team counting stats, never averaged team rates** (P13 relies on the MLB row). `k_pct`/`bb_pct` are raw fractions (SO/PA, BB/PA). League membership from MLB `/teams` for that season. |
 
 ---
 

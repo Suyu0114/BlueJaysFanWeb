@@ -41,6 +41,8 @@ import {
   type ZoneReference,
 } from "@/lib/discipline";
 import { crossesZoneChange } from "@/lib/season-deltas";
+import PercentileBars from "@/components/PercentileBars";
+import { getLeagueSeason, getPercentiles, getSavantSeasons } from "@/lib/savant";
 import {
   lastNAppearances,
   rollingEra,
@@ -123,12 +125,15 @@ export default async function PlayerOverviewPage({
 
   const t = await getTranslations("Overview");
 
-  const [player, availability, stats, clubLabels] = await Promise.all([
+  const [player, availability, stats, clubLabels, percentiles, savantSeasons] = await Promise.all([
     getPlayer(playerId),
     getPlayerAvailability(playerId),
     getSeasonStats(playerId),
     getSeasonClubLabels(playerId),
+    getPercentiles(playerId),
+    getSavantSeasons(playerId),
   ]);
+  const tp = await getTranslations("Percentiles");
 
   if (!player) notFound();
 
@@ -223,6 +228,56 @@ export default async function PlayerOverviewPage({
   const cardSeasonB = latest
     ? priorSeason(isPitcher ? pitcherDiscipline : discipline, latest.season)
     : null;
+  // P12 M6: Savant percentiles (MLB-wide season values) with a season switch,
+  // the luck line for batters, and the MLB average on the rolling sparklines.
+  const league = latest ? await getLeagueSeason(latest.season) : null;
+  const pctRole = role;
+  const pctRows = percentiles.filter((r) => r.role === pctRole);
+  const pctSeasons = [
+    ...new Set([...pctRows.map((r) => r.season), ...(latest && latest.season >= 2024 ? [latest.season] : [])]),
+  ].sort((a, b) => b - a);
+  const r3 = (v: number) => {
+    const x = v.toFixed(3);
+    return x.startsWith("0.") ? x.slice(1) : x;
+  };
+  const luckText: Record<number, string> = {};
+  for (const sv of savantSeasons) {
+    if (sv.woba == null || sv.xwoba == null) continue;
+    const d = sv.woba - sv.xwoba;
+    luckText[sv.season] =
+      Math.abs(d) < 0.01
+        ? tp("luckEven")
+        : tp(d < 0 ? "luckBad" : "luckGood", { diff: r3(Math.abs(d)) });
+  }
+  const notQualifiedFor = Object.fromEntries(pctSeasons.map((s) => [s, tp("notQualified", { season: s })]));
+  const metricKeys = [
+    "xwoba", "xba", "xslg", "brl_percent", "exit_velocity", "hard_hit_percent", "k_percent",
+    "bb_percent", "whiff_percent", "chase_percent", "sprint_speed", "oaa", "arm_strength",
+    "bat_speed", "squared_up_rate", "xera", "fb_velocity", "fb_spin", "curve_spin",
+  ] as const;
+  const pctLabels = {
+    title: tp("title"),
+    subtitle: tp("subtitle"),
+    season: tp("season"),
+    groups: Object.fromEntries(
+      ["quality", "discipline", "swing", "field", "allowed", "missing", "stuff"].map((g) => [g, tp(`group.${g}`)]),
+    ),
+    metrics: Object.fromEntries(metricKeys.map((k) => [k, tp(`metric.${k}`)])) as Record<(typeof metricKeys)[number], string>,
+  };
+  const percentileCard = pctSeasons.length > 0 && (
+    <Reveal>
+      <PercentileBars
+        role={pctRole}
+        rows={pctRows}
+        seasons={pctSeasons}
+        savant={pctRole === "batter" ? savantSeasons : undefined}
+        labels={pctLabels}
+        notQualifiedFor={notQualifiedFor}
+        luckText={luckText}
+      />
+    </Reveal>
+  );
+
   const zoneRef: ZoneReference[] | undefined =
     latest && cardSeasonB != null && crossesZoneChange(latest.season, cardSeasonB)
       ? await getZoneReference()
@@ -348,6 +403,8 @@ export default async function PlayerOverviewPage({
                 prior={priorRolling}
                 season={latest!.season}
                 priorSeason={priorLogSeason ?? undefined}
+                leagueAvg={league?.ops}
+                leagueLabel={tp("mlbAvg")}
               />
             </Reveal>
           )}
@@ -374,6 +431,8 @@ export default async function PlayerOverviewPage({
             </Reveal>
           )}
 
+          {isPitcher && percentileCard}
+
           {isPitcher && (
             <Reveal>
               <RollingEraSparkline
@@ -381,6 +440,8 @@ export default async function PlayerOverviewPage({
                 prior={priorEraTrend}
                 season={latest!.season}
                 priorSeason={priorLogSeason ?? undefined}
+                leagueAvg={league?.era}
+                leagueLabel={tp("mlbAvg")}
               />
             </Reveal>
           )}
@@ -438,6 +499,8 @@ export default async function PlayerOverviewPage({
               />
             </Reveal>
           )}
+
+          {isBatter && percentileCard}
 
           {canShowWar && (
             <Reveal>

@@ -29,6 +29,7 @@ import {
   type WinLoss,
 } from "@/lib/team-season";
 import { deltaTone, overlayByGame, type Direction } from "@/lib/season-deltas";
+import { getLeagueSeason } from "@/lib/savant";
 
 // P12 M5: the Blue Jays' regular season on one page, vs the season before —
 // record, games above .500 and run differential by game number, month by
@@ -89,12 +90,13 @@ export default async function SeasonPage({
   const t = await getTranslations("Season");
   const ts = await getTranslations("Standings");
 
-  const [games, priorGames, standings, priorStandings, players] = await Promise.all([
+  const [games, priorGames, standings, priorStandings, players, league] = await Promise.all([
     getTeamGames(season),
     prior ? getTeamGames(prior) : Promise.resolve([]),
     getStandings(season),
     prior ? getStandings(prior) : Promise.resolve([]),
     getTeamPlayerSeasons(prior ? [season, prior] : [season]),
+    getLeagueSeason(season), // P12 M6: MLB-average reference for the leaders
   ]);
 
   const me = standings.find((r) => r.team_id === TORONTO_TEAM_ID);
@@ -409,9 +411,16 @@ export default async function SeasonPage({
                 </div>
               ))}
             </div>,
-            playerPrior
-              ? t("leadersNote", { pa: LEADER_MIN_PA, ip: LEADER_MIN_IP, prior: playerPrior })
-              : t("leadersNoteNoPrior", { pa: LEADER_MIN_PA, ip: LEADER_MIN_IP }),
+            <>
+              {playerPrior
+                ? t("leadersNote", { pa: LEADER_MIN_PA, ip: LEADER_MIN_IP, prior: playerPrior })
+                : t("leadersNoteNoPrior", { pa: LEADER_MIN_PA, ip: LEADER_MIN_IP })}
+              {league?.ops != null && league.era != null && (
+                <span className="mt-0.5 block">
+                  {t("leagueRef", { season, ops: r3(league.ops), era: league.era.toFixed(2) })}
+                </span>
+              )}
+            </>,
           )}
 
           {/* 7. WAR by position group */}

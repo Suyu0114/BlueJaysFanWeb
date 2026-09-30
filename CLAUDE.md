@@ -29,9 +29,9 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 
 ### Supabase tables are shared — prefix everything with `web_`
 - This Supabase project is **shared with other projects** that already have a `players` table.
-- **Every table for this app is prefixed `web_`**: `web_players`, `web_statcast_events`, `web_player_season_stats`, `web_player_team_season_stats`, `web_player_seasons`, `web_fielding_frv`, `web_id_map`, `web_games`, `web_player_game_stats`, `web_standings`.
+- **Every table for this app is prefixed `web_`**: `web_players`, `web_statcast_events`, `web_player_season_stats`, `web_player_team_season_stats`, `web_player_seasons`, `web_fielding_frv`, `web_id_map`, `web_games`, `web_player_game_stats`, `web_standings`, `web_savant_percentiles`, `web_savant_season`, `web_pitch_arsenal_rv`, `web_league_season`.
 - Never create an unprefixed table here; it will collide.
-- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6) → `006_games.sql` + `007_player_game_stats.sql` + `008_war_components.sql` (P7) → `009_basic_season_stats.sql` (P9) → `010_pitching_season_stats.sql` + `011_statcast_pitch_detail.sql` (P10) → `012_standings.sql` (P11) → `013_games_game_type.sql` + `014_player_team_season_stats.sql` + `015_metric_views.sql` (P12). One concern per migration file.
+- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6) → `006_games.sql` + `007_player_game_stats.sql` + `008_war_components.sql` (P7) → `009_basic_season_stats.sql` (P9) → `010_pitching_season_stats.sql` + `011_statcast_pitch_detail.sql` (P10) → `012_standings.sql` (P11) → `013_games_game_type.sql` + `014_player_team_season_stats.sql` + `015_metric_views.sql` + `016_savant_percentiles.sql` + `017_savant_season.sql` + `018_pitch_arsenal_rv.sql` + `019_league_season.sql` (P12). `020`–`022` are reserved for P13. One concern per migration file.
 
 ### Audience & language
 - **Primary audience: English-speaking Toronto locals**, including non-Chinese speakers curious about BaZi. Chinese (TW/HK) fans are secondary.
@@ -81,6 +81,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 - **Statcast holds other clubs' games** (it is pulled by player id): deadline departures' post-trade games, and the 2026 roster's whole 2024/2025 seasons elsewhere (`pull_statcast.py` / `pull_pitcher.py --cohort-season 2026`). **"As a Blue Jay" = the player is in that game's Jays box score** (`exists web_player_game_stats (game_pk, mlbam_id)`), **not** `game_pk ∈ web_games` — Varsho as an Astro faced Toronto 2026-08-03→05.
 - `web_games.game_type` (`013`): 2025 = 162 `R` + 18 postseason. Any team record must filter `game_type = 'R'`.
 - **Discipline / batted-ball definitions live only in the `015` views** (`web_v_pitch_scoped`, `web_v_batter_discipline`, `web_v_pitcher_discipline`, `web_v_batted_ball_profile`), each with a `scope` column (`'mlb'` | `'jays'`). Don't re-derive Chase% / CSW% / Hard-hit% in TS or Python — read the views. Pitch counts exclude pitch-clock `automatic_ball`/`automatic_strike` rows (not thrown); PA/K/BB keep them.
+- **Savant tables (`016`–`018`) are MLB-wide season values stored as Savant publishes them** — label them "all MLB clubs" next to Jays-scoped modules. An absent percentile row = **not qualified**, never 0. Percentiles: 100 = best for every metric. `web_savant_season` / `web_pitch_arsenal_rv` percentages are in **percent units** (6.9 = 6.9%). **Pitch run value: positive = good for the pitcher** (verified; the opposite of what one might assume). `web_league_season` rates come from summed team counts — keep it that way (P13 checks the MLB row).
 - **2026 `zone` is not comparable to earlier seasons.** Zone% fell ~3.4 pts and Chase% rose ~2.8 pts across every pitch on file while Whiff% didn't move — a Savant definition change (inferred). Never present a raw 2025→2026 Chase% / Z-Swing% / Zone% delta without that caveat or a "net of shift" figure. See `docs/DATA_MODEL.md` Known gaps #8.
 
 ---
@@ -122,6 +123,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   season_line.py               # P12: shared API season line -> stat columns mapping (season stats + splits)
   pull_player_splits.py        # P12: full-MLB lines per club + season total for a roster (web_player_team_season_stats)
   season_report.py             # P12: SELECT-only article data pack -> reports/season-review-<year>/ (git-ignored)
+  pull_savant_leaderboards.py  # P12 M6: Savant percentiles / xStats + barrels / pitch run value (league-wide, filtered to the roster)
+  pull_league_averages.py      # P12 M6: MLB / AL / NL averages from summed team counting stats
   backfill.py                  # one-shot orchestrator for 2024 + 2025 (and optional 2026)
 /db/migrations/                # plain SQL, apply via psql or Supabase Studio
   001_initial_schema.sql       # web_players, web_statcast_events, web_player_season_stats
@@ -139,6 +142,10 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   013_games_game_type.sql      # web_games.game_type (R vs postseason rounds, P12)
   014_player_team_season_stats.sql # web_player_team_season_stats (per-club + total season lines, P12)
   015_metric_views.sql         # web_v_* discipline / batted-ball views with mlb|jays scope (P12)
+  016_savant_percentiles.sql   # web_savant_percentiles (P12 M6)
+  017_savant_season.sql        # web_savant_season (P12 M6)
+  018_pitch_arsenal_rv.sql     # web_pitch_arsenal_rv (P12 M6)
+  019_league_season.sql        # web_league_season (P12 M6)
 /.github/workflows/etl.yml     # daily cron (rolling 7-day window for current season)
 /ETL_update_flow.md            # backfill + manual re-run steps
 /web/                          # Next.js app
@@ -168,6 +175,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     ContactQualityCard.tsx     # P9 Avg/Max EV + Hard-Hit% (reuses computeExitVeloStats; as-a-Jay batted balls)
     SeasonCompareCard.tsx      # P12 generic season A vs B table + Δ chips (per-metric direction, † = net of 2026 zone shift)
     DisciplineCards.tsx        # P12 DisciplineCard / BattedBallProfileCard / PitcherDisciplineCard / ContactCompareCard (015 views; scope prop)
+    PercentileBars.tsx         # P12 M6 Savant percentile bars (steel -> neutral -> brick), season switch, not-qualified state, batter luck line (wOBA vs xwOBA, Barrel%)
     compare/                   # P12 Compare tab pieces
       CompareControls.tsx      # season / vs / scope Links (URL state, SlidingPill in control frames)
       ClubSplits.tsx           # per-club rows when a season spans a trade
@@ -201,7 +209,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       SprayChart.tsx           # optional secondaryEvents prop for /compare
       SprayChartExplorer.tsx   # client filter wrapper around SprayChart (season chips w/ club labels, month/pitch/outcome/hand)
       PitchingExplorer.tsx     # client filter wrapper: season chips (P12, club labels) + ArsenalTable + PitchMovementChart + PitchZoneHeatmap + VeloTrendChart
-      ArsenalTable.tsx         # P10 per-pitch-type usage bar + velo/spin/whiff%/xwOBAcon (replaced PitchDistribution)
+      ArsenalTable.tsx         # P10 per-pitch-type usage bar + velo/spin/whiff%/xwOBAcon (replaced PitchDistribution); P12 M6 optional RV/100 column (single full season only)
       PitchMovementChart.tsx   # P10 pfx scatter, pitcher's view (alignment-agnostic); P12 ghostMeans = comparison-season rings + arrows
       VeloTrendChart.tsx       # P10 per-game primary-fastball velo (Recharts line)
       PitchZoneHeatmap.tsx     # pitch-location heatmap (16x20 grid + Gaussian kernel + SVG blur)
@@ -215,6 +223,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     batting.ts / pitching.ts / fielding.ts
     season-stats.ts            # web_player_season_stats (incl. P9 basic line + P10 pitcher line) + batter games-played
     discipline.ts              # P12 015-view readers (batter/pitcher discipline, batted-ball profile, zone reference), scope 'mlb'|'jays'
+    savant.ts                  # P12 M6 readers: percentiles, Savant season (xwOBA / Barrel%), pitch RV/100, league season
     season-deltas.ts           # P12 pure: delta / per-metric tone / 2026 zone-change helpers, biggestChanges (What changed), overlayByGame (M4)
     batter-game-log.ts         # P9 per-game batting log (web_player_game_stats + web_games), any 2024-2026 season, game_type 'R' only
     batting-form.ts            # P9 pure helpers: summarize / windowByDays (generic) / rollingOps

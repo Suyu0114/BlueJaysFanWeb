@@ -23,7 +23,26 @@ export type ArsenalTableLabels = {
   spin: string; // header for spin rate
   whiff: string; // header for whiff%
   xwobaCon: string; // header for xwOBA on contact
+  rv100?: string; // P12 M6: header for Savant run value per 100 pitches
 };
+
+// Tailwind needs literal class strings, so the two grid templates are spelled out.
+const GRID = "grid-cols-[2.5rem_1fr_3rem_4rem_4.5rem_3.5rem_4.5rem]";
+const GRID_RV = "grid-cols-[2.5rem_1fr_3rem_4rem_4.5rem_3.5rem_4.5rem_3.5rem]";
+
+// Savant RV/100, pitcher's view: positive = runs saved = good.
+function Rv({ v }: { v: number | null | undefined }) {
+  if (v == null || !Number.isFinite(v)) return <span className="text-right text-xs text-navy/40">—</span>;
+  const tone = v >= 0.5 ? "bg-grass/25 text-navy" : v <= -0.5 ? "bg-brick/15 text-lava" : "bg-navy/5 text-navy/60";
+  return (
+    <span className="text-right">
+      <span className={`inline-block rounded-full px-1.5 text-xs tabular-nums ${tone}`}>
+        {v > 0 ? "+" : v < 0 ? "−" : ""}
+        {Math.abs(v).toFixed(1)}
+      </span>
+    </span>
+  );
+}
 
 function dec(v: number | null, d: number, suffix = ""): string {
   return v == null || !Number.isFinite(v) ? "—" : `${v.toFixed(d)}${suffix}`;
@@ -41,17 +60,22 @@ function woba3(v: number | null): string {
 export default function ArsenalTable({
   pitches,
   labels,
+  runValues,
 }: {
   pitches: PitchEvent[];
   labels: ArsenalTableLabels;
+  // P12 M6: pitch type -> Savant RV/100 for the whole season (every club). The
+  // caller passes it only when the table shows one full season, unfiltered.
+  runValues?: Record<string, number | null>;
 }) {
   const rows = buildArsenal(pitches);
   if (rows.length === 0) return null;
   const maxUsage = Math.max(...rows.map((r) => r.usage));
+  const grid = runValues ? GRID_RV : GRID;
 
   return (
     <div className="space-y-1.5">
-      <div className="grid grid-cols-[2.5rem_1fr_3rem_4rem_4.5rem_3.5rem_4.5rem] items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-navy/45 sm:gap-3">
+      <div className={`grid ${grid} items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-navy/45 sm:gap-3`}>
         <span>&nbsp;</span>
         <span>{labels.usage}</span>
         <span className="text-right">{labels.pitches}</span>
@@ -59,6 +83,7 @@ export default function ArsenalTable({
         <span className="text-right">{labels.spin}</span>
         <span className="text-right">{labels.whiff}</span>
         <span className="text-right">{labels.xwobaCon}</span>
+        {runValues && <span className="text-right">{labels.rv100 ?? "RV/100"}</span>}
       </div>
       {rows.map((r, idx) => {
         const widthPct = maxUsage === 0 ? 0 : (r.usage / maxUsage) * 100;
@@ -69,7 +94,7 @@ export default function ArsenalTable({
             key={r.pitchType}
             layout="position"
             transition={SPRING_SOFT}
-            className="grid grid-cols-[2.5rem_1fr_3rem_4rem_4.5rem_3.5rem_4.5rem] items-center gap-2 text-sm sm:gap-3"
+            className={`grid ${grid} items-center gap-2 text-sm sm:gap-3`}
           >
             <span className="font-mono font-semibold text-navy">
               {r.pitchType}
@@ -112,6 +137,7 @@ export default function ArsenalTable({
             <span className="text-right text-xs tabular-nums text-navy/60">
               {woba3(r.xwobaCon)}
             </span>
+            {runValues && <Rv v={runValues[r.pitchType]} />}
           </motion.div>
         );
       })}

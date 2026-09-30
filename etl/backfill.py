@@ -17,6 +17,8 @@ Order matters per season:
   6. pull_fielding       -> season-aggregate OAA/FRV per position
   7. pull_season_stats   -> OPS/wRC+/ERA/FIP/WAR + Value components (MLB Stats API)
   8. pull_boxscore       -> web_player_game_stats for every final game
+  9. pull_savant_leaderboards -> percentiles / xStats / arsenal run value (P12 M6)
+ 10. pull_league_averages -> web_league_season (P12 M6)
 
 Jays seasons only. A roster's seasons with OTHER clubs (P12) are a separate
 one-shot: pull_player_splits.py, then pull_statcast / pull_pitcher with
@@ -39,7 +41,9 @@ load_dotenv(_HERE.parent / ".env")
 
 import pull_boxscore  # noqa: E402
 import pull_fielding  # noqa: E402
+import pull_league_averages  # noqa: E402
 import pull_pitcher  # noqa: E402
+import pull_savant_leaderboards  # noqa: E402
 import pull_schedule  # noqa: E402
 import pull_season_stats  # noqa: E402
 import pull_standings  # noqa: E402
@@ -68,29 +72,35 @@ def run_season(season: int) -> None:
     log.info("==== BACKFILL %s (%s -> %s, postseason=%s) ====",
              season, start, end, include_postseason)
 
-    log.info("Step 1/8: pull_team_players")
+    log.info("Step 1/10: pull_team_players")
     pull_team_players.run(season)
 
-    log.info("Step 2/8: pull_schedule")
+    log.info("Step 2/10: pull_schedule")
     pull_schedule.run(season)
 
-    log.info("Step 3/8: pull_standings")
+    log.info("Step 3/10: pull_standings")
     pull_standings.run(season)
 
-    log.info("Step 4/8: pull_statcast --all-batters")
+    log.info("Step 4/10: pull_statcast --all-batters")
     pull_statcast.run_all(season, start, end, include_postseason=include_postseason)
 
-    log.info("Step 5/8: pull_pitcher --all-pitchers")
+    log.info("Step 5/10: pull_pitcher --all-pitchers")
     pull_pitcher.run_all(season, start, end, include_postseason=include_postseason)
 
-    log.info("Step 6/8: pull_fielding")
+    log.info("Step 6/10: pull_fielding")
     pull_fielding.run(season)
 
-    log.info("Step 7/8: pull_season_stats")
+    log.info("Step 7/10: pull_season_stats")
     pull_season_stats.run(season)
 
-    log.info("Step 8/8: pull_boxscore (all finals)")
+    log.info("Step 8/10: pull_boxscore (all finals)")
     pull_boxscore.run(season=season)
+
+    log.info("Step 9/10: pull_savant_leaderboards")
+    pull_savant_leaderboards.run(season)
+
+    log.info("Step 10/10: pull_league_averages")
+    pull_league_averages.run(season)
 
     log.info("==== BACKFILL %s COMPLETE ====", season)
 
