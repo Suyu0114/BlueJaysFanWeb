@@ -7,7 +7,10 @@ import PitchMovementChart from "@/components/charts/PitchMovementChart";
 import PitchZoneHeatmap from "@/components/charts/PitchZoneHeatmap";
 import VeloTrendChart from "@/components/charts/VeloTrendChart";
 import { Reveal } from "@/components/motion/Reveal";
+import CopyTableButton from "@/components/CopyTableButton";
+import Exportable from "@/components/Exportable";
 import {
+  buildArsenal,
   primaryFastball,
   veloTrend,
   type PitchEvent,
@@ -64,8 +67,11 @@ export default function PitchingExplorer({
   pitches,
   seasonClubs = {},
   runValues = {},
+  exportName = "player",
 }: {
   pitches: PitchEvent[];
+  // P12 M7: player name for PNG file names / captions.
+  exportName?: string;
   // P12 M6: season -> pitch type -> Savant RV/100 (season totals, every club).
   runValues?: Record<string, Record<string, number | null>>;
   // P12: season -> club(s) he pitched for ("SD", "TOR/MIN"). Statcast rows cover
@@ -166,6 +172,23 @@ export default function PitchingExplorer({
   // shows exactly that — one season, no month / batter-hand subset.
   const seasonRv =
     season !== "all" && month === "all" && batterHand === "all" ? runValues[season] : undefined;
+
+  // P12 M7: the arsenal as plain cells for "Copy table" (same numbers as shown).
+  const seasonLabel = season === "all" ? t("filterAll") : season;
+  const copyHeaders = [
+    "Pitch", t("colUsage"), t("colCount"), t("colAvgVelo"), t("colSpin"), t("colWhiff"), t("colXwobaCon"),
+    ...(seasonRv ? [t("colRv100")] : []),
+  ];
+  const copyRows = buildArsenal(filtered).map((r) => [
+    r.pitchType,
+    `${(r.usage * 100).toFixed(1)}%`,
+    r.count,
+    r.avgVelo == null ? "" : r.avgVelo.toFixed(1),
+    r.avgSpin == null ? "" : Math.round(r.avgSpin),
+    r.whiffPct == null ? "" : `${(r.whiffPct * 100).toFixed(0)}%`,
+    r.xwobaCon == null ? "" : r.xwobaCon.toFixed(3).replace(/^0\./, "."),
+    ...(seasonRv ? [seasonRv[r.pitchType] == null ? "" : seasonRv[r.pitchType]!.toFixed(1)] : []),
+  ]);
 
   const arsenalLabels = {
     rv100: t("colRv100"),
@@ -273,9 +296,10 @@ export default function PitchingExplorer({
       </div>
 
       <Reveal as="section">
-        <h2 className="mb-2 text-sm font-semibold text-navy">
-          {t("arsenalTitle")}
-        </h2>
+        <div className="mb-2 flex items-start justify-between gap-2">
+          <h2 className="text-sm font-semibold text-navy">{t("arsenalTitle")}</h2>
+          <CopyTableButton headers={copyHeaders} rows={copyRows} />
+        </div>
         <ArsenalTable pitches={filtered} labels={arsenalLabels} runValues={seasonRv} />
         <p className="mt-2 text-xs text-navy/50">{t("arsenalStory")}</p>
         {seasonRv && <p className="mt-0.5 text-xs text-navy/40">{t("rvNote")}</p>}
@@ -287,7 +311,12 @@ export default function PitchingExplorer({
           <h2 className="mb-2 text-sm font-semibold text-navy">
             {t("movementTitle")}
           </h2>
-          <PitchMovementChart pitches={filtered} labels={movementLabels} />
+          <Exportable
+            name={`${exportName} movement ${season}`}
+            caption={`${exportName} · ${t("movementTitle")} · ${seasonLabel}`}
+          >
+            <PitchMovementChart pitches={filtered} labels={movementLabels} />
+          </Exportable>
           <p className="mt-1 text-xs text-navy/50">{t("movementStory")}</p>
           <p className="mt-0.5 text-xs text-navy/40">{t("pitcherViewNote")}</p>
         </Reveal>
@@ -312,7 +341,12 @@ export default function PitchingExplorer({
               <p className="text-[11px] text-navy/45">{t("zoneEraNote")}</p>
             </div>
           )}
-          <PitchZoneHeatmap pitches={zonePitches} labels={zoneLabels} />
+          <Exportable
+            name={`${exportName} location ${season}`}
+            caption={`${exportName} · ${t("locationTitle")} · ${seasonLabel}`}
+          >
+            <PitchZoneHeatmap pitches={zonePitches} labels={zoneLabels} />
+          </Exportable>
           {activeAlignment && (
             <p className="mt-1 text-center text-[11px] text-navy/50">
               {t("zoneShowing", {
@@ -332,7 +366,12 @@ export default function PitchingExplorer({
           <h2 className="mb-2 text-sm font-semibold text-navy">
             {t("veloTrendTitle")} · {trendPitch}
           </h2>
-          <VeloTrendChart data={trendPoints} pitchType={trendPitch} />
+          <Exportable
+            name={`${exportName} velo ${trendPitch} ${season}`}
+            caption={`${exportName} · ${t("veloTrendTitle")} · ${trendPitch} · ${seasonLabel}`}
+          >
+            <VeloTrendChart data={trendPoints} pitchType={trendPitch} />
+          </Exportable>
           <p className="mt-1 text-xs text-navy/50">{t("veloTrendStory")}</p>
         </Reveal>
       )}

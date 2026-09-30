@@ -684,7 +684,33 @@ Whiff%, CSW%, K%, BB%, velo, spin, movement and batted-ball numbers are unaffect
 """
 
 
-def readme_md(conn, seasons: list[int], team_stats: dict, ref: dict) -> str:
+def article_links(conn, seasons: list[int], bats: dict, pits: dict) -> str:
+    """Stable site URLs for the article (P12 M7): the season page, the Compare
+    tab for the both-seasons cohort (as a Jay) and for newcomers (all MLB)."""
+    s, vs = seasons
+    cmp = lambda pid, scope: f"/en/players/{pid}/compare?season={s}&vs={vs}&scope={scope}"  # noqa: E731
+    lines = [f"- Team season: `/en/season/{s}` (zh-TW: `/zh-TW/season/{s}`)"]
+    cohort = sorted(
+        [(p["name"], pid) for pid, p in bats.items() if in_cohort(p, seasons, "batter")]
+        + [(p["name"], pid) for pid, p in pits.items() if in_cohort(p, seasons, "pitcher")]
+    )
+    if cohort:
+        lines.append(f"- Same player, {s} vs {vs}, as a Blue Jay:")
+        lines += [f"  - {n}: `{cmp(pid, 'jays')}`" for n, pid in cohort]
+    newcomers = q(conn, """
+        select distinct p.mlbam_id, p.name
+        from web_player_seasons c join web_players p using (mlbam_id)
+        join web_player_team_season_stats t on t.mlbam_id = c.mlbam_id and t.season = %(vs)s and t.team_id = 0
+        where c.season = %(s)s
+          and not exists (select 1 from web_player_seasons j where j.mlbam_id = c.mlbam_id and j.season = %(vs)s)
+        order by p.name""", {"s": s, "vs": vs})
+    if newcomers:
+        lines.append(f"- Newcomers, {s} with Toronto vs {vs} elsewhere (all MLB):")
+        lines += [f"  - {r['name']}: `{cmp(r['mlbam_id'], 'mlb')}`" for r in newcomers]
+    return "\n".join(lines)
+
+
+def readme_md(conn, seasons: list[int], team_stats: dict, ref: dict, links: str = "") -> str:
     s, vs = seasons
     freeze = q(conn, """select max(updated_at) as t from web_player_season_stats where season = %(s)s""", {"s": s})[0]["t"]
     split_t = q(conn, """select max(updated_at) as t from web_player_team_season_stats where season = %(s)s""", {"s": s})[0]["t"]
@@ -751,6 +777,15 @@ Pull / Center / Oppo = spray angle beyond 15 degrees to the batter's pull side /
 xwOBAcon = mean Statcast xwOBA on balls put in play
 ```
 
+## Article-ready links
+
+Every view below is a stable URL — prefix it with the site's domain (e.g.
+`https://bluejaysfanweb.vercel.app`). Charts on those pages have a **PNG ↓** button
+(caption + source line included) and tables a **Copy table** button (pastes into
+a spreadsheet as a real table).
+
+{links}
+
 ## Caveats
 
 - **GB/LD/FB/PU are approximations** from launch angle (Savant's batted-ball type is
@@ -791,7 +826,7 @@ def run(season: int, vs: int, out_dir: Path) -> None:
                        era::float8 as era, k_pct::float8 as k_pct, bb_pct::float8 as bb_pct
                 from web_league_season where season = any(%(s)s)
                 order by season desc, array_position(array['MLB','AL','NL'], league)""", {"s": seasons})),
-            "README.md": readme_md(conn, seasons, team_stats, ref),
+            "README.md": readme_md(conn, seasons, team_stats, ref, article_links(conn, seasons, bats, pits)),
         }
     for name, text in files.items():
         (out_dir / name).write_text(text, encoding="utf-8")

@@ -42,6 +42,7 @@ import {
 } from "@/lib/discipline";
 import { crossesZoneChange } from "@/lib/season-deltas";
 import PercentileBars from "@/components/PercentileBars";
+import Exportable from "@/components/Exportable";
 import { getLeagueSeason, getPercentiles, getSavantSeasons } from "@/lib/savant";
 import {
   lastNAppearances,
@@ -398,6 +399,7 @@ export default async function PlayerOverviewPage({
 
           {isBatter && (
             <Reveal>
+              <Exportable name={`${player.name} rolling ops ${latest!.season}`} caption={`${player.name} · ${t("rollingOpsTitle")} · ${latest!.season}${priorLogSeason ? ` vs ${priorLogSeason}` : ""}`}>
               <RollingOpsSparkline
                 data={rolling}
                 prior={priorRolling}
@@ -406,6 +408,7 @@ export default async function PlayerOverviewPage({
                 leagueAvg={league?.ops}
                 leagueLabel={tp("mlbAvg")}
               />
+              </Exportable>
             </Reveal>
           )}
 
@@ -435,6 +438,7 @@ export default async function PlayerOverviewPage({
 
           {isPitcher && (
             <Reveal>
+              <Exportable name={`${player.name} rolling era ${latest!.season}`} caption={`${player.name} · ${t("rollingEraTitle")} · ${latest!.season}${priorLogSeason ? ` vs ${priorLogSeason}` : ""}`}>
               <RollingEraSparkline
                 data={eraTrend}
                 prior={priorEraTrend}
@@ -443,6 +447,7 @@ export default async function PlayerOverviewPage({
                 leagueAvg={league?.era}
                 leagueLabel={tp("mlbAvg")}
               />
+              </Exportable>
             </Reveal>
           )}
 
@@ -504,6 +509,7 @@ export default async function PlayerOverviewPage({
 
           {canShowWar && (
             <Reveal>
+              <Exportable name={`${player.name} war breakdown ${latest!.season}`} caption={`${player.name} · WAR · ${latest!.season}`}>
               <WarBreakdown
                 batting={latest!.war_batting ?? 0}
                 baserunning={latest!.war_baserunning ?? 0}
@@ -514,6 +520,7 @@ export default async function PlayerOverviewPage({
                 rar={latest!.rar!}
                 war={latest!.war!}
               />
+              </Exportable>
             </Reveal>
           )}
 

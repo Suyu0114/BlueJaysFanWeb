@@ -395,6 +395,13 @@
       "curve_spin": "Curve Spin"
     }
   },
+  "Export": {
+    "pngTitle": "Download this chart as a PNG (for articles and posts)",
+    "copy": "Copy table",
+    "copyTitle": "Copy this table to paste into a spreadsheet or document",
+    "copied": "Copied ✓",
+    "failed": "Failed"
+  },
   "Batting": {
     "sprayChart": "Spray Chart",
     "subtitle": "Every regular-season batted ball on file.",

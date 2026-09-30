@@ -6,6 +6,7 @@ import SprayChart, { type BattedBallEvent } from "@/components/charts/SprayChart
 import ExitVeloChart from "@/components/charts/ExitVeloChart";
 import { computeExitVeloStats } from "@/lib/exit-velo-stats";
 import { Reveal } from "@/components/motion/Reveal";
+import Exportable from "@/components/Exportable";
 
 type Outcome = "all" | "hit" | "xbh" | "hr";
 type Hand = "all" | "L" | "R";
@@ -70,8 +71,11 @@ function FilterGroup({ label, children }: { label: string; children: ReactNode }
 export default function SprayChartExplorer({
   events,
   seasonClubs = {},
+  exportName = "player",
 }: {
   events: BattedBallEvent[];
+  // P12 M7: player name for PNG file names / captions.
+  exportName?: string;
   // P12: season -> club(s) he played for ("SD", "TOR/HOU"). Statcast rows cover
   // every club, so a season chip says whose uniform the dots were hit in.
   seasonClubs?: Record<string, string>;
@@ -256,9 +260,15 @@ export default function SprayChartExplorer({
         </p>
       </div>
 
-      <div className="mx-auto h-[60vh] max-h-[560px] min-h-[320px] w-full max-w-xl">
+      <Exportable
+        name={`${exportName} spray ${season}`}
+        caption={`${exportName} · Spray chart · ${season === "all" ? t("filterAll") : season}${
+          seasonClubs[season] ? ` (${seasonClubs[season]})` : ""
+        }`}
+        className="mx-auto h-[60vh] max-h-[560px] min-h-[320px] w-full max-w-xl"
+      >
         <SprayChart events={filtered} labels={labels} />
-      </div>
+      </Exportable>
 
       <Reveal as="section" className="border-t border-navy/10 pt-4">
         <h2 className="text-lg font-semibold tracking-tight text-navy">
@@ -278,9 +288,13 @@ export default function SprayChartExplorer({
           })}
         </p>
 
-        <div className="mt-3">
+        <Exportable
+          name={`${exportName} ev-la ${season}`}
+          caption={`${exportName} · ${t("exitVeloTitle")} · ${season === "all" ? t("filterAll") : season}`}
+          className="mt-3"
+        >
           <ExitVeloChart events={filtered} labels={evLabels} />
-        </div>
+        </Exportable>
       </Reveal>
     </div>
   );

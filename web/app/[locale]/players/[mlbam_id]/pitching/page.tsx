@@ -45,7 +45,7 @@ export default async function PitchingPage({
         {pitches.length === 0 ? (
           <p className="text-navy/60">{t("noData")}</p>
         ) : (
-          <PitchingExplorer pitches={pitches} seasonClubs={clubLabels} runValues={runValues} />
+          <PitchingExplorer pitches={pitches} seasonClubs={clubLabels} runValues={runValues} exportName={player.name} />
         )}
       </div>
     </div>

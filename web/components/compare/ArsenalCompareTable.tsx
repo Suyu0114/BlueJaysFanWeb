@@ -1,3 +1,4 @@
+import CopyTableButton from "@/components/CopyTableButton";
 import type { ArsenalCompareRow } from "@/lib/pitch-arsenal";
 import { colorFor } from "@/lib/pitch-colors";
 
@@ -47,8 +48,32 @@ export default function ArsenalCompareTable({
   };
 }) {
   if (rows.length === 0) return null;
+  const dvOf = (r: ArsenalCompareRow) =>
+    r.a?.avgVelo != null && r.b?.avgVelo != null ? r.a.avgVelo - r.b.avgVelo : null;
+  // M7: one column per season per stat, so a spreadsheet can chart it.
+  const copyHeaders = [
+    labels.pitch, "",
+    `${labels.usage} ${seasonA}`, `${labels.usage} ${seasonB}`,
+    `${labels.velo} ${seasonA}`, `${labels.velo} ${seasonB}`, labels.veloChange,
+    `${labels.spin} ${seasonA}`, `${labels.spin} ${seasonB}`,
+    `${labels.whiff} ${seasonA}`, `${labels.whiff} ${seasonB}`,
+    `${labels.xwobaCon} ${seasonA}`, `${labels.xwobaCon} ${seasonB}`,
+  ];
+  const copyRows = rows.map((r) => {
+    const dv = dvOf(r);
+    return [
+      r.pitchType, r.flag === "new" ? labels.new : r.flag === "dropped" ? labels.dropped : "",
+      pct(r.a?.usage), pct(r.b?.usage), d1(r.a?.avgVelo), d1(r.b?.avgVelo),
+      dv == null ? "" : `${dv >= 0 ? "+" : "−"}${Math.abs(dv).toFixed(1)}`,
+      int(r.a?.avgSpin), int(r.b?.avgSpin), pct(r.a?.whiffPct), pct(r.b?.whiffPct),
+      r3(r.a?.xwobaCon), r3(r.b?.xwobaCon),
+    ];
+  });
   return (
     <div className="overflow-x-auto">
+      <div className="mb-1 flex justify-end">
+        <CopyTableButton headers={copyHeaders} rows={copyRows} />
+      </div>
       <table className="w-full min-w-[560px] text-sm tabular-nums">
         <thead>
           <tr className="border-b border-navy/10 text-[11px] uppercase tracking-wide text-navy/50">

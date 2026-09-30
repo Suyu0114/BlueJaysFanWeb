@@ -45,7 +45,7 @@ export default async function BattingPage({
         {events.length === 0 ? (
           <p className="text-navy/60">{t("noData")}</p>
         ) : (
-          <SprayChartExplorer events={events} seasonClubs={clubLabels} />
+          <SprayChartExplorer events={events} seasonClubs={clubLabels} exportName={player.name} />
         )}
       </div>
     </div>

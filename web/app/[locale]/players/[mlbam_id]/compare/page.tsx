@@ -17,6 +17,7 @@ import SeasonArc, { type ArcMetric } from "@/components/compare/SeasonArc";
 import ArsenalCompareTable from "@/components/compare/ArsenalCompareTable";
 import VeloCompareChart from "@/components/compare/VeloCompareChart";
 import ZoneGrid from "@/components/compare/ZoneGrid";
+import Exportable from "@/components/Exportable";
 import SprayChart from "@/components/charts/SprayChart";
 import PitchMovementChart from "@/components/charts/PitchMovementChart";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
@@ -498,9 +499,13 @@ export default async function ComparePage({
                       <span>· {clubText(x.s)} · {t("sprayCaption", { n: x.ev.length })}</span>
                     </figcaption>
                     {x.ev.length > 0 ? (
-                      <div className="w-full">
+                      <Exportable
+                        name={`${player.name} spray ${x.s} ${scope}`}
+                        caption={`${player.name} · ${t("sprayTitle")} · ${x.s} (${clubText(x.s)})`}
+                        className="w-full"
+                      >
                         <SprayChart events={x.ev} labels={sprayLabels} width={420} />
-                      </div>
+                      </Exportable>
                     ) : (
                       <p className="py-8 text-sm text-navy/50">{t("noStatcast")}</p>
                     )}
@@ -545,7 +550,12 @@ export default async function ComparePage({
               <Reveal className="rounded-lg border border-navy/10 bg-white/50 p-4">
                 <h3 className="mb-2 text-sm font-semibold text-navy">{t("movementTitle")}</h3>
                 {pitchesA.length > 0 ? (
-                  <PitchMovementChart pitches={pitchesA} labels={movementLabels} ghostMeans={movementMeans(pitchesB)} />
+                  <Exportable
+                    name={`${player.name} movement ${season} vs ${vs}`}
+                    caption={`${player.name} · ${t("movementTitle")} · ${season} (rings: ${vs})`}
+                  >
+                    <PitchMovementChart pitches={pitchesA} labels={movementLabels} ghostMeans={movementMeans(pitchesB)} />
+                  </Exportable>
                 ) : (
                   <p className="text-sm text-navy/50">{t("noStatcast")}</p>
                 )}
@@ -554,8 +564,12 @@ export default async function ComparePage({
               <Reveal className="rounded-lg border border-navy/10 bg-white/50 p-4" delay={0.12}>
                 <h3 className="mb-2 text-sm font-semibold text-navy">{t("zoneTitle")}</h3>
                 <div className="flex flex-wrap justify-center gap-4">
-                  <ZoneGrid dist={zoneA} maxShare={zoneMax} season={season} tone="brick" caption={t("pitchCount", { n: zoneA.total })} />
-                  <ZoneGrid dist={zoneB} maxShare={zoneMax} season={vs} tone="steel" caption={t("pitchCount", { n: zoneB.total })} />
+                  <Exportable name={`${player.name} zone ${season}`} caption={`${player.name} · ${t("zoneTitle")} · ${season}`}>
+                    <ZoneGrid dist={zoneA} maxShare={zoneMax} season={season} tone="brick" caption={t("pitchCount", { n: zoneA.total })} />
+                  </Exportable>
+                  <Exportable name={`${player.name} zone ${vs}`} caption={`${player.name} · ${t("zoneTitle")} · ${vs}`}>
+                    <ZoneGrid dist={zoneB} maxShare={zoneMax} season={vs} tone="steel" caption={t("pitchCount", { n: zoneB.total })} />
+                  </Exportable>
                 </div>
                 <p className="mt-2 max-w-[360px] text-[11px] text-navy/50">
                   {t("zoneNote")} {crossesZoneChange(season, vs) && t("zoneShiftGrid")}
@@ -567,7 +581,12 @@ export default async function ComparePage({
                 <h3 className="mb-2 text-sm font-semibold text-navy">
                   {t("veloTitle")} · {fastball}
                 </h3>
-                <VeloCompareChart a={veloA} b={veloB} seasonA={season} seasonB={vs} labels={{ appearance: t("appearance") }} />
+                <Exportable
+                  name={`${player.name} velo ${fastball} ${season} vs ${vs}`}
+                  caption={`${player.name} · ${t("veloTitle")} · ${fastball} · ${season} vs ${vs}`}
+                >
+                  <VeloCompareChart a={veloA} b={veloB} seasonA={season} seasonB={vs} labels={{ appearance: t("appearance") }} />
+                </Exportable>
                 <p className="mt-1 text-[11px] text-navy/50">{t("veloNote", { a: season, b: vs })}</p>
               </Reveal>
             )}

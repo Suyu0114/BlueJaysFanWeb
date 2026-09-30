@@ -395,6 +395,13 @@
       "curve_spin": "Curve Spin"
     }
   },
+  "Export": {
+    "pngTitle": "把這張圖下載成 PNG（可放進文章或貼文）",
+    "copy": "複製表格",
+    "copyTitle": "複製這個表格，可直接貼進試算表或文件",
+    "copied": "已複製 ✓",
+    "failed": "失敗"
+  },
   "Batting": {
     "sprayChart": "Spray Chart",
     "subtitle": "球員所有例行賽擊球紀錄。",

@@ -175,6 +175,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     ContactQualityCard.tsx     # P9 Avg/Max EV + Hard-Hit% (reuses computeExitVeloStats; as-a-Jay batted balls)
     SeasonCompareCard.tsx      # P12 generic season A vs B table + Δ chips (per-metric direction, † = net of 2026 zone shift)
     DisciplineCards.tsx        # P12 DisciplineCard / BattedBallProfileCard / PitcherDisciplineCard / ContactCompareCard (015 views; scope prop)
+    Exportable.tsx             # P12 M7 wrap any chart -> "PNG ↓" button (exports the largest <svg> inside; generic, P13 reuses)
+    CopyTableButton.tsx        # P12 M7 "Copy table" -> TSV on the clipboard from plain headers + rows (generic, P13 reuses)
     PercentileBars.tsx         # P12 M6 Savant percentile bars (steel -> neutral -> brick), season switch, not-qualified state, batter luck line (wOBA vs xwOBA, Barrel%)
     compare/                   # P12 Compare tab pieces
       CompareControls.tsx      # season / vs / scope Links (URL state, SlidingPill in control frames)
@@ -223,6 +225,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     batting.ts / pitching.ts / fielding.ts
     season-stats.ts            # web_player_season_stats (incl. P9 basic line + P10 pitcher line) + batter games-played
     discipline.ts              # P12 015-view readers (batter/pitcher discipline, batted-ball profile, zone reference), scope 'mlb'|'jays'
+    export-svg.ts              # P12 M7 any <svg> -> PNG: resolves var(--color-*), inlines class paint, 2x canvas, caption + source/date footer
+    copy-table.ts              # P12 M7 toTsv (N-N record cells -> en dash so Excel/Sheets don't read dates) + copyText (clipboard w/ fallback)
     savant.ts                  # P12 M6 readers: percentiles, Savant season (xwOBA / Barrel%), pitch RV/100, league season
     season-deltas.ts           # P12 pure: delta / per-metric tone / 2026 zone-change helpers, biggestChanges (What changed), overlayByGame (M4)
     batter-game-log.ts         # P9 per-game batting log (web_player_game_stats + web_games), any 2024-2026 season, game_type 'R' only

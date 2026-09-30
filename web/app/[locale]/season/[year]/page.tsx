@@ -7,6 +7,8 @@ import { Reveal } from "@/components/motion/Reveal";
 import { HEAD_ROW, TD, TD_FIRST, TD_LAST, TH, TH_FIRST, TH_LAST } from "@/components/standings-chrome";
 import SeasonTrendChart from "@/components/season/SeasonTrendChart";
 import WarByPositionChart from "@/components/season/WarByPositionChart";
+import CopyTableButton from "@/components/CopyTableButton";
+import Exportable from "@/components/Exportable";
 import { DIVISION_KEY, getStandings, TORONTO_TEAM_ID } from "@/lib/standings";
 import { getTeamGames, getTeamPlayerSeasons, getTeamSeasons } from "@/lib/team-season-data";
 import {
@@ -192,11 +194,21 @@ export default async function SeasonPage({
   const warTotal = Object.values(war).reduce((a, b) => a + b, 0);
   const pwarTotal = pwar ? Object.values(pwar).reduce((a, b) => a + b, 0) : null;
 
-  const panel = (seedKey: string, title: string, children: React.ReactNode, note?: React.ReactNode) => (
+  // M7: `copy` adds a "Copy table" button (plain headers + rows) to the panel header.
+  const panel = (
+    seedKey: string,
+    title: string,
+    children: React.ReactNode,
+    note?: React.ReactNode,
+    copy?: { headers: (string | number)[]; rows: (string | number)[][] },
+  ) => (
     <Reveal>
       <ScorecardFrame seedKey={seedKey} variant="panel">
         <div className="relative z-10 p-4">
-          <h2 className="font-display text-base uppercase tracking-wide text-navy">{title}</h2>
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="font-display text-base uppercase tracking-wide text-navy">{title}</h2>
+            {copy && <CopyTableButton headers={copy.headers} rows={copy.rows} />}
+          </div>
           <div className="mt-2">{children}</div>
           {note && <p className="mt-2 text-[11px] leading-snug text-navy/55">{note}</p>}
         </div>
@@ -288,7 +300,9 @@ export default async function SeasonPage({
               t("aboveTitle"),
               <>
                 {legend}
-                <SeasonTrendChart points={above} season={season} priorSeason={prior} labels={{ game: t("gameLabel") }} />
+                <Exportable name={`blue jays games above 500 ${season}`} caption={`Blue Jays · ${t("aboveTitle")} · ${season}${prior ? ` vs ${prior}` : ""}`}>
+                  <SeasonTrendChart points={above} season={season} priorSeason={prior} labels={{ game: t("gameLabel") }} />
+                </Exportable>
               </>,
               t("aboveNote"),
             )}
@@ -297,7 +311,9 @@ export default async function SeasonPage({
               t("runDiffTitle"),
               <>
                 {legend}
-                <SeasonTrendChart points={rdiff} season={season} priorSeason={prior} labels={{ game: t("gameLabel") }} />
+                <Exportable name={`blue jays run differential ${season}`} caption={`Blue Jays · ${t("runDiffTitle")} · ${season}${prior ? ` vs ${prior}` : ""}`}>
+                  <SeasonTrendChart points={rdiff} season={season} priorSeason={prior} labels={{ game: t("gameLabel") }} />
+                </Exportable>
               </>,
               t("runDiffNote"),
             )}
@@ -337,6 +353,19 @@ export default async function SeasonPage({
                 </table>
               </div>,
               t("monthlyNote"),
+              {
+                headers: [t("colMonth"), season, "RS-RA", ...(prior ? [prior, "RS-RA"] : [])],
+                rows: monthKeys.map((m) => {
+                  const a = months.find((x) => x.month === m);
+                  const b = pmonths.find((x) => x.month === m);
+                  return [
+                    monthLabel(m),
+                    a ? wl(a) : "",
+                    a ? `${a.rs}-${a.ra}` : "",
+                    ...(prior ? [b ? wl(b) : "", b ? `${b.rs}-${b.ra}` : ""] : []),
+                  ];
+                }),
+              },
             )}
 
             {/* 5. Splits */}
@@ -377,6 +406,14 @@ export default async function SeasonPage({
                 </table>
               </div>,
               t("splitsNote"),
+              {
+                headers: [t("colSplit"), season, "PCT", ...(prior ? [prior, "PCT"] : [])],
+                rows: splitRows.map((r) => {
+                  const a = splits[r.key];
+                  const b = psplits?.[r.key];
+                  return [r.label, wl(a), r3(winPct(a)), ...(prior ? [b ? wl(b) : "", b ? r3(winPct(b)) : ""] : [])];
+                }),
+              },
             )}
           </div>
 
@@ -429,7 +466,9 @@ export default async function SeasonPage({
             t("warTitle"),
             <>
               {barLegend}
-              <WarByPositionChart data={warData} season={season} priorSeason={playerPrior} />
+              <Exportable name={`blue jays war by position ${season}`} caption={`Blue Jays · ${t("warTitle")} · ${season}${playerPrior ? ` vs ${playerPrior}` : ""}`}>
+                <WarByPositionChart data={warData} season={season} priorSeason={playerPrior} />
+              </Exportable>
             </>,
             t("warNote", {
               total: warTotal.toFixed(1),

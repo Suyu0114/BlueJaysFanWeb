@@ -1,3 +1,4 @@
+import CopyTableButton from "@/components/CopyTableButton";
 import { delta, deltaTone, type Direction } from "@/lib/season-deltas";
 
 // P12: one card, two season columns + a Δ chip per metric. Server component,
@@ -96,12 +97,41 @@ export default function SeasonCompareCard({
   labels: { metric: string; change: string; changeUnit?: string; ptsSuffix?: string; smallSample: string };
 }) {
   const hasB = seasonB != null;
+  // Delta + tone per row, shared by the rendered chips and the copied TSV.
+  const computed = rows.map((r) => {
+    const raw =
+      r.text != null
+        ? null
+        : r.format === "ip"
+          ? delta(r.a == null ? null : ipToOuts(r.a), r.b == null ? null : ipToOuts(r.b))
+          : delta(r.a, r.b);
+    const d = raw != null && r.shift != null ? raw - r.shift : raw;
+    return { r, d, tone: deltaTone(d, r.direction, FLAT_BELOW[r.format]) };
+  });
+  // M7: the same cells as plain text for "Copy table".
+  const copyHeaders = [labels.metric, String(seasonA), ...(hasB ? [String(seasonB), labels.change] : [])];
+  const copyRows = [
+    ...(sample ? [[sample.label, sample.a, ...(hasB ? [sample.b, ""] : [])]] : []),
+    ...computed.map(({ r, d }) => [
+      r.label,
+      r.text ? r.text[0] : value(r.a, r.format),
+      ...(hasB
+        ? [
+            r.text ? r.text[1] : value(r.b, r.format),
+            d == null ? "" : `${change(d, r.format, labels.ptsSuffix)}${r.shift != null ? "†" : ""}`,
+          ]
+        : []),
+    ]),
+  ];
   return (
     <div className="rounded-lg border border-navy/10 bg-white/50 p-4">
-      <h3 className="text-sm font-semibold text-navy">
-        {title}
-        {subtitle && <span className="font-normal text-navy/45"> · {subtitle}</span>}
-      </h3>
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="text-sm font-semibold text-navy">
+          {title}
+          {subtitle && <span className="font-normal text-navy/45"> · {subtitle}</span>}
+        </h3>
+        <CopyTableButton headers={copyHeaders} rows={copyRows} />
+      </div>
       <table className="mt-3 w-full text-sm tabular-nums">
         <thead>
           <tr className="border-b border-navy/10 text-[11px] uppercase tracking-wide text-navy/50">
@@ -144,15 +174,7 @@ export default function SeasonCompareCard({
               {hasB && <td />}
             </tr>
           )}
-          {rows.map((r) => {
-            const raw =
-              r.text != null
-                ? null
-                : r.format === "ip"
-                  ? delta(r.a == null ? null : ipToOuts(r.a), r.b == null ? null : ipToOuts(r.b))
-                  : delta(r.a, r.b);
-            const d = raw != null && r.shift != null ? raw - r.shift : raw;
-            const tone = deltaTone(d, r.direction, FLAT_BELOW[r.format]);
+          {computed.map(({ r, d, tone }) => {
             return (
               <tr key={r.key} className="border-b border-navy/5 last:border-0 align-top">
                 <td className="py-1.5 pr-2">

@@ -1,3 +1,4 @@
+import CopyTableButton from "@/components/CopyTableButton";
 import { TeamLogo } from "@/components/TeamLogo";
 import { SEASON_TOTAL, type TeamSeasonLine } from "@/lib/compare";
 import { teamAbbr } from "@/lib/team-abbr";
@@ -51,9 +52,15 @@ export default function ClubSplits({
       ? [l.g ?? "—", l.pa ?? "—", `${r3(l.avg)}/${r3(l.obp)}/${r3(l.slg)}`, r3(l.ops), l.wrc_plus == null ? "—" : l.wrc_plus.toFixed(0), d1(l.war)]
       : [l.g ?? "—", l.gs ?? "—", d1(l.ip), d2(l.era), d2(l.fip), pct(l.k_pct), pct(l.bb_pct), d1(l.war)];
 
+  const copyRows = groups.flatMap((g) =>
+    g.rows.map((l) => [g.season, teamAbbr(l.team_id), `${fmtDay(l.first_game)} – ${fmtDay(l.last_game)}`, ...cells(l)]),
+  );
   return (
     <div className="rounded-lg border border-navy/10 bg-white/50 p-4">
-      <h3 className="text-sm font-semibold text-navy">{labels.title}</h3>
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="text-sm font-semibold text-navy">{labels.title}</h3>
+        <CopyTableButton headers={["Season", labels.club, labels.span, ...head]} rows={copyRows} />
+      </div>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full min-w-[520px] text-sm tabular-nums">
           <thead>

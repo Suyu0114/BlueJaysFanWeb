@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import CopyTableButton from "@/components/CopyTableButton";
 import type { SeasonStats } from "@/lib/season-stats";
 
 function int0(v: number | null): string {
@@ -30,12 +31,18 @@ export default async function PitcherSeasonStatTable({
   // batting-only season doesn't render an all-dash row.
   const rows = stats.filter((s) => s.era != null || s.ip != null).slice(0, 3);
   if (rows.length === 0) return null;
+  const headers = [t("season"), "W-L", "SV", "GS", "IP", "ERA", "WHIP", "K%", "BB%", "FIP", "WAR"];
+  const cells = rows.map((s) => [
+    s.season, s.w == null && s.l == null ? "—" : `${int0(s.w)}-${int0(s.l)}`, int0(s.sv), int0(s.gs),
+    ip1(s.ip), dec(s.era, 2), dec(s.whip, 2), pct1(s.k_pct), pct1(s.bb_pct), dec(s.fip, 2), dec(s.war, 1),
+  ]);
 
   return (
     <div className="rounded-lg border border-navy/10 bg-white/50 p-4">
-      <h3 className="text-sm font-semibold text-navy">
-        {t("pitcherStatTableTitle")}
-      </h3>
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="text-sm font-semibold text-navy">{t("pitcherStatTableTitle")}</h3>
+        <CopyTableButton headers={headers} rows={cells} />
+      </div>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full min-w-[38rem] text-right text-sm tabular-nums">
           <thead>

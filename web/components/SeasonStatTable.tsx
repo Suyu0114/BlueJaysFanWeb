@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import CopyTableButton from "@/components/CopyTableButton";
 import type { SeasonStats } from "@/lib/season-stats";
 
 // Baseball convention: drop the leading zero on sub-1.000 rates (".308"), keep
@@ -27,10 +28,18 @@ export default async function SeasonStatTable({
   // getSeasonStats returns seasons descending; show the most recent three.
   const rows = stats.slice(0, 3);
   if (rows.length === 0) return null;
+  const headers = [t("season"), "PA", "HR", "RBI", "SB", "AVG", "OBP", "SLG", "OPS", "wRC+", "WAR"];
+  const cells = rows.map((s) => [
+    s.season, int0(s.pa), int0(s.hr), int0(s.rbi), int0(s.sb), avg3(s.avg), avg3(s.obp),
+    avg3(s.slg), avg3(s.ops), int0(s.wrc_plus), dec(s.war, 1),
+  ]);
 
   return (
     <div className="rounded-lg border border-navy/10 bg-white/50 p-4">
-      <h3 className="text-sm font-semibold text-navy">{t("statTableTitle")}</h3>
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="text-sm font-semibold text-navy">{t("statTableTitle")}</h3>
+        <CopyTableButton headers={headers} rows={cells} />
+      </div>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full min-w-[34rem] text-right text-sm tabular-nums">
           <thead>
