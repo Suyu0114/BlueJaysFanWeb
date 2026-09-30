@@ -1,4 +1,7 @@
-import { TORONTO_TEAM_ID, type StandingsRow } from "@/lib/standings";
+// Type-only from lib/standings (it imports the DB client): this file is also
+// used by client components (the P13 rank grid), so values come from team-ids.
+import type { StandingsRow } from "@/lib/standings";
+import { TORONTO_TEAM_ID } from "@/lib/team-ids";
 
 // P11: shared hand-drawn scorecard chrome for the four standings tables, so the
 // division tables, the wild card tables and the home playoff-race block read as

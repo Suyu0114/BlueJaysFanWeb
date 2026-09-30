@@ -167,7 +167,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       compare/page.tsx         # P12: season vs season incl. other clubs; URL state ?season=&vs=&scope=mlb|jays; What changed + season line + by-club + arc + Statcast
     standings/page.tsx         # P11: three views (AL / NL / Wild Card) + clinch legend
     season/[year]/page.tsx     # P12 M5: team season vs prior (record strip, games above .500 + run diff by game number, months, splits, leaders, WAR by position); generateStaticParams = seasons with R finals; player modules hide when a season has no player rows (< 2024)
-    team/page.tsx              # P13: Blue Jays over the latest 5 seasons vs the MLB average + 30-club ranks (season strip, record & run differential; N3+ add offense / run prevention / trajectory / callouts / glossary)
+    team/page.tsx              # P13: Blue Jays over the latest 5 seasons vs the MLB average + 30-club ranks (season strip, ① record & run differential, ② offense vs MLB; N4+ add run prevention / trajectory / callouts / glossary)
     about/page.tsx
   components/
     PlayerNav.tsx              # tabs with `available` prop (compare = >= 2 MLB seasons, P12; bazi slot reserved for v2)
@@ -209,6 +209,9 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       LuckTable.tsx            # record vs expected (x-W/L), luck, one-run record, run diff + MLB rank
       RankChip.tsx             # MLB rank chip tinted on the shared percentile scale (ordinal always printed)
       RankKey.tsx              # legend for the rank shading (30th ... 1st)
+      RankGrid.tsx             # client: metric × season grid, value + rank heat map, Value | vs MLB toggle, hover/focus card (MLB avg, leader, hint) via ChartTooltip; copy table
+      TrendSmallMultiples.tsx  # client: one metric per chart, Jays (brick) vs MLB average (navy dashed), straight segments, nice ticks, PNG each
+      ContactLuck.tsx          # per season wOBA vs xwOBA (same .010 threshold as the player luck line)
     season/                    # P12 M5 charts
       SeasonTrendChart.tsx     # games above .500 / cumulative run diff by game number, prior season dashed
       WarByPositionChart.tsx   # team WAR by position group, season vs prior bars
@@ -257,6 +260,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     team-metrics.ts            # P13 display registry (label / format / group / direction / vsMlb) — directions mirror the 022 view ranks; formatMetric / vsMlb / tiedRank
     percentile-color.ts        # shared steel -> neutral -> brick scale: percentileColor (P12 bars) / rankPercentile / rankTint (P13 ranks)
     ordinal.ts                 # 1st / T-3rd, zh-TW 第 1 名 / 並列第 3 名 (season page + team page)
+    team-grid.ts               # P13 PURE: 022 rows -> metric × season grid (value, rank, tie, MLB avg, leader, raw count) + toTrends
+    team-ids.ts                # TORONTO_TEAM_ID in a db-free module (client components import it; lib/standings re-exports)
     recent-game.ts             # Today's Blue Jays helpers (HR hero, hardest contact, IP/K/H)
     field-geometry.ts          # Rogers Centre SVG paths (exports polar())
     motion.ts                  # motion timing tokens (EASE_SOFT / DUR / STAGGER / SPRING_*)

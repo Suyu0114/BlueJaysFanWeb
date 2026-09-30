@@ -1,14 +1,18 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import Exportable from "@/components/Exportable";
+import ContactLuck from "@/components/team/ContactLuck";
 import { Reveal } from "@/components/motion/Reveal";
 import LuckTable from "@/components/team/LuckTable";
+import RankGrid from "@/components/team/RankGrid";
 import RankKey from "@/components/team/RankKey";
 import RunSourcesChart from "@/components/team/RunSourcesChart";
 import SeasonStrip from "@/components/team/SeasonStrip";
 import TeamPanel, { PanelBlock } from "@/components/team/TeamPanel";
+import TrendSmallMultiples from "@/components/team/TrendSmallMultiples";
 import { ordinal } from "@/lib/ordinal";
 import { TORONTO_TEAM_ID } from "@/lib/standings";
-import { tiedRank } from "@/lib/team-metrics";
+import { buildGrid, toTrends } from "@/lib/team-grid";
+import { metricsIn, tiedRank } from "@/lib/team-metrics";
 import { postseasonResult, seasonSplits, type PostseasonResult, type WinLoss } from "@/lib/team-season";
 import { getTeamGames } from "@/lib/team-season-data";
 import { getPostseasonGames, getTeamTrend, getTrendSeasons, type TeamSeasonRow } from "@/lib/team-trends";
@@ -38,7 +42,7 @@ export default async function TeamPage({ params }: { params: Promise<{ locale: s
   const t = await getTranslations("Team");
 
   const seasons = await getTrendSeasons();
-  const [{ clubs }, postGames, games] = await Promise.all([
+  const [{ clubs, mlb }, postGames, games] = await Promise.all([
     getTeamTrend(seasons),
     getPostseasonGames(seasons),
     Promise.all(seasons.map((s) => getTeamGames(s))),
@@ -66,6 +70,11 @@ export default async function TeamPage({ params }: { params: Promise<{ locale: s
   const runDiffTies: Record<number, boolean> = Object.fromEntries(
     jays.map((r) => [r.season, tiedRank(clubs, r.season, "run_diff", r.run_diff_rank)]),
   );
+
+  // ② offense: run scoring + Statcast contact quality + the (unranked) batted-ball mix
+  const offenseGrid = buildGrid(metricsIn("offense", "contact", "profile"), clubs, mlb, seasons);
+  const offenseTrends = toTrends(offenseGrid, ["wrc_plus", "k_pct", "bb_pct", "brl_pct"]);
+  const span = `${first}–${last}`;
 
   const sources = jays.map((r) => ({
     season: String(r.season),
@@ -102,6 +111,21 @@ export default async function TeamPage({ params }: { params: Promise<{ locale: s
               </Exportable>
             </PanelBlock>
             <LuckTable rows={jays} oneRun={oneRun} rankTies={runDiffTies} locale={locale} />
+          </div>
+        </TeamPanel>
+
+        {/* ② Offense vs MLB */}
+        <TeamPanel seedKey="team-offense" title={t("offenseTitle")} question={t("offenseQuestion")}>
+          <div className="space-y-6">
+            <PanelBlock title={t("gridTitle")}>
+              <RankGrid seedKey="team-offense-grid" rows={offenseGrid} seasons={seasons} copyName={t("offenseTitle")} />
+            </PanelBlock>
+            <PanelBlock title={t("trendsTitle")} note={t("trendsNote")}>
+              <TrendSmallMultiples items={offenseTrends} span={span} />
+            </PanelBlock>
+            <PanelBlock title={t("contactLuckTitle")} note={t("contactLuckNote")}>
+              <ContactLuck rows={jays} />
+            </PanelBlock>
           </div>
         </TeamPanel>
       </div>

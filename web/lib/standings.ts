@@ -43,7 +43,7 @@ export type StandingsRow = {
   magic_number: string | null;
 };
 
-export const TORONTO_TEAM_ID = 141;
+export { TORONTO_TEAM_ID } from "./team-ids"; // db-free home, safe for client components
 export const AMERICAN_LEAGUE_ID = 103;
 export const NATIONAL_LEAGUE_ID = 104;
 
