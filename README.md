@@ -10,13 +10,18 @@
 
 1. **Data visualizations** (per player, filterable by season / month / pitch type)
    - Spray chart — batted-ball locations, colored by outcome, sized by exit velocity
-   - Pitching breakdown — arsenal table (usage / velo / spin / Whiff% / xwOBA on contact), pitch-movement plot (pitcher's view), zone heatmap, and per-game fastball velocity trend
+   - Pitching breakdown — season filter, arsenal table (usage / velo / spin / Whiff% / xwOBA on contact, plus Savant RV/100 for a full season), pitch-movement plot (pitcher's view), zone heatmap, and per-game fastball velocity trend
+   - Season chips carry club labels (`2025 · SD`, `2026 · TOR/HOU`): for the 2026 roster the Statcast data covers 2024–2026 with **every** club, not just Toronto
    - Fielding diagram + FRV table — primary position in brick, secondary positions in steel (so multi-position guys like Ernie Clement read at a glance)
 2. **Player pages**
    - Overview with KPI cards (batters: OPS / wRC+ / WAR; pitchers: W-L / SV / IP / ERA / WHIP / K% / WAR, each with a plain-language hint) and a season-progress bar (pace projection for batters; current-vs-prior for pitchers, because `162/games` is meaningless for either starters or relievers)
    - WAR breakdown chart (batter-only) — a diverging stacked bar of the six FanGraphs run-value components (Bat / BsR / Fld / Pos / Lg / Rep) reconciling to RAR, with an on-page methodology note
    - Batter deep-dive (batter-only) — year-by-year table (AVG / OBP / SLG / OPS / HR / RBI / SB / wRC+ / WAR), Recent Form (Last 7 / Last 30 / Season slash lines), last-10 game log, a 15-game rolling-OPS sparkline, and a Statcast contact-quality card (Avg / Max EV, Hard-Hit%)
    - Pitcher deep-dive (pitcher-only) — year-by-year pitching table (W-L / SV / IP / ERA / FIP / WHIP / K% / BB% / WAR), Recent Form (Last 5 outings / Last 30 / Season), last-10 outings log, and a 5-outing rolling-ERA sparkline
+   - Plate discipline + batted-ball cards (Chase% / Z-Swing% / Whiff% / K% / BB% …; GB/LD/FB/PU approx, Pull/Center/Oppo, Hard-Hit%, Sweet-Spot%; pitchers CSW% / Zone% / Chase% / K-BB%), newest Jays season vs the one before, with plain-language hints; zone-based changes across 2025→2026 are shown net of Savant's 2026 zone change (†)
+   - Rolling OPS / ERA sparklines overlay the prior season (dashed, by game number) and the MLB average
+   - Savant percentile rankings (Savant-style bars, season switch, "not qualified" state) + a wOBA-vs-xwOBA luck line and official Barrel%
+   - **Compare tab** — the player against himself, any two seasons 2024–2026, **including time with other clubs** (All MLB by default, or as a Blue Jay): What changed (plain-language), season line + per-club rows for trade seasons, three-season arc, Statcast (discipline / contact / side-by-side spray charts; arsenal with NEW/DROPPED pitches, movement with last season's shapes, zone grids, fastball velo by outing). State lives in the URL, so every view is a shareable link
    - Sub-tabs auto-hide for roles a player didn't appear in
 3. **Roster**
    - Current 26-man (default) / All 2024-2026 toggle
@@ -29,8 +34,13 @@
    - "Today's Blue Jays" module — HR hero from the most recent game (hardest-contact fallback when nobody homered) + best pitching line (IP / K / H, no fake ERA)
 6. **Per-game box scores**
    - Every Jays player's batting and/or pitching line for a finished game; innings pitched rendered correctly from stored outs (never the "5.2" decimal trap)
+7. **Team season page** (`/season/2026`, nav "Team")
+   - Record strip vs the prior season, games above .500 and cumulative run differential by game number (both seasons), month by month, splits (home/road, one-run, blowouts, vs division, vs .500+ teams), team leaders with last year's value, WAR by position group
+8. **Article tooling**
+   - "PNG ↓" on every chart (brand colours, caption + source/date footer) and "Copy table" on the stat tables (TSV that pastes into a spreadsheet as a real table)
+   - `etl/season_report.py` writes a season-review data pack (team / batters / pitchers / movers / roster moves with every club / league context + definitions and caveats) to `reports/` (git-ignored)
 
-**v2 (not in this milestone):** BaZi personality analysis, matchup predictions, injury-risk beta, daily WAR snapshots, `/compare` page (the underlying SprayChart `secondaryEvents` prop is already in place).
+**v2 (not in this milestone):** BaZi personality analysis, matchup predictions, injury-risk beta, daily WAR snapshots, player-vs-player `/compare` page (the per-player season Compare tab shipped in P12; the SprayChart `secondaryEvents` prop is still in place for it).
 
 ---
 
@@ -65,18 +75,24 @@
 │   ├── pull_boxscore.py          # per-game box scores → web_player_game_stats
 │   ├── pull_season_stats.py      # OPS / wRC+ / ERA / FIP / WAR + value components + batter basic
 │   │                             # line + pitcher line W/L/SV/GS/IP/WHIP/K%/BB% (MLB Stats API)
+│   ├── season_line.py            # shared API season line -> stat columns mapping
+│   ├── pull_player_splits.py     # per-club + total season lines, every club (P12)
+│   ├── pull_savant_leaderboards.py # Savant percentiles / xStats + barrels / pitch run value (P12)
+│   ├── pull_league_averages.py   # MLB / AL / NL averages from summed team stats (P12)
+│   ├── season_report.py          # SELECT-only article data pack -> reports/ (P12)
 │   ├── fetch_team_logos.py       # ONE-SHOT: cap logos → web/public/team-logos (recoloured)
 │   └── backfill.py               # one-shot orchestrator
-├── db/migrations/                # plain SQL: 001 → 012
+├── db/migrations/                # plain SQL: 001 → 019
 ├── web/                          # Next.js app
 │   ├── app/[locale]/
 │   │   ├── page.tsx              # Home: standings + schedule calendar + "Today's Blue Jays"
 │   │   ├── template.tsx          # page-to-page fade (skipped on first load)
 │   │   ├── standings/            # Divisions + wild card + clinch legend
+│   │   ├── season/[year]/        # Team season vs the prior season (P12)
 │   │   ├── games/[gamePk]/       # Per-game box score detail
 │   │   └── players/
 │   │       ├── page.tsx          # Roster (Current 26-man / All 2024-2026)
-│   │       └── [mlbam_id]/       # Overview + batting / pitching / fielding tabs
+│   │       └── [mlbam_id]/       # Overview + batting / pitching / fielding / compare tabs
 │   ├── components/
 │   │   ├── PlayerNav.tsx
 │   │   ├── SeasonProgressBar.tsx
@@ -88,6 +104,10 @@
 │   │   ├── PitcherSeasonStatTable / PitcherRecentForm / PitcherGameLog  # pitcher overview modules
 │   │   ├── StandingsTable / WildCardTable / PlayoffRace / HomeStandings # P11 standings modules
 │   │   ├── StandingsTabs.tsx    # AL / NL / Wild Card view switcher (client)
+│   │   ├── SeasonCompareCard / DisciplineCards / PercentileBars  # P12 season-vs-season + Savant cards
+│   │   ├── compare/              # P12 Compare tab: controls, club splits, arc, arsenal compare, velo, zone grid
+│   │   ├── season/               # P12 season page charts (trend by game number, WAR by position)
+│   │   ├── Exportable / CopyTableButton  # P12 "PNG ↓" and "Copy table" (generic)
 │   │   ├── TeamLogo.tsx          # recoloured cap logo + TeamCell
 │   │   ├── SketchDefs.tsx        # shared SVG #sketch filter (hand-drawn wobble)
 │   │   ├── motion/               # MotionProvider, Reveal/RevealGroup/RevealItem, CountUp,
@@ -99,7 +119,9 @@
 │   │                             # recent-game, field-geometry, games, team-abbr,
 │   │                             # batter-game-log, batting-form, exit-velo-stats,
 │   │                             # pitcher-game-log, pitching-form, pitch-arsenal, pitch-colors,
-│   │                             # motion (timing tokens), ink-draw, use-lingering-hover
+│   │                             # motion (timing tokens), ink-draw, use-lingering-hover,
+│   │                             # P12: compare, discipline, season-deltas, savant,
+│   │                             # team-season (pure) + team-season-data, export-svg, copy-table
 │   └── messages/{en,zh-TW}.json
 ├── .github/workflows/etl.yml     # two-job cron: ~09:00 ET full refresh + ~11:30 PM ET finals
 ├── ETL_update_flow.md            # backfill + manual re-run steps
@@ -186,7 +208,7 @@ The cron version runs in GitHub Actions; see `.github/workflows/etl.yml`.
 
 ### GitHub Actions cron (`.github/workflows/etl.yml`)
 
-Two scheduled runs: `0 13 * * *` (≈09:00 ET) — full refresh (Statcast / roster / fielding / season-stats, then a schedule refresh + a 3-day box-score backfill for West-Coast / late finals); and `30 3 * * *` (≈11:30 PM ET) — light run (today's schedule + today's final box scores). Both drift an hour across DST. Trigger manually with **Actions → daily-etl → Run workflow**.
+Two scheduled runs: `0 13 * * *` (≈09:00 ET) — full refresh (Statcast / roster / fielding / season-stats / per-club season lines / Savant leaderboards / league averages, then a schedule refresh + a 3-day box-score backfill for West-Coast / late finals); and `30 3 * * *` (≈11:30 PM ET) — light run (today's schedule + today's final box scores). Both drift an hour across DST. Trigger manually with **Actions → daily-etl → Run workflow**.
 
 Required repository secrets (Settings → Secrets and variables → Actions):
 
@@ -219,12 +241,16 @@ What stays English in zh-TW (do **not** translate):
 
 - **[pybaseball](https://github.com/jldbc/pybaseball)** — wrapper around Baseball Savant. Covers batting (spray data), pitching (location, velocity, spin), and fielding (FRV via `statcast_outs_above_average`, which returns `fielding_runs_prevented`). **Savant pulls work; FanGraphs scrapers do not** — see workaround below.
 - **MLB Stats API** (`statsapi.mlb.com`) — player bio (incl. birth city/country), full-season roster enumeration, primary position.
+- **Baseball Savant leaderboards** (via pybaseball) — percentile ranks, expected stats + barrels, pitch-arsenal run value, stored as Savant publishes them (MLB-wide season values). **Pitch run value: positive = good for the pitcher.**
+- **MLB Stats API `/people/{id}/stats`** — per-club season splits + game-log dates for the 2026 roster, 2024–2026, every club; **`/teams/stats`** — league averages (summed team counting stats).
 - **MLB Stats API `season` + `sabermetrics` stats** — source of OPS / wRC+ / ERA / FIP / WAR, the WAR value components (Bat / BsR / Fld / Pos / Lg / Rep / RAR), the basic slash line (AVG / OBP / SLG / HR / RBI / SB / PA), and the pitcher line (W / L / SV / GS / IP / WHIP / K% / BB%). Free, no key; the sabermetrics block is FanGraphs data licensed to MLB, so the numbers match FanGraphs. Replaced the manual FanGraphs CSV export in Sept 2026. (Season WPA isn't in the API and is frozen at the last CSV import.)
 
 ### Important Statcast gotchas
 
 - Pybaseball **includes playoffs by default.** Filter `game_type == 'R'` for regular season; `transform.regular_season_only(df, keep_postseason=True)` opts in (used for the 2025 playoff backfill).
 - 2026 changed `plate_x`/`plate_z` from front-of-plate to middle-of-plate alignment. `transform.tag_plate_alignment()` writes `'front'` (≤2025) or `'middle'` (≥2026) to `web_statcast_events.plate_alignment`. `PitchZoneHeatmap` must render a single alignment value at a time (enforced by the "Zone coords" filter in `PitchingExplorer`); the arsenal table, movement chart, and velocity trend read release-frame fields only and are alignment-agnostic.
+- Statcast is pulled **by player id**, so it holds games with other clubs. "As a Blue Jay" = the player is in that game's Jays box score (`web_player_game_stats`), **not** "it was a Jays game" (a traded player can face Toronto).
+- Savant's 2026 `zone` is not comparable to earlier seasons (Zone% −3.4 pts, Chase% +2.8 pts across every pitch while Whiff% held) — cross-season Chase% / Zone% are shown net of that shift.
 - Pitch classifications can be retroactively edited → daily ETL re-pulls the last 7 days (current season only). Historical seasons stay static after `etl/backfill.py`.
 - Spray-chart coordinate transform:
   ```
@@ -257,6 +283,7 @@ What stays English in zh-TW (do **not** translate):
 | P9 | Batter overview deep-dive: year-by-year table + recent form + game log + rolling OPS + contact quality | done |
 | P10 | Pitcher deep-dive: pitcher KPI set + recent form + outings log + rolling ERA + year-by-year table; arsenal table, pitch-movement chart, velocity trend | done |
 | P11 | Standings & playoff race: `/standings` (six divisions + AL/NL wild card + clinch legend) and a home AL East + AL playoff-picture module; migration `012`, nightly `pull_standings.py`, one-shot recoloured cap logos | done |
+| P12 | Season review & year-over-year: full-MLB 2024–2026 history for the 2026 roster (every club), Compare tab, discipline + batted-ball cards, prior-season sparkline overlays, team season page + nav "Team", Savant percentiles + league averages, PNG export + copy-table, article data pack; migrations `013`–`019` | done |
 
 ---
 

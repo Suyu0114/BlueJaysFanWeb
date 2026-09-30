@@ -497,3 +497,52 @@ shipping M1. Report numbers and site numbers must agree (§13, M2 item 3).
 | Count-leverage heatmaps (by balls/strikes) | Data present after M0; no consumer yet. |
 | Bat-speed / squared-up trends | Savant percentiles expose them; raw tracking data not stored. |
 | WPA | Frozen since the FanGraphs CSV path died; no free source. |
+
+## 15. Reconciliation — as built (2026-09-30)
+
+Branch `feat/p12-season-review`, one commit per milestone (not pushed; the owner
+pushes): `13b4867` spec revision · `4562b80` M0 · `8d5de5b` M1 · `bd7e7be` Nav.team
+docs · `f8109c7` M2 · `212c94f` M3 · `2981bbe` M4 · `6b523bb` M5 · `c6a1df3` +
+`dce2c5a` M6 · `a816dfb` M7. Migrations used: `013`–`019`; **`020`–`022` are
+untouched and stay reserved for P13.** No new npm / pip dependencies.
+
+### What differs from the plan above (and why)
+
+| Where | As built | Why |
+|---|---|---|
+| M0 | `fetch_team_season_stats` enumerates players from the team leaderboard but takes every player's numbers from his `/people/{id}/stats` Toronto split. | Right after the season the team leaderboard's sabermetrics were computed from stale counts (Scherzer 2026 FIP 5.43 vs 5.11 on `/people` and the league leaderboard; implied FIP constant 3.11–3.43 vs a uniform 3.101). DATA_MODEL Known gaps #7. |
+| M0 / M1 | Pitch-clock `automatic_ball` / `automatic_strike` rows are excluded from every pitch count (views, coverage checks) but kept for PA / K / BB. | They have no pitch type or zone and are not thrown; they are exactly the gap to the API's `numberOfPitches`. 218 of 915 end a plate appearance. |
+| M1 | **Savant's 2026 `zone` is not comparable** to earlier seasons (across every pitch on file Zone% 49.6 / 50.0 / 46.6, Chase% 28.8 / 29.0 / 31.8, Whiff% flat 24.0 / 24.0 / 24.1). The report, the M2 cards and the M3 tab show 2025→2026 Chase% / Z-Swing% / Zone% changes **net of that population shift**, marked †. | Found while validating M1; the cause (the ABS-era middle-of-plate zone) is inferred, not confirmed. DATA_MODEL Known gaps #8. D3's zone buckets still avoid the plate-coordinate smear. |
+| M2 | Cards are thin wrappers over a generic `SeasonCompareCard` (season A vs B, per-metric direction, † net-of-shift rows, small-sample badge); the overview's Contact Quality card became Jays-scoped (`as_jay`) so its Hard-Hit% equals the view's. | One table component for M2, M3 and the season line; consistent scope on the overview. |
+| M3 | Beyond the spec: a `ContactCompareCard` (Avg / Max EV, xwOBAcon); an overview line linking to Compare when the player played elsewhere; `getBatterGamesPlayed` counts Jays box-score games; the Pitching tab gained a season filter (D16). | Needed once other-club seasons appeared on the existing tabs. |
+| M4 | Game logs filter `game_type = 'R'`; `rollingOps` / `rollingEra` points carry `game`; merge via pure `overlayByGame`. | 2025 box scores include 18 postseason games. |
+| M5 | **Nav: one `Nav.team` link ("Team" / 球隊) after Standings → `/season/<latest>`, no "Season" link** (owner / P13 coordination, D11 amended in `bd7e7be`). Season resolver = `getTeamSeasons()` (seasons with regular-season finals), shared by the Header and the page. Leaders: OPS ≥ 300 PA, ERA ≥ 80 IP, SO summed from box scores. The Header wraps to two rows on phones. | The new link pushed the English header to 489 px at 390 px width. |
+| M5 | 2022 and 2023 appeared in `web_games` / `web_standings` on 2026-09-29 23:50 UTC (loaded outside this branch, for P13). Season pages exist for them; the player modules (leaders, WAR by position) hide for seasons without player rows and are never compared against one. | Player-level data starts in 2024. |
+| M6 | **Pitch run value: positive = good for the pitcher** (verified: corr(RV/100, wOBA) = −0.78 over 1,253 pitch rows of the 2025 leaderboard; top row Skubal CH +25 / .176 wOBA). League membership for `web_league_season` comes from MLB `/teams`, not `web_standings`. Luck line only from 100 PA. Percentile colours steel → neutral → brick (Savant's blue → grey → red) mixed from brand tokens. | The migration comment first assumed the opposite sign; corrected before commit. |
+| M6 | The Savant leaderboards (percentile ranks, expected stats, arsenal) include players well below the "qualified" line; only Rudy Martin Jr. (3 PA) lacks a 2026 percentile row among 2026 Jays. | Savant's own minimums. |
+| M7 | `Exportable` wrapper (largest `<svg>` inside → PNG) and `CopyTableButton` (plain headers + rows → TSV). The PNG footer stacks and widens for narrow charts; bare "N-N" cells become en dashes so spreadsheets don't read W-L as dates. The report README lists article-ready URLs. | Generic for P13. |
+
+### Done-when (§13) — results
+
+| # | Result |
+|---|---|
+| M0-1 | 2026 R `balls is null` = **0**; 2026 BIP xwOBA coverage **99.1 %**. |
+| M0-2 | `game_type` populated (no NULLs); 2024 **74-88**, 2025 **94-68** (162 R + 18 postseason), 2026 **79-83** — all equal `web_standings`. |
+| M0-3 | 2024 and 2025: **162 / 162** R games with batting + pitching rows (2026 too). |
+| M0-4 | 324 rows; team 141 == `web_player_season_stats` **103 / 103**; Σ clubs == total; Varsho 2026 **526 / 365 / 161**. |
+| M0-5 | All **146** cohort player-seasons match the API PA / pitches exactly (net of pitch-clock rows); Cease 2025 jays rows **0**; Varsho 2026 jays PA **365**. |
+| M1-1 | `reports/season-review-2026/` generated (freeze 2026-09-29 22:35 UTC); README has definitions, thresholds, freeze time, caveats, article links; `reports/` git-ignored. |
+| M1-2 | View Whiff% == `buildArsenal` logic to **0.00 pts** (Gausman 2025 / 2026, Bieber 2026). |
+| M2-1…3 | Cards render for 665489 / 592332 in en + zh-TW (390 px, no overflow); Vladdy 2026 Chase% **30.6 %** and Gausman 2026 CSW% **28.3 %** equal the report; M2-2 ranges plausible, with the 2026 zone shift documented. |
+| M3 | Varsho 2026 TOR→HOU vs 2025 (`scope=jays` 99 G / 365 PA), Cease 2026 TOR vs 2025 SD (jays disabled), Gausman TOR→CHC, Vladdy 2025 vs 2024; no tab for Okamoto; Cease pitching chips `2025 · SD`. |
+| M4 | Dashed prior-season line on a game-number axis; hover "Game 65 · Jun 8 · OPS 2026 .723 · OPS 2025 .807". |
+| M5 | `/en/season/2026` + `/zh-TW/season/2026` render all 7 modules; every number equals `team.md`; 2025 / 2024 / 2023 pages work; production server 404s `/season/2019`; `Nav.team` → `/season/2026`, no "Season" link. |
+| M6 | Four tables populated 2024–2026; cron + backfill wired; not-qualified state (Rudy Martin Jr.); MLB row == summed-count recompute (2024 OPS .711 / ERA 4.07). |
+| M7 | Real clicks in headless Chrome downloaded the spray, games-above-.500, movement (with ghost rings), zone-grid and zh-TW WAR-by-position PNGs in brand colours with captions; captured TSV for the year-by-year table, monthly record (en dashes) and a discipline card (†). |
+| All | `tsc --noEmit`, `pnpm lint` (one pre-existing warning in SprayChart.tsx), `pnpm build` clean; docs reconciled (CLAUDE.md, README, DATA_MODEL, ETL_update_flow, etl.yml header). |
+
+### Left for later (not in P12)
+
+- Other-club **game logs** (rolling trends across a trade) — needs a table without the `web_games` FK.
+- Player data for 2022–2023 (P13 decides whether it needs it).
+- `docs/P12_kickoff.md` is a point-in-time launcher: archive or delete it now that P12 has shipped.
