@@ -10,6 +10,8 @@ import RotationBullpenTable from "@/components/team/RotationBullpenTable";
 import RunSourcesChart from "@/components/team/RunSourcesChart";
 import SeasonStrip from "@/components/team/SeasonStrip";
 import SeasonTrajectoryChart from "@/components/team/SeasonTrajectoryChart";
+import StrengthsWeaknesses from "@/components/team/StrengthsWeaknesses";
+import TeamGlossary from "@/components/team/TeamGlossary";
 import TeamPanel, { PanelBlock } from "@/components/team/TeamPanel";
 import TeamSplitsTable from "@/components/team/TeamSplitsTable";
 import TrendSmallMultiples from "@/components/team/TrendSmallMultiples";
@@ -27,7 +29,8 @@ import { getPostseasonGames, getTeamTrend, getTrendSeasons, type TeamSeasonRow }
 // MLB averages and ranks come only from the 022 views (lib/team-trends.ts);
 // game-level splits reuse P12's pure lib/team-season.ts per season.
 // Modules: season strip, ① record & run differential (N2), ② offense (N3),
-// ③ run prevention (N4), ④ trajectory & splits (N5); ⑤ callouts, ⑥ glossary follow.
+// ③ run prevention (N4), ④ trajectory & splits (N5), ⑤ strengths & weaknesses,
+// ⑥ glossary & method (N6).
 
 export const revalidate = 3600;
 
@@ -190,6 +193,16 @@ export default async function TeamPage({ params }: { params: Promise<{ locale: s
             </PanelBlock>
             <TeamSplitsTable seasons={splitsBySeason} division={division} />
           </div>
+        </TeamPanel>
+
+        {/* ⑤ Strengths & weaknesses */}
+        <TeamPanel seedKey="team-callouts" title={t("calloutsPanelTitle")} question={t("calloutsQuestion")}>
+          <StrengthsWeaknesses seasons={seasons} clubs={clubs} locale={locale} />
+        </TeamPanel>
+
+        {/* ⑥ Glossary & method */}
+        <TeamPanel seedKey="team-glossary" title={t("glossaryTitle")} question={t("glossaryQuestion")}>
+          <TeamGlossary />
         </TeamPanel>
       </div>
     </div>

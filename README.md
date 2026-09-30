@@ -34,11 +34,16 @@
    - "Today's Blue Jays" module — HR hero from the most recent game (hardest-contact fallback when nobody homered) + best pitching line (IP / K / H, no fake ERA)
 6. **Per-game box scores**
    - Every Jays player's batting and/or pitching line for a finished game; innings pitched rendered correctly from stored outs (never the "5.2" decimal trap)
-7. **Team season page** (`/season/2026`, nav "Team")
+7. **Team trends** (`/team`, nav "Team") — the latest five seasons (2022–2026) as a team, every number next to that season's MLB average and the Jays' rank among 30 clubs
+   - Season strip (record, division finish, postseason result, run diff + rank) linking to each season page
+   - Record & run differential: "where the wins came from" (offense vs run-prevention runs above an average club) and record vs expected record (luck, one-run games)
+   - Offense and run-prevention rank grids (value + rank heat map, Value | vs MLB toggle, hover for the MLB average, the league leader and a plain-English definition), trend small multiples vs the MLB average, contact luck (wOBA vs xwOBA), rotation vs bullpen, ERA vs FIP with team OAA
+   - Games above .500 for all five seasons on one chart (pick a season to highlight) + situational splits, strengths & weaknesses in MLB ranks, glossary & method
+8. **Team season page** (`/season/2026`, from the team page's season strip)
    - Record strip vs the prior season, games above .500 and cumulative run differential by game number (both seasons), month by month, splits (home/road, one-run, blowouts, vs division, vs .500+ teams), team leaders with last year's value, WAR by position group
-8. **Article tooling**
+9. **Article tooling**
    - "PNG ↓" on every chart (brand colours, caption + source/date footer) and "Copy table" on the stat tables (TSV that pastes into a spreadsheet as a real table)
-   - `etl/season_report.py` writes a season-review data pack (team / batters / pitchers / movers / roster moves with every club / league context + definitions and caveats) to `reports/` (git-ignored)
+   - `etl/season_report.py` writes a season-review data pack (team / batters / pitchers / movers / roster moves with every club / league context / five-season team trends vs MLB + definitions and caveats) to `reports/` (git-ignored)
 
 **v2 (not in this milestone):** BaZi personality analysis, matchup predictions, injury-risk beta, daily WAR snapshots, player-vs-player `/compare` page (the per-player season Compare tab shipped in P12; the SprayChart `secondaryEvents` prop is still in place for it).
 
@@ -48,7 +53,7 @@
 
 - **Frontend:** Next.js 16 (App Router) + TypeScript + Tailwind + shadcn/ui
 - **i18n:** `next-intl` — default `en`, optional `zh-TW`
-- **Charts:** D3.js (spray / pitch zone / pitch movement / fielding) + Recharts (WAR breakdown diverging stacked bar, rolling OPS / ERA sparklines, velocity trend) + rough.js (hand-drawn schedule calendar)
+- **Charts:** D3.js (spray / pitch zone / pitch movement / fielding) + Recharts (WAR breakdown diverging stacked bar, rolling OPS / ERA sparklines, velocity trend, team run sources / trend small multiples / five-season trajectory) + rough.js (hand-drawn schedule calendar)
 - **Motion:** `motion` (framer-motion) — scroll reveals, card hover springs, sliding toggle highlights, tab/panel crossfades, chart tooltips that glide between marks; CSS keyframes for the rough.js "ink" draw-in and chart mark entrances. Honours `prefers-reduced-motion`.
 - **Database:** Supabase Postgres
 - **ETL:** Python + pybaseball, scheduled via GitHub Actions (daily)
@@ -79,15 +84,18 @@
 │   ├── pull_player_splits.py     # per-club + total season lines, every club (P12)
 │   ├── pull_savant_leaderboards.py # Savant percentiles / xStats + barrels / pitch run value (P12)
 │   ├── pull_league_averages.py   # MLB / AL / NL averages from summed team stats (P12)
-│   ├── season_report.py          # SELECT-only article data pack -> reports/ (P12)
+│   ├── season_report.py          # SELECT-only article data pack -> reports/ (P12; team_trends P13)
+│   ├── pull_team_stats.py        # all 30 clubs' team lines + SP/RP split + wRC+/WAR (P13)
+│   ├── pull_team_statcast.py     # Savant team leaderboards, all 30 clubs (P13)
 │   ├── fetch_team_logos.py       # ONE-SHOT: cap logos → web/public/team-logos (recoloured)
 │   └── backfill.py               # one-shot orchestrator
-├── db/migrations/                # plain SQL: 001 → 019
+├── db/migrations/                # plain SQL: 001 → 022
 ├── web/                          # Next.js app
 │   ├── app/[locale]/
 │   │   ├── page.tsx              # Home: standings + schedule calendar + "Today's Blue Jays"
 │   │   ├── template.tsx          # page-to-page fade (skipped on first load)
 │   │   ├── standings/            # Divisions + wild card + clinch legend
+│   │   ├── team/                 # Team trends: five seasons vs MLB (P13)
 │   │   ├── season/[year]/        # Team season vs the prior season (P12)
 │   │   ├── games/[gamePk]/       # Per-game box score detail
 │   │   └── players/
@@ -107,6 +115,8 @@
 │   │   ├── SeasonCompareCard / DisciplineCards / PercentileBars  # P12 season-vs-season + Savant cards
 │   │   ├── compare/              # P12 Compare tab: controls, club splits, arc, arsenal compare, velo, zone grid
 │   │   ├── season/               # P12 season page charts (trend by game number, WAR by position)
+│   │   ├── team/                 # P13 team page: season strip, run sources, rank grid, trends,
+│   │   │                         # rotation/bullpen, ERA vs FIP, trajectory, splits, callouts, glossary
 │   │   ├── Exportable / CopyTableButton  # P12 "PNG ↓" and "Copy table" (generic)
 │   │   ├── TeamLogo.tsx          # recoloured cap logo + TeamCell
 │   │   ├── SketchDefs.tsx        # shared SVG #sketch filter (hand-drawn wobble)
@@ -121,7 +131,9 @@
 │   │                             # pitcher-game-log, pitching-form, pitch-arsenal, pitch-colors,
 │   │                             # motion (timing tokens), ink-draw, use-lingering-hover,
 │   │                             # P12: compare, discipline, season-deltas, savant,
-│   │                             # team-season (pure) + team-season-data, export-svg, copy-table
+│   │                             # team-season (pure) + team-season-data, export-svg, copy-table,
+│   │                             # P13: team-trends, team-metrics, team-grid, team-callouts,
+│   │                             # percentile-color, ordinal, team-ids
 │   └── messages/{en,zh-TW}.json
 ├── .github/workflows/etl.yml     # two-job cron: ~09:00 ET full refresh + ~11:30 PM ET finals
 ├── ETL_update_flow.md            # backfill + manual re-run steps
@@ -208,7 +220,7 @@ The cron version runs in GitHub Actions; see `.github/workflows/etl.yml`.
 
 ### GitHub Actions cron (`.github/workflows/etl.yml`)
 
-Two scheduled runs: `0 13 * * *` (≈09:00 ET) — full refresh (Statcast / roster / fielding / season-stats / per-club season lines / Savant leaderboards / league averages, then a schedule refresh + a 3-day box-score backfill for West-Coast / late finals); and `30 3 * * *` (≈11:30 PM ET) — light run (today's schedule + today's final box scores). Both drift an hour across DST. Trigger manually with **Actions → daily-etl → Run workflow**.
+Two scheduled runs: `0 13 * * *` (≈09:00 ET) — full refresh (Statcast / roster / fielding / season-stats / per-club season lines / Savant leaderboards / league averages, then a schedule + standings refresh, all 30 clubs' team lines + Savant team leaderboards + a 3-day box-score backfill for West-Coast / late finals); and `30 3 * * *` (≈11:30 PM ET) — light run (today's schedule + today's final box scores). Both drift an hour across DST. Trigger manually with **Actions → daily-etl → Run workflow**.
 
 Required repository secrets (Settings → Secrets and variables → Actions):
 
@@ -243,6 +255,7 @@ What stays English in zh-TW (do **not** translate):
 - **MLB Stats API** (`statsapi.mlb.com`) — player bio (incl. birth city/country), full-season roster enumeration, primary position.
 - **Baseball Savant leaderboards** (via pybaseball) — percentile ranks, expected stats + barrels, pitch-arsenal run value, stored as Savant publishes them (MLB-wide season values). **Pitch run value: positive = good for the pitcher.**
 - **MLB Stats API `/people/{id}/stats`** — per-club season splits + game-log dates for the 2026 roster, 2024–2026, every club; **`/teams/stats`** — league averages (summed team counting stats).
+- **Team level, all 30 clubs, 2022–2026 (P13)** — MLB Stats API `/teams/stats` (season + seasonAdvanced), per-club starter / reliever splits and per-club player leaderboards (team wRC+ = PA-weighted, WAR = sum); Baseball Savant team leaderboards (Barrel% / Hard-hit% / xwOBA / OAA). Every team rate, MLB average and rank is computed once, in the migration-022 views.
 - **MLB Stats API `season` + `sabermetrics` stats** — source of OPS / wRC+ / ERA / FIP / WAR, the WAR value components (Bat / BsR / Fld / Pos / Lg / Rep / RAR), the basic slash line (AVG / OBP / SLG / HR / RBI / SB / PA), and the pitcher line (W / L / SV / GS / IP / WHIP / K% / BB%). Free, no key; the sabermetrics block is FanGraphs data licensed to MLB, so the numbers match FanGraphs. Replaced the manual FanGraphs CSV export in Sept 2026. (Season WPA isn't in the API and is frozen at the last CSV import.)
 
 ### Important Statcast gotchas
@@ -284,6 +297,7 @@ What stays English in zh-TW (do **not** translate):
 | P10 | Pitcher deep-dive: pitcher KPI set + recent form + outings log + rolling ERA + year-by-year table; arsenal table, pitch-movement chart, velocity trend | done |
 | P11 | Standings & playoff race: `/standings` (six divisions + AL/NL wild card + clinch legend) and a home AL East + AL playoff-picture module; migration `012`, nightly `pull_standings.py`, one-shot recoloured cap logos | done |
 | P12 | Season review & year-over-year: full-MLB 2024–2026 history for the 2026 roster (every club), Compare tab, discipline + batted-ball cards, prior-season sparkline overlays, team season page + nav "Team", Savant percentiles + league averages, PNG export + copy-table, article data pack; migrations `013`–`019` | done |
+| P13 | Team trends: `/team` (nav "Team"), five seasons vs the MLB average and 30-club ranks — record & run sources, offense / run-prevention rank grids, trends, rotation vs bullpen, ERA vs FIP, five-season trajectory + splits, strengths & weaknesses, glossary; all 30 clubs' team data 2022–2026; migrations `020`–`022`; `team_trends` in the article pack | done |
 
 ---
 

@@ -12,6 +12,8 @@ Writes reports/season-review-<season>/ (git-ignored):
     movers.md          biggest risers / fallers in the both-seasons cohort
     roster_moves.md    newcomers / mid-season arrivals / departures, full-MLB lines per club
     league_context.md  reference rates from every pitch on file (true league averages: M6)
+    team_trends.md / .csv  P13: latest five seasons, every team stat with the MLB
+                       average + 30-club rank, read from the migration-022 views
 
 Metric definitions are NOT re-implemented here: discipline and batted-ball numbers
 come from the migration-015 views (web_v_*), the same ones the site reads. The
@@ -689,7 +691,10 @@ def article_links(conn, seasons: list[int], bats: dict, pits: dict) -> str:
     tab for the both-seasons cohort (as a Jay) and for newcomers (all MLB)."""
     s, vs = seasons
     cmp = lambda pid, scope: f"/en/players/{pid}/compare?season={s}&vs={vs}&scope={scope}"  # noqa: E731
-    lines = [f"- Team season: `/en/season/{s}` (zh-TW: `/zh-TW/season/{s}`)"]
+    lines = [
+        f"- Team season: `/en/season/{s}` (zh-TW: `/zh-TW/season/{s}`)",
+        "- Team trends, five seasons vs MLB (P13): `/en/team` (zh-TW: `/zh-TW/team`)",
+    ]
     cohort = sorted(
         [(p["name"], pid) for pid, p in bats.items() if in_cohort(p, seasons, "batter")]
         + [(p["name"], pid) for pid, p in pits.items() if in_cohort(p, seasons, "pitcher")]
@@ -708,6 +713,152 @@ def article_links(conn, seasons: list[int], bats: dict, pits: dict) -> str:
         lines.append(f"- Newcomers, {s} with Toronto vs {vs} elsewhere (all MLB):")
         lines += [f"  - {r['name']}: `{cmp(r['mlbam_id'], 'mlb')}`" for r in newcomers]
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# team trends (P13) — five seasons vs the MLB average, from the 022 views
+# ---------------------------------------------------------------------------
+
+TREND_SEASONS = 5  # = web/lib/team-trends.ts TREND_SEASONS
+
+# Labels / groups / formats only — mirrors web/lib/team-metrics.ts (METRICS, in
+# display order). Every value, MLB average and rank is READ from
+# web_v_team_season / web_v_mlb_season (migration 022), the views the /team page
+# reads, so the pack and the site cannot drift. Change both lists together.
+TEAM_GROUPS = [
+    ("offense", "Run scoring"),
+    ("contact", "Contact quality (Statcast)"),
+    ("profile", "Batted-ball mix (not ranked)"),
+    ("prevention", "Run prevention"),
+    ("contactAllowed", "Contact allowed (Statcast)"),
+    ("defense", "Defense"),
+    ("rotation", "Rotation"),
+    ("bullpen", "Bullpen"),
+]
+TEAM_METRICS = [  # (view column, label, group, format)
+    ("r_per_g", "R/G", "offense", "dec2"), ("wrc_plus", "wRC+", "offense", "int"),
+    ("ops", "OPS", "offense", "rate3"), ("obp", "OBP", "offense", "rate3"),
+    ("slg", "SLG", "offense", "rate3"), ("avg", "AVG", "offense", "rate3"),
+    ("iso", "ISO", "offense", "rate3"), ("babip", "BABIP", "offense", "rate3"),
+    ("k_pct", "K%", "offense", "pct1"), ("bb_pct", "BB%", "offense", "pct1"),
+    ("hr_pct", "HR%", "offense", "pct1"), ("sb_per_g", "SB/G", "offense", "dec2"),
+    ("sb_pct", "SB%", "offense", "pct1"), ("whiff_pct", "Whiff%", "offense", "pct1"),
+    ("bat_war", "WAR", "offense", "dec1"),
+    ("brl_pct", "Barrel%", "contact", "pct1"), ("hard_hit_pct", "Hard-hit%", "contact", "pct1"),
+    ("sweet_spot_pct", "Sweet-spot%", "contact", "pct1"), ("avg_ev", "Avg EV", "contact", "dec1"),
+    ("xwoba", "xwOBA", "contact", "rate3"), ("woba", "wOBA", "contact", "rate3"),
+    ("gb_pct", "GB%", "profile", "pct1"), ("ld_pct", "LD%", "profile", "pct1"),
+    ("fb_pct", "FB%", "profile", "pct1"), ("pu_pct", "PU%", "profile", "pct1"),
+    ("ra_per_g", "RA/G", "prevention", "dec2"), ("era", "ERA", "prevention", "dec2"),
+    ("fip", "FIP", "prevention", "dec2"), ("whip", "WHIP", "prevention", "dec2"),
+    ("pit_k_pct", "K%", "prevention", "pct1"), ("pit_bb_pct", "BB%", "prevention", "pct1"),
+    ("pit_k_bb_pct", "K-BB%", "prevention", "pct1"), ("hr9", "HR/9", "prevention", "dec2"),
+    ("pit_babip", "BABIP", "prevention", "rate3"), ("pit_whiff_pct", "Whiff%", "prevention", "pct1"),
+    ("pit_war", "WAR", "prevention", "dec1"),
+    ("pit_brl_pct", "Barrel%", "contactAllowed", "pct1"),
+    ("pit_hard_hit_pct", "Hard-hit%", "contactAllowed", "pct1"),
+    ("pit_xwoba", "xwOBA", "contactAllowed", "rate3"),
+    ("oaa", "OAA", "defense", "int"),
+    ("sp_ip_share", "IP share", "rotation", "pct1"), ("sp_era", "ERA", "rotation", "dec2"),
+    ("sp_fip", "FIP", "rotation", "dec2"), ("sp_k_bb_pct", "K-BB%", "rotation", "pct1"),
+    ("rp_era", "ERA", "bullpen", "dec2"), ("rp_fip", "FIP", "bullpen", "dec2"),
+    ("rp_k_bb_pct", "K-BB%", "bullpen", "pct1"),
+]
+TEAM_FMT = {
+    "rate3": r3,
+    "pct1": pct,
+    "dec2": lambda v: num(v, 2),
+    "dec1": lambda v: num(v, 1),
+    "int": lambda v: num(v, 0),
+}
+
+
+def team_trends(conn) -> tuple[str, list[dict]]:
+    """team_trends.md + the CSV rows: the latest TREND_SEASONS seasons with all 30
+    clubs loaded (= getTrendSeasons on the site), Jays value / MLB average / rank."""
+    seasons = sorted(r["season"] for r in q(conn, """
+        select season from web_team_season_stats group by season
+        having count(*) = 30 order by season desc limit %(n)s""", {"n": TREND_SEASONS}))
+    if not seasons:
+        return "# Team trends\n\nNo team data loaded (run etl/pull_team_stats.py).\n", []
+    clubs = q(conn, "select * from web_v_team_season where season = any(%(s)s)", {"s": seasons})
+    mlb = {r["season"]: r for r in q(conn, "select * from web_v_mlb_season where season = any(%(s)s)", {"s": seasons})}
+    jays = {r["season"]: r for r in clubs if r["team_id"] == JAYS}
+
+    def rank_text(season: int, key: str) -> tuple[int | None, bool, str]:
+        rank = jays.get(season, {}).get(f"{key}_rank")
+        if rank is None:
+            return None, False, ""
+        tied = sum(1 for c in clubs if c["season"] == season and c.get(f"{key}_rank") == rank) > 1
+        return rank, tied, f" ({'T-' if tied else ''}{ordinal(rank)})"
+
+    span = f"{seasons[0]}–{seasons[-1]}"
+    parts = [f"""# Team trends {span} — Blue Jays vs MLB
+
+Regular season. All 30 clubs are loaded; every number below is read from the
+migration-022 views (`web_v_team_season`, `web_v_mlb_season`) — the same ones the
+site's `/en/team` page reads (zh-TW: `/zh-TW/team`).
+
+- Cell = the Jays' value and their MLB rank that season (**1st = best**; lowest for
+  K%, ERA, RA/G …; `T-` = tied).
+- **MLB average** = the league's summed totals turned into a rate (never an average of
+  team rates). WAR and OAA rows show the mean per club; wRC+ averages ~100 by design.
+- Team wRC+ = plate-appearance-weighted average of the club's hitters; team WAR = sum of
+  its players (FanGraphs data licensed to MLB). FIP = (13·HR + 3·(BB+HBP) − 2·SO)/IP +
+  the season's league constant. Batted-ball mix = MLB's own trajectory classification.
+- Why "vs MLB": the 2023 rules (pitch clock, shift limits, bigger bases) lifted steals,
+  batting averages and scoring league-wide.
+
+## Record
+"""]
+    rec_rows = []
+    for s in seasons:
+        j = jays.get(s, {})
+        _, _, rd_rank = rank_text(s, "run_diff")
+        rec_rows.append([
+            str(s),
+            f"{j.get('w')}-{j.get('l')}",
+            f"{j.get('x_w')}-{j.get('x_l')}",
+            signed(j.get("luck"), 0),
+            signed(j.get("run_diff"), 0) + rd_rank,
+            signed(j.get("offense_runs"), 0),
+            signed(j.get("prevention_runs"), 0),
+        ])
+    parts.append(md_table(
+        ["Season", "W-L", "Expected W-L", "Luck (W − xW)", "Run diff (MLB rank)",
+         "Offense runs vs avg", "Run prevention vs avg"], rec_rows))
+    parts.append("\nOffense + run prevention = run differential (runs above / below an average "
+                 "MLB team over the same games; ~10 runs ≈ 1 win).")
+
+    csv_rows: list[dict] = []
+    for group, title in TEAM_GROUPS:
+        jays_rows, mlb_rows = [], []
+        for key, label, g, fmt in TEAM_METRICS:
+            if g != group:
+                continue
+            show = TEAM_FMT[fmt]
+            cells, lg = [], []
+            for s in seasons:
+                v = jays.get(s, {}).get(key)
+                m = mlb.get(s, {}).get(key)
+                rank, tied, rt = rank_text(s, key)
+                cells.append(show(v) + rt)
+                lg.append(show(m))
+                csv_rows.append({"season": s, "group": group, "metric": key, "label": label,
+                                 "jays": v, "mlb_avg": m, "rank": rank, "tied": tied})
+            jays_rows.append([label, *cells])
+            mlb_rows.append([label, *lg])
+        parts.append(f"\n## {title}\n")
+        parts.append(md_table(["Blue Jays", *map(str, seasons)], jays_rows))
+        parts.append("\n" + md_table(["MLB average", *map(str, seasons)], mlb_rows))
+    return "\n".join(parts) + "\n", csv_rows
+
+
+def write_team_trends_csv(path: Path, rows: list[dict]) -> None:
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=["season", "group", "metric", "label", "jays", "mlb_avg", "rank", "tied"])
+        w.writeheader()
+        w.writerows(rows)
 
 
 def readme_md(conn, seasons: list[int], team_stats: dict, ref: dict, links: str = "") -> str:
@@ -734,6 +885,7 @@ Numbers and definitions only — the prose is yours.
 | `movers.md` | Biggest risers / fallers in the cohort, velo changes, new pitches |
 | `roster_moves.md` | Newcomers, mid-season arrivals and departures **with every club** |
 | `league_context.md` | League averages (MLB / AL / NL) + reference rates + the {s} zone-definition caveat |
+| `team_trends.md` / `.csv` | P13: the latest five seasons as a team — every stat with the MLB average and the Jays' rank among 30 clubs (same views as `/en/team`) |
 
 ## Scopes
 
@@ -815,7 +967,9 @@ def run(season: int, vs: int, out_dir: Path) -> None:
         bats = load_players(conn, seasons, "batter")
         pits = load_players(conn, seasons, "pitcher")
         ars = load_arsenal(conn, seasons)
+        trends_text, trends_rows = team_trends(conn)
         files = {
+            "team_trends.md": trends_text,
             "team.md": team_text,
             "batters.md": batters_md(bats, seasons, shift),
             "pitchers.md": pitchers_md(pits, ars, seasons),
@@ -833,7 +987,8 @@ def run(season: int, vs: int, out_dir: Path) -> None:
     write_csv(out_dir / "batters.csv", bats, seasons, BAT_LINE + BAT_DISC + BAT_BIP, "batter")
     write_csv(out_dir / "pitchers.csv", pits, seasons, PIT_LINE + ["d_" + c for c in PIT_DISC], "pitcher")
     write_arsenal_csv(out_dir / "pitchers_arsenal.csv", pits, ars, seasons)
-    log.info("Wrote %d files to %s", len(files) + 3, out_dir)
+    write_team_trends_csv(out_dir / "team_trends.csv", trends_rows)
+    log.info("Wrote %d files to %s", len(files) + 4, out_dir)
 
 
 def main(argv: list[str] | None = None) -> int:

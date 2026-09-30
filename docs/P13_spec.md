@@ -411,3 +411,52 @@ postseason result  = from web_games rows with game_type in (F, D, L, W):
 | Extra-inning record | Needs innings per game (linescore) in `web_games`. |
 | Seasons before 2022 | Endpoints work back further; 2020 (60 games) would need per-162 scaling. Pre-2022 has no universal DH. |
 | Payroll / roster age | No free, reliable source. |
+
+## 14. Reconciliation — as built (2026-09-30)
+
+Branch `feat/p13-team-trends` (not pushed; the owner pushes), one commit per
+milestone: `751b7f2` spec + kickoff · `1a11243` Nav.team handoff · `5816b53` N0 ·
+`33c5599` N1 · `9670a53` N2 · `4771159` N3 · `43ce884` N4 · `1888779` N5 · N6 (the
+commit that adds this section). N0 was built on the P12 branch in a separate
+`git worktree` while P12 was still running, then rebased onto `main` after the P12
+merge (conflicts only in shared docs / `etl.yml`, resolved keeping both sides).
+Migrations used: `020`–`022`. No new npm / pip dependencies.
+
+### What differs from the plan above (and why)
+
+| Where | As built | Why |
+|---|---|---|
+| N0 | `mlb_api.fetch_team_player_leaderboard` is a plain leaderboard call (no `/people` patch) behind a small `_get_json` retry; `pull_team_stats` cross-checks the Jays row against `web_player_season_stats` and logs a warning outside ±1 wRC+ / ±1.0 WAR. | P12's `fetch_team_season_stats` now calls `/people` per player (~1,200 calls/season for 30 clubs). The check catches the post-season leaderboard lag P12 found. |
+| N0 | Savant rows mapped by **team name** → MLB `teamName`; an unmapped name fails the run. | Savant abbreviations are retroactive (`ATH` for the 2022 Athletics, MLB said `OAK`). |
+| N1 | Views are layered: `web_v_team_counts` (clubs + an MLB row of summed counts) → `web_v_team_rates` (one formula set for all 31 rows) → `web_v_mlb_season` / `web_v_team_season`. Ranks and raw counts are cast to `int`. | One definition per formula, so the MLB average is always Σ counts → rate. postgres.js returns `bigint` as strings. |
+| N1 | `pull_league_averages.py --season 2022 --season 2023` was run (additive rows in P12's `web_league_season`). | All five seasons reconcile, and P12's 2022/2023 season pages gain league context. |
+| N2 | **T9 amended:** rank shading uses P12's percentile scale, extracted to `lib/percentile-color.ts` (`percentileColor` / `rankPercentile` / `rankTint`); `PercentileBars` imports it. `ordinal` moved from the season page to `lib/ordinal.ts` (+ tied form). `stripeBg` added to `standings-chrome.ts` and the season page uses it. | One good-vs-bad scale site-wide; no duplicated helpers. |
+| N3 | `TORONTO_TEAM_ID` moved to db-free `lib/team-ids.ts` (`lib/standings.ts` re-exports it); `standings-chrome.ts` imports it from there. | The client `RankGrid` imports `standings-chrome`, which pulled `lib/db.ts` (postgres) into the browser bundle — a build error. |
+| N3 | Rank-grid card clamped inside the grid and `w-max`; "Best in MLB that season" when the leader is the Jays; trend charts use straight segments and round ticks in display units. | Phone readability; five points shouldn't be smoothed into invented curves. |
+| N4 | **Added** trend small multiples for run prevention (RA/G, FIP, K-BB%, Hard-hit% allowed). ERA − FIP threshold 0.15 runs / 9, with the team OAA beside it. Sticky season column on the rotation / bullpen table. | Symmetry with ② at no new code; the table is 806 px wide on phones. |
+| N5 | **Splits table transposed:** rows = splits, columns = seasons (the plan said the reverse); `vsLosing` included; no extra-inning record. `SeasonTrajectoryChart` is a new component; the shared part is the data merge — `lib/season-deltas.ts::mergeByGame` (N series), with P12's `overlayByGame` re-implemented on it (same output). PNG export wraps the chart only. | Split labels are long, seasons short. The trajectory needs N lines + a highlight picker, unlike M5's 2-season chart. Innings per game aren't stored. The PNG button covered the chips on phones. |
+| N6 | **Callouts** come from 17 distinct skills (`CALLOUT_KEYS`: scoring, wRC+, power, K%, BB%, speed, Barrel%, Hard-hit%, RA/G, FIP, K-BB%, HR/9, Barrel% allowed, OAA, rotation FIP, bullpen FIP, rotation depth), **only top-10 / bottom-10 ranks**, up to 3 each, with descriptive labels ("Bullpen (FIP)"). The plan said "3 best / 3 worst among all non-neutral metrics". | OPS / OBP / SLG / AVG / wOBA move together — the plain rule printed one fact three times; a 14th place isn't a strength; bare labels repeat across sides (Barrel% hit vs allowed). |
+| N6 | Glossary = method notes + every metric's hint in a `<details>` (works without JS). `season_report.py` writes `team_trends.md/.csv` with a Python label list mirroring `lib/team-metrics.ts` (values / MLB averages / ranks read from the `022` views). | Page length; labels are the only duplication, numbers are single-sourced. |
+
+### Done-when (§12) — results
+
+| # | Result |
+|---|---|
+| N0-1 | Both tables 30 clubs × 2022–2026; `sp_outs + rp_outs = pit_outs` everywhere; Jays 2022 PA 6158 / R 775 / RA 679 / wRC+ 117.9 / WAR 33.6 + 15.3 / SP 2483 + RP 1841 outs / Barrel% 0.085; balls in play 4,354 = Savant BBE. |
+| N0-2 | `web_standings` + `web_games` for 2022 and 2023: 162 R games each with W/L = standings (92-70, 89-73); 2 `F` rows each (Wild Card Series losses). |
+| N0-3 | Staleness check: 2024 wRC+ 101.1 vs 100.8, 2025 exact, 2026 94.2 vs 94.3 (WAR 34.8 vs 35.3) — within tolerance. Both scripts in the refresh cron. |
+| N1 | `web_v_mlb_season` OBP / SLG / OPS / ERA / K% / BB% == `web_league_season` MLB row for 2022–2026 to ≤ 4e-15; rank 1 = min ERA / max wRC+ / min batting K% / max pitching K% every season; ties skip (three at 11th → 14th); offense + prevention runs == run diff and RS / RA == standings for all 150 club-seasons; Σ offense runs = 0; cFIP 2022 3.106. Registry directions == view rank order (45 ranked + 4 neutral). |
+| N2 | `/en/team` + `/zh-TW/team` render the strip and module ①; one `Nav.team` → `/team`; `/season/[year]` has "← Team trends"; 2026 run diff shows T-21st. |
+| N3 | Grid, Value \| vs MLB toggle (WAR +14.6 / +13.6), hover / focus / tap card (K% 2025: 17.8%, 1st of 30, MLB 22.2%), small multiples; Jays 2022 wRC+ cell 118 (2nd) = view. |
+| N4 | Prevention grid, rotation / bullpen with ranks (2024 bullpen ERA 4.82, 29th; FIP 4.84, 30th), ERA − FIP notes (2023: 0.27 fewer runs than FIP). |
+| N5 | Trajectory: 5 seasons, chip + line-click highlight. Splits equal the P12 season page cell by cell (2025: 54-27 / 40-41 / 27-20 / 25-23 / 29-23 / 49-41 / 45-27; 2024 too). P12 regressions: season-page overlays and Vladdy's rolling-OPS prior line unchanged. |
+| N6 | Callouts + glossary render (en 1280, zh-TW 375); `team_trends.csv` == site for 2025 OPS (.761, 3rd), 2025 K% (17.8%, 1st), 2024 Barrel% (7.2%, 21st), 2023 FIP (4.05, 7th). |
+| All | `tsc --noEmit`, `pnpm lint` (the one pre-existing SprayChart warning), `pnpm build` clean after every milestone; no new deps; reduced motion and no-JS checked (N2); real-time headless Chrome (CDP) at 1280 and 375 px; en / zh-TW key parity (588 each); dev servers stopped; docs reconciled (CLAUDE.md, README, DATA_MODEL, ETL_update_flow, `etl.yml` header). |
+
+### Left for later (not in P13)
+
+- The §13 backlog (AL East rival overlay / AL average, park-adjusted pitching, team
+  plate discipline, extra-inning record, pre-2022 seasons).
+- `pull_league_averages.py` (P12) and `mlb_api.fetch_all_team_stats` (P13) both call
+  `/teams/stats`; the league script could reuse the P13 fetcher.
+- `docs/P13_kickoff.md` (and P12's) are point-in-time launchers: archive or delete.
