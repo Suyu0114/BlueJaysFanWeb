@@ -65,6 +65,7 @@
     "empty": "Standings aren't available yet for this season."
   },
   "Season": {
+    "backToTeam": "← Team trends",
     "title": "{season} Season",
     "subtitle": "The Blue Jays' regular season, next to {prior}.",
     "subtitleNoPrior": "The Blue Jays' regular season.",
@@ -111,6 +112,42 @@
     "warPriorTotal": " ({season}: {total})",
     "noPlayerData": "Player numbers (leaders, WAR by position) start in 2024; {season} shows the team record only.",
     "leagueRef": "MLB average in {season}: OPS {ops} · ERA {era}"
+  },
+  "Team": {
+    "title": "Blue Jays, {from}–{to}",
+    "titleEmpty": "Team trends",
+    "subtitle": "Five seasons of the Blue Jays as a team — every number next to the MLB average and the Jays' rank among the 30 clubs that season.",
+    "empty": "Team numbers haven't been loaded yet.",
+    "rankKey": "MLB rank",
+    "finishValue": "{rank} · {division}",
+    "inProgress": "Season in progress",
+    "stripRunDiff": "Run diff {diff}",
+    "post": {
+      "missed": "Missed the playoffs",
+      "lostWc": "Lost the Wild Card Series",
+      "lostDs": "Lost the ALDS",
+      "lostCs": "Lost the ALCS",
+      "lostWs": "Lost the World Series",
+      "wonWs": "Won the World Series"
+    },
+    "labels": {
+      "run_diff": "Run diff",
+      "sp_ip_share": "IP share"
+    },
+    "recordTitle": "Record & run differential",
+    "recordQuestion": "Were they as good as their record?",
+    "sourcesTitle": "Where the wins came from",
+    "sourcesOffense": "Offense",
+    "sourcesPrevention": "Run prevention",
+    "sourcesNet": "Run differential",
+    "sourcesNote": "Runs above or below an average MLB team over the same games: offense = runs scored beyond that average, run prevention = runs not allowed. The two add up to the run differential. About 10 runs is worth one win.",
+    "luckTitle": "Record vs. expected record",
+    "colSeason": "Season",
+    "colExpected": "Expected",
+    "colLuck": "Luck",
+    "colOneRun": "1-run",
+    "colMlbRank": "MLB rank",
+    "luckNote": "Expected record is MLB's own Pythagorean record from runs scored and allowed. Luck = actual wins minus expected wins — usually a strong or weak record in one-run games."
   },
   "Game": {
     "battingTitle": "Batting",

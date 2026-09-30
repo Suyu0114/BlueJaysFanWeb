@@ -4,7 +4,7 @@ import { Link } from "@/i18n/navigation";
 import ScorecardFrame from "@/components/ScorecardFrame";
 import SlidingPill from "@/components/motion/SlidingPill";
 import { Reveal } from "@/components/motion/Reveal";
-import { HEAD_ROW, TD, TD_FIRST, TD_LAST, TH, TH_FIRST, TH_LAST } from "@/components/standings-chrome";
+import { HEAD_ROW, stripeBg, TD, TD_FIRST, TD_LAST, TH, TH_FIRST, TH_LAST } from "@/components/standings-chrome";
 import SeasonTrendChart from "@/components/season/SeasonTrendChart";
 import WarByPositionChart from "@/components/season/WarByPositionChart";
 import CopyTableButton from "@/components/CopyTableButton";
@@ -32,6 +32,7 @@ import {
 } from "@/lib/team-season";
 import { deltaTone, overlayByGame, type Direction } from "@/lib/season-deltas";
 import { getLeagueSeason } from "@/lib/savant";
+import { ordinal } from "@/lib/ordinal";
 
 // P12 M5: the Blue Jays' regular season on one page, vs the season before —
 // record, games above .500 and run differential by game number, month by
@@ -54,7 +55,6 @@ const r3 = (v: number | null) => {
 };
 const signed = (v: number, d = 0) => (v > 0 ? `+${v.toFixed(d)}` : v < 0 ? `−${Math.abs(v).toFixed(d)}` : `±${(0).toFixed(d)}`);
 const wl = (r: WinLoss) => `${r.w}-${r.l}`;
-const stripe = (i: number) => (i % 2 === 0 ? "bg-papaya/70" : "bg-papaya/35");
 
 const TONE = {
   better: "bg-grass/25 text-navy",
@@ -69,12 +69,6 @@ function Chip({ d, direction, digits = 0, fmt }: { d: number | null; direction: 
       {fmt ? fmt(d) : signed(d, digits)}
     </span>
   );
-}
-
-function ordinal(n: number, locale: string): string {
-  if (locale.startsWith("zh")) return `第 ${n} 名`;
-  const s = n % 100 >= 11 && n % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] ?? "th";
-  return `${n}${s}`;
 }
 
 export default async function SeasonPage({
@@ -237,6 +231,9 @@ export default async function SeasonPage({
     <div className="mx-auto max-w-5xl px-4 py-10">
       <Reveal className="flex flex-wrap items-end justify-between gap-4">
         <div>
+          <Link href="/team" className="text-xs text-navy/55 transition-colors hover:text-brick">
+            {t("backToTeam")}
+          </Link>
           <h1 className="font-display text-2xl uppercase tracking-wide text-navy">{t("title", { season })}</h1>
           <p className="mt-1 text-sm text-navy/60">
             {prior ? t("subtitle", { prior }) : t("subtitleNoPrior")}
@@ -340,7 +337,7 @@ export default async function SeasonPage({
                       const a = months.find((x) => x.month === m);
                       const b = pmonths.find((x) => x.month === m);
                       return (
-                        <tr key={m} className={stripe(i)}>
+                        <tr key={m} className={stripeBg(i)}>
                           <td className={TD_FIRST}>{monthLabel(m)}</td>
                           <td className={`${TD} font-semibold`}>{a ? wl(a) : "—"}</td>
                           <td className={`${TD} text-navy/60`}>{a ? `${a.rs}-${a.ra}` : "—"}</td>
@@ -388,7 +385,7 @@ export default async function SeasonPage({
                       const a = splits[r.key];
                       const b = psplits?.[r.key];
                       return (
-                        <tr key={r.key} className={stripe(i)}>
+                        <tr key={r.key} className={stripeBg(i)}>
                           <td className={TD_FIRST}>{r.label}</td>
                           <td className={`${TD} font-semibold`}>{wl(a)}</td>
                           <td className={`${prior ? TD : TD_LAST} text-navy/60`}>{r3(winPct(a))}</td>
@@ -397,7 +394,7 @@ export default async function SeasonPage({
                         </tr>
                       );
                     })}
-                    <tr className={stripe(splitRows.length)}>
+                    <tr className={stripeBg(splitRows.length)}>
                       <td className={TD_FIRST}>{t("streakL")}</td>
                       <td className={`${TD} font-semibold`} colSpan={2}>{streakText(longestStreak(games, "L"))}</td>
                       {prior && <td className={TD_LAST} colSpan={2}>{streakText(longestStreak(priorGames, "L"))}</td>}

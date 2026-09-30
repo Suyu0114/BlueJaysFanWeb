@@ -102,9 +102,9 @@ with c as (
   join web_v_team_counts lg on lg.season = k.season and lg.team_id = 0
 )
 select
-  season, team_id, games, cfip,
-  bat_pa as pa, pit_bf as bf, pit_outs / 3.0::float8 as ip, bat_hr as hr, bat_sb as sb,
-  bat_r as rs, pit_r as ra,
+  season, team_id, games::int as games, cfip,
+  bat_pa::int as pa, pit_bf::int as bf, pit_outs / 3.0::float8 as ip, bat_hr::int as hr, bat_sb::int as sb,
+  bat_r::int as rs, pit_r::int as ra,
 
   -- offense
   bat_r::float8 / nullif(games, 0)                                               as r_per_g,
@@ -193,54 +193,54 @@ with base as (
 select
   base.*,
   -- record
-  case when pct is null then null else rank() over (partition by season order by pct desc nulls last) end               as pct_rank,
-  case when run_diff is null then null else rank() over (partition by season order by run_diff desc nulls last) end     as run_diff_rank,
+  case when pct is null then null else rank() over (partition by season order by pct desc nulls last) end::int               as pct_rank,
+  case when run_diff is null then null else rank() over (partition by season order by run_diff desc nulls last) end::int     as run_diff_rank,
   -- offense (higher is better unless noted)
-  case when r_per_g is null then null else rank() over (partition by season order by r_per_g desc nulls last) end       as r_per_g_rank,
-  case when wrc_plus is null then null else rank() over (partition by season order by wrc_plus desc nulls last) end     as wrc_plus_rank,
-  case when avg is null then null else rank() over (partition by season order by avg desc nulls last) end               as avg_rank,
-  case when obp is null then null else rank() over (partition by season order by obp desc nulls last) end               as obp_rank,
-  case when slg is null then null else rank() over (partition by season order by slg desc nulls last) end               as slg_rank,
-  case when ops is null then null else rank() over (partition by season order by ops desc nulls last) end               as ops_rank,
-  case when iso is null then null else rank() over (partition by season order by iso desc nulls last) end               as iso_rank,
-  case when babip is null then null else rank() over (partition by season order by babip desc nulls last) end           as babip_rank,
-  case when k_pct is null then null else rank() over (partition by season order by k_pct asc nulls last) end            as k_pct_rank,        -- lower
-  case when bb_pct is null then null else rank() over (partition by season order by bb_pct desc nulls last) end         as bb_pct_rank,
-  case when hr_pct is null then null else rank() over (partition by season order by hr_pct desc nulls last) end         as hr_pct_rank,
-  case when sb_per_g is null then null else rank() over (partition by season order by sb_per_g desc nulls last) end     as sb_per_g_rank,
-  case when sb_pct is null then null else rank() over (partition by season order by sb_pct desc nulls last) end         as sb_pct_rank,
-  case when whiff_pct is null then null else rank() over (partition by season order by whiff_pct asc nulls last) end    as whiff_pct_rank,    -- lower
-  case when brl_pct is null then null else rank() over (partition by season order by brl_pct desc nulls last) end       as brl_pct_rank,
-  case when hard_hit_pct is null then null else rank() over (partition by season order by hard_hit_pct desc nulls last) end as hard_hit_pct_rank,
-  case when sweet_spot_pct is null then null else rank() over (partition by season order by sweet_spot_pct desc nulls last) end as sweet_spot_pct_rank,
-  case when avg_ev is null then null else rank() over (partition by season order by avg_ev desc nulls last) end         as avg_ev_rank,
-  case when woba is null then null else rank() over (partition by season order by woba desc nulls last) end             as woba_rank,
-  case when xwoba is null then null else rank() over (partition by season order by xwoba desc nulls last) end           as xwoba_rank,
-  case when bat_war is null then null else rank() over (partition by season order by bat_war desc nulls last) end       as bat_war_rank,
+  case when r_per_g is null then null else rank() over (partition by season order by r_per_g desc nulls last) end::int       as r_per_g_rank,
+  case when wrc_plus is null then null else rank() over (partition by season order by wrc_plus desc nulls last) end::int     as wrc_plus_rank,
+  case when avg is null then null else rank() over (partition by season order by avg desc nulls last) end::int               as avg_rank,
+  case when obp is null then null else rank() over (partition by season order by obp desc nulls last) end::int               as obp_rank,
+  case when slg is null then null else rank() over (partition by season order by slg desc nulls last) end::int               as slg_rank,
+  case when ops is null then null else rank() over (partition by season order by ops desc nulls last) end::int               as ops_rank,
+  case when iso is null then null else rank() over (partition by season order by iso desc nulls last) end::int               as iso_rank,
+  case when babip is null then null else rank() over (partition by season order by babip desc nulls last) end::int           as babip_rank,
+  case when k_pct is null then null else rank() over (partition by season order by k_pct asc nulls last) end::int            as k_pct_rank,        -- lower
+  case when bb_pct is null then null else rank() over (partition by season order by bb_pct desc nulls last) end::int         as bb_pct_rank,
+  case when hr_pct is null then null else rank() over (partition by season order by hr_pct desc nulls last) end::int         as hr_pct_rank,
+  case when sb_per_g is null then null else rank() over (partition by season order by sb_per_g desc nulls last) end::int     as sb_per_g_rank,
+  case when sb_pct is null then null else rank() over (partition by season order by sb_pct desc nulls last) end::int         as sb_pct_rank,
+  case when whiff_pct is null then null else rank() over (partition by season order by whiff_pct asc nulls last) end::int    as whiff_pct_rank,    -- lower
+  case when brl_pct is null then null else rank() over (partition by season order by brl_pct desc nulls last) end::int       as brl_pct_rank,
+  case when hard_hit_pct is null then null else rank() over (partition by season order by hard_hit_pct desc nulls last) end::int as hard_hit_pct_rank,
+  case when sweet_spot_pct is null then null else rank() over (partition by season order by sweet_spot_pct desc nulls last) end::int as sweet_spot_pct_rank,
+  case when avg_ev is null then null else rank() over (partition by season order by avg_ev desc nulls last) end::int         as avg_ev_rank,
+  case when woba is null then null else rank() over (partition by season order by woba desc nulls last) end::int             as woba_rank,
+  case when xwoba is null then null else rank() over (partition by season order by xwoba desc nulls last) end::int           as xwoba_rank,
+  case when bat_war is null then null else rank() over (partition by season order by bat_war desc nulls last) end::int       as bat_war_rank,
   -- run prevention (lower is better unless noted)
-  case when ra_per_g is null then null else rank() over (partition by season order by ra_per_g asc nulls last) end      as ra_per_g_rank,
-  case when era is null then null else rank() over (partition by season order by era asc nulls last) end                as era_rank,
-  case when fip is null then null else rank() over (partition by season order by fip asc nulls last) end                as fip_rank,
-  case when whip is null then null else rank() over (partition by season order by whip asc nulls last) end              as whip_rank,
-  case when pit_k_pct is null then null else rank() over (partition by season order by pit_k_pct desc nulls last) end   as pit_k_pct_rank,    -- higher
-  case when pit_bb_pct is null then null else rank() over (partition by season order by pit_bb_pct asc nulls last) end  as pit_bb_pct_rank,
-  case when pit_k_bb_pct is null then null else rank() over (partition by season order by pit_k_bb_pct desc nulls last) end as pit_k_bb_pct_rank, -- higher
-  case when hr9 is null then null else rank() over (partition by season order by hr9 asc nulls last) end                as hr9_rank,
-  case when pit_babip is null then null else rank() over (partition by season order by pit_babip asc nulls last) end    as pit_babip_rank,
-  case when pit_whiff_pct is null then null else rank() over (partition by season order by pit_whiff_pct desc nulls last) end as pit_whiff_pct_rank, -- higher
-  case when pit_brl_pct is null then null else rank() over (partition by season order by pit_brl_pct asc nulls last) end as pit_brl_pct_rank,
-  case when pit_hard_hit_pct is null then null else rank() over (partition by season order by pit_hard_hit_pct asc nulls last) end as pit_hard_hit_pct_rank,
-  case when pit_xwoba is null then null else rank() over (partition by season order by pit_xwoba asc nulls last) end    as pit_xwoba_rank,
-  case when oaa is null then null else rank() over (partition by season order by oaa desc nulls last) end               as oaa_rank,          -- higher
-  case when pit_war is null then null else rank() over (partition by season order by pit_war desc nulls last) end       as pit_war_rank,      -- higher
+  case when ra_per_g is null then null else rank() over (partition by season order by ra_per_g asc nulls last) end::int      as ra_per_g_rank,
+  case when era is null then null else rank() over (partition by season order by era asc nulls last) end::int                as era_rank,
+  case when fip is null then null else rank() over (partition by season order by fip asc nulls last) end::int                as fip_rank,
+  case when whip is null then null else rank() over (partition by season order by whip asc nulls last) end::int              as whip_rank,
+  case when pit_k_pct is null then null else rank() over (partition by season order by pit_k_pct desc nulls last) end::int   as pit_k_pct_rank,    -- higher
+  case when pit_bb_pct is null then null else rank() over (partition by season order by pit_bb_pct asc nulls last) end::int  as pit_bb_pct_rank,
+  case when pit_k_bb_pct is null then null else rank() over (partition by season order by pit_k_bb_pct desc nulls last) end::int as pit_k_bb_pct_rank, -- higher
+  case when hr9 is null then null else rank() over (partition by season order by hr9 asc nulls last) end::int                as hr9_rank,
+  case when pit_babip is null then null else rank() over (partition by season order by pit_babip asc nulls last) end::int    as pit_babip_rank,
+  case when pit_whiff_pct is null then null else rank() over (partition by season order by pit_whiff_pct desc nulls last) end::int as pit_whiff_pct_rank, -- higher
+  case when pit_brl_pct is null then null else rank() over (partition by season order by pit_brl_pct asc nulls last) end::int as pit_brl_pct_rank,
+  case when pit_hard_hit_pct is null then null else rank() over (partition by season order by pit_hard_hit_pct asc nulls last) end::int as pit_hard_hit_pct_rank,
+  case when pit_xwoba is null then null else rank() over (partition by season order by pit_xwoba asc nulls last) end::int    as pit_xwoba_rank,
+  case when oaa is null then null else rank() over (partition by season order by oaa desc nulls last) end::int               as oaa_rank,          -- higher
+  case when pit_war is null then null else rank() over (partition by season order by pit_war desc nulls last) end::int       as pit_war_rank,      -- higher
   -- rotation / bullpen
-  case when sp_era is null then null else rank() over (partition by season order by sp_era asc nulls last) end          as sp_era_rank,
-  case when sp_fip is null then null else rank() over (partition by season order by sp_fip asc nulls last) end          as sp_fip_rank,
-  case when sp_k_bb_pct is null then null else rank() over (partition by season order by sp_k_bb_pct desc nulls last) end as sp_k_bb_pct_rank, -- higher
-  case when sp_ip_share is null then null else rank() over (partition by season order by sp_ip_share desc nulls last) end as sp_ip_share_rank, -- higher
-  case when rp_era is null then null else rank() over (partition by season order by rp_era asc nulls last) end          as rp_era_rank,
-  case when rp_fip is null then null else rank() over (partition by season order by rp_fip asc nulls last) end          as rp_fip_rank,
-  case when rp_k_bb_pct is null then null else rank() over (partition by season order by rp_k_bb_pct desc nulls last) end as rp_k_bb_pct_rank  -- higher
+  case when sp_era is null then null else rank() over (partition by season order by sp_era asc nulls last) end::int          as sp_era_rank,
+  case when sp_fip is null then null else rank() over (partition by season order by sp_fip asc nulls last) end::int          as sp_fip_rank,
+  case when sp_k_bb_pct is null then null else rank() over (partition by season order by sp_k_bb_pct desc nulls last) end::int as sp_k_bb_pct_rank, -- higher
+  case when sp_ip_share is null then null else rank() over (partition by season order by sp_ip_share desc nulls last) end::int as sp_ip_share_rank, -- higher
+  case when rp_era is null then null else rank() over (partition by season order by rp_era asc nulls last) end::int          as rp_era_rank,
+  case when rp_fip is null then null else rank() over (partition by season order by rp_fip asc nulls last) end::int          as rp_fip_rank,
+  case when rp_k_bb_pct is null then null else rank() over (partition by season order by rp_k_bb_pct desc nulls last) end::int as rp_k_bb_pct_rank  -- higher
 from base;
 
 comment on view web_v_team_season is

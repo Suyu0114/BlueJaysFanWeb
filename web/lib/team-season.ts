@@ -228,3 +228,22 @@ export function warByPosition(rows: PlayerSeasonLine[], season: number): Record<
   }
   return out;
 }
+
+// P13: how a season ended, from the Jays' postseason games (game_type F / D / L /
+// W). No postseason rows -> "missed". The last postseason game decides it: a
+// win in the World Series is the title; otherwise the club went out in the
+// round of its last game (a series is only ever lost on its final game).
+export type PostseasonGame = { game_type: string; game_date: string; game_number: number; result: "W" | "L" | null };
+export type PostseasonResult = "missed" | "lostWc" | "lostDs" | "lostCs" | "lostWs" | "wonWs";
+
+const ROUND_OUT: Record<string, PostseasonResult> = { F: "lostWc", D: "lostDs", L: "lostCs", W: "lostWs" };
+
+export function postseasonResult(games: PostseasonGame[]): PostseasonResult {
+  const post = games
+    .filter((g) => g.game_type in ROUND_OUT)
+    .sort((a, b) => a.game_date.localeCompare(b.game_date) || a.game_number - b.game_number);
+  const last = post.at(-1);
+  if (!last) return "missed";
+  if (last.game_type === "W" && last.result === "W") return "wonWs";
+  return ROUND_OUT[last.game_type];
+}

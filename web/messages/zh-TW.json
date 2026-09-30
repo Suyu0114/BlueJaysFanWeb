@@ -65,6 +65,7 @@
     "empty": "本球季尚無排名資料。"
   },
   "Season": {
+    "backToTeam": "← 球隊趨勢",
     "title": "{season} 球季",
     "subtitle": "藍鳥例行賽，與 {prior} 並列比較。",
     "subtitleNoPrior": "藍鳥例行賽。",
@@ -111,6 +112,42 @@
     "warPriorTotal": "（{season}：{total}）",
     "noPlayerData": "球員數據（隊內領先者、各守位 WAR）從 2024 年開始；{season} 只顯示球隊戰績。",
     "leagueRef": "{season} 大聯盟平均：OPS {ops} · ERA {era}"
+  },
+  "Team": {
+    "title": "藍鳥 {from}–{to}",
+    "titleEmpty": "球隊趨勢",
+    "subtitle": "從球隊角度看藍鳥五個球季——每個數字都附上當季 MLB 平均，以及藍鳥在 30 隊中的排名。",
+    "empty": "球隊數據尚未載入。",
+    "rankKey": "MLB 排名",
+    "finishValue": "{division}{rank}",
+    "inProgress": "球季進行中",
+    "stripRunDiff": "得失分差 {diff}",
+    "post": {
+      "missed": "未進季後賽",
+      "lostWc": "外卡系列賽出局",
+      "lostDs": "ALDS 出局",
+      "lostCs": "ALCS 出局",
+      "lostWs": "世界大賽落敗",
+      "wonWs": "世界大賽冠軍"
+    },
+    "labels": {
+      "run_diff": "得失分差",
+      "sp_ip_share": "局數占比"
+    },
+    "recordTitle": "戰績與得失分",
+    "recordQuestion": "他們真的有戰績顯示的那麼強（或那麼弱）嗎？",
+    "sourcesTitle": "勝場從哪裡來",
+    "sourcesOffense": "進攻",
+    "sourcesPrevention": "防守失分",
+    "sourcesNet": "得失分差",
+    "sourcesNote": "與 MLB 平均球隊打同樣場數相比：進攻 = 比平均多得的分，防守失分 = 比平均少失的分，兩者相加就是得失分差。大約每 10 分相當於 1 場勝利。",
+    "luckTitle": "實際戰績 vs. 預期戰績",
+    "colSeason": "球季",
+    "colExpected": "預期",
+    "colLuck": "運氣",
+    "colOneRun": "一分差",
+    "colMlbRank": "MLB 排名",
+    "luckNote": "預期戰績是 MLB 依得分與失分算出的畢氏戰績。運氣 = 實際勝場 − 預期勝場，通常反映一分差比賽打得特別好或特別差。"
   },
   "Game": {
     "battingTitle": "打擊",

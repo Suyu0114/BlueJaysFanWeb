@@ -552,7 +552,7 @@ the `/team` page (`lib/team-trends.ts`) and `etl/season_report.py`
 [`web_team_statcast_season`](#web_team_statcast_season) (+ `web_standings` for the
 record). Every formula is written **once** and applied to the 30 clubs and to an MLB
 row alike, so the MLB average is always Σ counts → rate. Rates are `float8`
-fractions; IP = outs / 3.
+fractions; IP = outs / 3. Ranks and raw counts (`games pa bf hr sb rs ra`) are cast to `int` in the view — postgres.js returns `bigint` as strings.
 
 | View | Grain | What |
 |---|---|---|

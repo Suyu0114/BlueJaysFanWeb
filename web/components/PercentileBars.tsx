@@ -10,6 +10,7 @@
 import { useRef, useState } from "react";
 import { motion, useInView } from "motion/react";
 import { ENTER, SPRING_SOFT } from "@/lib/motion";
+import { percentileColor } from "@/lib/percentile-color";
 import type { PercentileRow, SavantSeason } from "@/lib/savant";
 
 type MetricKey = Exclude<keyof PercentileRow, "season" | "role">;
@@ -46,17 +47,10 @@ const r3 = (v: number) => {
   return s.startsWith("0.") ? s.slice(1) : s.startsWith("-0.") ? `-${s.slice(2)}` : s;
 };
 
-// Savant's scale runs blue -> grey -> red so that 50 reads as "average". Built
-// from brand tokens only: steel -> a neutral (navy washed into papaya) -> brick.
-const NEUTRAL = "color-mix(in srgb, var(--color-navy) 28%, var(--color-papaya))";
-function scaleColor(v: number): string {
-  return v <= 50
-    ? `color-mix(in srgb, var(--color-steel) ${100 - 2 * v}%, ${NEUTRAL})`
-    : `color-mix(in srgb, var(--color-brick) ${2 * v - 100}%, ${NEUTRAL})`;
-}
-
 function Bar({ value, animate }: { value: number; animate: boolean }) {
-  const color = scaleColor(value);
+  // Savant's blue -> grey -> red scale (lib/percentile-color.ts), shared with
+  // the P13 30-club rank shading.
+  const color = percentileColor(value);
   // Mid-range circles sit on the pale neutral: dark text there, light elsewhere.
   const text = value >= 30 && value <= 70 ? "text-navy" : "text-papaya";
   return (

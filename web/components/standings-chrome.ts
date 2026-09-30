@@ -35,7 +35,14 @@ const ROW_HOVER = "transition-colors hover:bg-steel/15";
  * are safe: `:hover` adds specificity, so they always win while hovered.)
  */
 export function rowBg(row: StandingsRow, index: number): string {
-  if (row.team_id === TORONTO_TEAM_ID)
-    return "bg-brick/20 font-medium transition-colors hover:bg-brick/30";
+  return stripeBg(index, row.team_id === TORONTO_TEAM_ID);
+}
+
+/**
+ * The same ledger striping for any table (season page, P13 team page), with an
+ * optional brick highlight row. One resolved class string, for the reason above.
+ */
+export function stripeBg(index: number, highlight = false): string {
+  if (highlight) return "bg-brick/20 font-medium transition-colors hover:bg-brick/30";
   return `${index % 2 === 0 ? "bg-papaya/70" : "bg-papaya/35"} ${ROW_HOVER}`;
 }

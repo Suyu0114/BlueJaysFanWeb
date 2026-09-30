@@ -1,6 +1,5 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { getLatestTeamSeason } from "@/lib/team-season-data";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 
 // Nav links: a steel rule draws in from the left on hover (scale-x on ::after),
@@ -10,10 +9,9 @@ const NAV_LINK =
 
 export async function Header() {
   const t = await getTranslations("Nav");
-  // P12 M5 (D11): "Team" -> the newest season page, resolved by the same helper
-  // as /season/[year]. P13 repoints this one link to /team — keep key, label and
-  // position unchanged.
-  const teamSeason = await getLatestTeamSeason();
+  // "Team" -> the P13 five-season team page. P12 shipped this link pointing at
+  // the newest /season/[year]; P13 kept its key, label and position and only
+  // changed the href. Single seasons are reached from the /team season strip.
 
   return (
     <header className="border-b-2 border-brick bg-navy text-papaya">
@@ -36,11 +34,9 @@ export async function Header() {
           <Link href="/standings" className={NAV_LINK}>
             {t("standings")}
           </Link>
-          {teamSeason != null && (
-            <Link href={`/season/${teamSeason}`} className={NAV_LINK}>
-              {t("team")}
-            </Link>
-          )}
+          <Link href="/team" className={NAV_LINK}>
+            {t("team")}
+          </Link>
           <Link href="/about" className={NAV_LINK}>
             {t("about")}
           </Link>
