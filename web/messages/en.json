@@ -131,7 +131,9 @@
     "kpiHintEra": "Earned runs allowed per 9 innings — lower is better",
     "kpiHintWhip": "Walks + hits allowed per inning — lower is better",
     "kpiHintKPct": "Share of batters he strikes out — higher is better",
-    "kpiHintWar": "Wins Above Replacement — total value over a fill-in player"
+    "kpiHintWar": "Wins Above Replacement — total value over a fill-in player",
+    "otherClubsNote": "Numbers here are as a Blue Jay. He also played for {clubs}.",
+    "otherClubsLink": "Compare his full MLB seasons"
   },
   "Discipline": {
     "disciplineTitle": "Plate Discipline",
@@ -168,7 +170,137 @@
     "hintFirstStrike": "First pitches that are strikes — higher is better",
     "hintKBB": "Strikeout rate minus walk rate — higher is better",
     "approxNote": "GB / LD / FB / PU are approximated from launch angle.",
-    "zoneShiftNote": "† Net of Savant's {newer} strike-zone change: from {older} to {newer}, every pitch on file moved Chase% {chase} pts and Zone% {zone} pts on its own, so the change shown removes that shift."
+    "zoneShiftNote": "† Net of Savant's {newer} strike-zone change: from {older} to {newer}, every pitch on file moved Chase% {chase} pts and Zone% {zone} pts on its own, so the change shown removes that shift.",
+    "contactTitle": "Contact",
+    "hintAvgEv": "Average exit velocity on batted balls — higher is better",
+    "hintMaxEv": "His hardest-hit ball — raw power",
+    "hintXwobaCon": "Expected wOBA on balls in play: quality of contact — higher is better"
+  },
+  "Compare": {
+    "title": "Season vs Season",
+    "notEnough": "Only one MLB season on file for him — nothing to compare yet.",
+    "controlSeason": "Season",
+    "controlVs": "Compared with",
+    "controlScope": "Games",
+    "scopeMlb": "All MLB",
+    "scopeJays": "As a Blue Jay",
+    "jaysDisabled": "He wasn't a Blue Jay in both of these seasons",
+    "summaryBatter": "{g} G · {pa} PA",
+    "summaryPitcher": "{g} G · {ip} IP",
+    "changedTitle": "What changed",
+    "changeLine": "{stat} {dir} {amount} — {meaning}",
+    "up": "up",
+    "down": "down",
+    "noBigChanges": "No big swings — by the numbers he was much the same player.",
+    "smallSampleNote": "Small sample in {seasons}: read these changes as hints, not verdicts.",
+    "zoneShiftShort": "† Net of Savant's 2026 strike-zone change, which moved Chase% for every player.",
+    "taleTitle": "Season line",
+    "clubsTitle": "By club",
+    "colClub": "Club",
+    "colSpan": "Dates",
+    "arcTitle": "{from}–{to} arc",
+    "statcastTitle": "Under the hood",
+    "statcastSubtitle": "Statcast, pitch by pitch, regular season.",
+    "sprayTitle": "Where the ball went",
+    "sprayCaption": "{n} batted balls",
+    "noStatcast": "No Statcast data for this season in this view.",
+    "arsenalTitle": "Arsenal",
+    "colPitch": "Pitch",
+    "colVeloChange": "Velo Δ",
+    "badgeNew": "New",
+    "badgeDropped": "Dropped",
+    "arsenalNote": "New / Dropped = not thrown in one season, 5%+ usage in the other. Savant sometimes renames a pitch (a new sweeper next to a dropped slider), so check velo and spin before calling it new.",
+    "movementTitle": "Pitch shapes",
+    "movementNote": "Dots and filled markers: {a}. Dashed rings: {b} averages; arrows show how each pitch's movement changed. Pitcher's view.",
+    "zoneTitle": "Where he threw it",
+    "pitchCount": "{n} pitches",
+    "zoneNote": "Share of pitches in each Savant zone cell, catcher's view.",
+    "zoneShiftGrid": "Savant drew its zone cells differently in 2026, so compare the overall pattern, not small cell-by-cell gaps.",
+    "veloTitle": "Fastball velocity by outing",
+    "veloNote": "Average velocity by appearance number: {a} solid, {b} dashed.",
+    "appearance": "Appearance",
+    "meaning": {
+      "ops": {
+        "better": "more production at the plate",
+        "worse": "less production at the plate"
+      },
+      "wrcPlus": {
+        "better": "a better hitter relative to the league",
+        "worse": "a weaker hitter relative to the league"
+      },
+      "war": {
+        "better": "more total value",
+        "worse": "less total value"
+      },
+      "kPct": {
+        "better": "fewer strikeouts",
+        "worse": "more strikeouts"
+      },
+      "bbPct": {
+        "better": "more walks",
+        "worse": "fewer walks"
+      },
+      "chase": {
+        "better": "fewer bad swings",
+        "worse": "more bad swings"
+      },
+      "whiff": {
+        "better": "more contact",
+        "worse": "more swings and misses"
+      },
+      "hardHit": {
+        "better": "hitting the ball harder",
+        "worse": "softer contact"
+      },
+      "avgEv": {
+        "better": "hitting the ball harder",
+        "worse": "softer contact"
+      },
+      "sweetSpot": {
+        "better": "better launch angles",
+        "worse": "worse launch angles"
+      },
+      "xwobaCon": {
+        "better": "better quality of contact",
+        "worse": "weaker quality of contact"
+      },
+      "era": {
+        "better": "fewer runs allowed",
+        "worse": "more runs allowed"
+      },
+      "fip": {
+        "better": "better strikeout, walk and home-run numbers",
+        "worse": "worse strikeout, walk and home-run numbers"
+      },
+      "whip": {
+        "better": "fewer baserunners",
+        "worse": "more baserunners"
+      },
+      "pKPct": {
+        "better": "more strikeouts",
+        "worse": "fewer strikeouts"
+      },
+      "pBbPct": {
+        "better": "fewer walks",
+        "worse": "more walks"
+      },
+      "csw": {
+        "better": "more called strikes and whiffs",
+        "worse": "fewer called strikes and whiffs"
+      },
+      "pWhiff": {
+        "better": "missing more bats",
+        "worse": "missing fewer bats"
+      },
+      "pChase": {
+        "better": "getting more chases",
+        "worse": "getting fewer chases"
+      },
+      "fbVelo": {
+        "better": "more velocity",
+        "worse": "lost velocity"
+      }
+    }
   },
   "Batting": {
     "sprayChart": "Spray Chart",
@@ -204,6 +336,7 @@
     "subtitle": "What he throws, where it goes, and how well it works — every regular-season pitch on file.",
     "noData": "No pitch data yet.",
     "showing": "Showing {shown} of {total} pitches",
+    "filterSeason": "Season",
     "filterMonth": "Month",
     "filterFullSeason": "Full season",
     "filterPitchType": "Pitch type",
@@ -240,6 +373,7 @@
     "batting": "Batting",
     "pitching": "Pitching",
     "fielding": "Fielding",
+    "compare": "Compare",
     "bazi": "BaZi"
   },
   "Fielding": {

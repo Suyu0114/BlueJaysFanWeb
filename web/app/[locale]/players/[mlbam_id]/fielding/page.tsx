@@ -5,6 +5,7 @@ import PlayerNav from "@/components/PlayerNav";
 import { Reveal } from "@/components/motion/Reveal";
 import { getFielding } from "@/lib/fielding";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
+import { getSeasonClubLabels } from "@/lib/compare";
 
 export const revalidate = 86400;
 
@@ -33,10 +34,11 @@ export default async function FieldingPage({
   if (!Number.isFinite(playerId)) notFound();
 
   const t = await getTranslations("Fielding");
-  const [player, seasons, availability] = await Promise.all([
+  const [player, seasons, availability, clubLabels] = await Promise.all([
     getPlayer(playerId),
     getFielding(playerId),
     getPlayerAvailability(playerId),
+    getSeasonClubLabels(playerId),
   ]);
 
   if (!player) notFound();
@@ -106,7 +108,14 @@ export default async function FieldingPage({
               <tbody className="divide-y divide-navy/10">
                 {seasons.map((s) => (
                   <tr key={`${s.season}-${s.position}`}>
-                    <td className="py-1.5 tabular-nums">{s.season}</td>
+                    <td className="py-1.5 tabular-nums">
+                      {s.season}
+                      {/* P12: Savant's OAA leaderboard is league-wide, so a
+                          season can be with another club (or split by a trade). */}
+                      {clubLabels[s.season] && (
+                        <span className="ml-1 text-xs text-navy/45">· {clubLabels[s.season]}</span>
+                      )}
+                    </td>
                     <td className="py-1.5 font-mono">{s.position}</td>
                     <td
                       className={`py-1.5 text-right font-semibold tabular-nums ${frvTone(s.frv)}`}

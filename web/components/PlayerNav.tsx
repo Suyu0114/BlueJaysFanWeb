@@ -3,12 +3,13 @@ import { Link } from "@/i18n/navigation";
 import SlidingPill from "./motion/SlidingPill";
 import type { PlayerAvailability } from "@/lib/players";
 
-export type PlayerSection = "overview" | "batting" | "pitching" | "fielding" | "bazi";
+export type PlayerSection = "overview" | "batting" | "pitching" | "fielding" | "compare" | "bazi";
 
 const DEFAULT_AVAILABILITY: PlayerAvailability = {
   batting: true,
   pitching: true,
   fielding: true,
+  compare: false,
   bazi: false,
 };
 
@@ -28,6 +29,8 @@ export default async function PlayerNav({
     { key: "batting", label: t("batting"), href: `/players/${mlbamId}/batting`, show: available.batting },
     { key: "pitching", label: t("pitching"), href: `/players/${mlbamId}/pitching`, show: available.pitching },
     { key: "fielding", label: t("fielding"), href: `/players/${mlbamId}/fielding`, show: available.fielding },
+    // P12: season-vs-season self comparison, incl. time with other clubs.
+    { key: "compare", label: t("compare"), href: `/players/${mlbamId}/compare`, show: available.compare },
     // v2 BaZi: slot reserved. P6 always hides this; v2 flips available.bazi to true.
     { key: "bazi", label: t("bazi"), href: `/players/${mlbamId}/bazi`, show: available.bazi },
   ];

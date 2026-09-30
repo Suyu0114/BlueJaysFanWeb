@@ -4,6 +4,7 @@ import SprayChartExplorer from "@/components/charts/SprayChartExplorer";
 import PlayerNav from "@/components/PlayerNav";
 import { Reveal } from "@/components/motion/Reveal";
 import { getBattedBalls } from "@/lib/batting";
+import { getSeasonClubLabels } from "@/lib/compare";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
 
 export const revalidate = 86400;
@@ -20,10 +21,11 @@ export default async function BattingPage({
   if (!Number.isFinite(batterId)) notFound();
 
   const t = await getTranslations("Batting");
-  const [player, events, availability] = await Promise.all([
+  const [player, events, availability, clubLabels] = await Promise.all([
     getPlayer(batterId),
     getBattedBalls(batterId),
     getPlayerAvailability(batterId),
+    getSeasonClubLabels(batterId),
   ]);
 
   if (!player) notFound();
@@ -43,7 +45,7 @@ export default async function BattingPage({
         {events.length === 0 ? (
           <p className="text-navy/60">{t("noData")}</p>
         ) : (
-          <SprayChartExplorer events={events} />
+          <SprayChartExplorer events={events} seasonClubs={clubLabels} />
         )}
       </div>
     </div>

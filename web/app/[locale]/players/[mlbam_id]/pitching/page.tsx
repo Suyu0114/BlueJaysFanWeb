@@ -4,6 +4,7 @@ import PitchingExplorer from "@/components/charts/PitchingExplorer";
 import PlayerNav from "@/components/PlayerNav";
 import { Reveal } from "@/components/motion/Reveal";
 import { getPitches } from "@/lib/pitching";
+import { getSeasonClubLabels } from "@/lib/compare";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
 
 export const revalidate = 86400;
@@ -20,10 +21,11 @@ export default async function PitchingPage({
   if (!Number.isFinite(pitcherId)) notFound();
 
   const t = await getTranslations("Pitching");
-  const [player, pitches, availability] = await Promise.all([
+  const [player, pitches, availability, clubLabels] = await Promise.all([
     getPlayer(pitcherId),
     getPitches(pitcherId),
     getPlayerAvailability(pitcherId),
+    getSeasonClubLabels(pitcherId),
   ]);
 
   if (!player) notFound();
@@ -41,7 +43,7 @@ export default async function PitchingPage({
         {pitches.length === 0 ? (
           <p className="text-navy/60">{t("noData")}</p>
         ) : (
-          <PitchingExplorer pitches={pitches} />
+          <PitchingExplorer pitches={pitches} seasonClubs={clubLabels} />
         )}
       </div>
     </div>

@@ -21,8 +21,15 @@ export async function getPitches(pitcherId: number): Promise<PitchEvent[]> {
       description,
       round(pfx_x, 3)::float8 as pfx_x,
       round(pfx_z, 3)::float8 as pfx_z,
-      round(estimated_woba, 3)::float8 as estimated_woba
-    from web_statcast_events
+      round(estimated_woba, 3)::float8 as estimated_woba,
+      zone,
+      -- P12: "as a Blue Jay" = in that game's Jays box score (a traded pitcher
+      -- can face Toronto inside a Jays game). DATA_MODEL invariant 7.
+      exists (
+        select 1 from web_player_game_stats s
+        where s.game_pk = e.game_pk and s.mlbam_id = e.pitcher_id
+      ) as as_jay
+    from web_statcast_events e
     where pitcher_id = ${pitcherId}
       and game_type = 'R'
     order by game_date

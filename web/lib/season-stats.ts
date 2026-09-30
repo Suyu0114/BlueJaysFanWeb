@@ -84,15 +84,21 @@ export async function getSeasonStats(mlbamId: number): Promise<SeasonStats[]> {
 // for the SeasonProgressBar's batter-pace calculation. Pitchers should not use
 // this number (a starter appears in ~32 games out of 162, which would over-
 // project WAR); see SeasonProgressBar for the pitcher branch.
+// P12: counted from his Jays box scores (regular season), not Statcast -- the
+// WAR it paces is Jays-only, while Statcast also holds his games with other
+// clubs (a deadline departure's new team, a newcomer's old one).
 export async function getBatterGamesPlayed(
   mlbamId: number,
   season: number,
 ): Promise<number> {
   const rows = await sql<{ n: number }[]>`
-    select count(distinct game_pk)::int as n
-    from web_statcast_events
-    where batter_id = ${mlbamId}
-      and extract(year from game_date) = ${season}
+    select count(*)::int as n
+    from web_player_game_stats s
+    join web_games g on g.game_pk = s.game_pk
+    where s.mlbam_id = ${mlbamId}
+      and s.stat_group = 'batting'
+      and g.season = ${season}
+      and g.game_type = 'R'
   `;
   return rows[0]?.n ?? 0;
 }

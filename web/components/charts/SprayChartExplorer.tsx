@@ -69,8 +69,12 @@ function FilterGroup({ label, children }: { label: string; children: ReactNode }
 // next-intl; all i18n lives here.
 export default function SprayChartExplorer({
   events,
+  seasonClubs = {},
 }: {
   events: BattedBallEvent[];
+  // P12: season -> club(s) he played for ("SD", "TOR/HOU"). Statcast rows cover
+  // every club, so a season chip says whose uniform the dots were hit in.
+  seasonClubs?: Record<string, string>;
 }) {
   const t = useTranslations("Batting");
   const locale = useLocale();
@@ -187,6 +191,7 @@ export default function SprayChartExplorer({
                 onClick={() => handleSeasonChange(s)}
               >
                 {s}
+                {seasonClubs[s] && <span className="ml-1 opacity-70">· {seasonClubs[s]}</span>}
               </Chip>
             ))}
           </FilterGroup>

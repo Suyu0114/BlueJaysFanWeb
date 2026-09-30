@@ -62,30 +62,52 @@ function FilterGroup({ label, children }: { label: string; children: ReactNode }
 // plain-language story caption.
 export default function PitchingExplorer({
   pitches,
+  seasonClubs = {},
 }: {
   pitches: PitchEvent[];
+  // P12: season -> club(s) he pitched for ("SD", "TOR/MIN"). Statcast rows cover
+  // every club, so the season chips say whose uniform the pitches were thrown in.
+  seasonClubs?: Record<string, string>;
 }) {
   const t = useTranslations("Pitching");
   const locale = useLocale();
 
+  // P12: season filter, newest first (like the spray chart). Without it a
+  // newcomer's arsenal would blend his seasons with other clubs into one line.
+  const seasons = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of pitches) if (p.game_date) s.add(p.game_date.slice(0, 4));
+    return [...s].sort().reverse();
+  }, [pitches]);
+  const [season, setSeason] = useState(() => seasons[0] ?? "all"); // "all" | "YYYY"
   const [month, setMonth] = useState("all"); // "all" | "YYYY-MM"
   const [pitchTypes, setPitchTypes] = useState<Set<string>>(new Set());
   const [batterHand, setBatterHand] = useState<BatterHand>("all");
   const [zoneAlignment, setZoneAlignment] = useState<string | null>(null);
 
+  const seasonPitches = useMemo(
+    () => (season === "all" ? pitches : pitches.filter((p) => p.game_date.slice(0, 4) === season)),
+    [pitches, season],
+  );
+
+  const handleSeasonChange = (s: string) => {
+    setSeason(s);
+    setMonth("all"); // months cascade off the selected season
+  };
+
   const { months, pitchOptions } = useMemo(() => {
     const m = new Set<string>();
     const p = new Set<string>();
-    for (const e of pitches) {
+    for (const e of seasonPitches) {
       if (e.game_date) m.add(e.game_date.slice(0, 7));
       if (e.pitch_type) p.add(e.pitch_type);
     }
     return { months: [...m].sort(), pitchOptions: [...p].sort() };
-  }, [pitches]);
+  }, [seasonPitches]);
 
   const filtered = useMemo(
     () =>
-      pitches.filter((p) => {
+      seasonPitches.filter((p) => {
         if (month !== "all" && p.game_date.slice(0, 7) !== month) return false;
         if (
           pitchTypes.size > 0 &&
@@ -95,7 +117,7 @@ export default function PitchingExplorer({
         if (batterHand !== "all" && p.stand !== batterHand) return false;
         return true;
       }),
-    [pitches, month, pitchTypes, batterHand],
+    [seasonPitches, month, pitchTypes, batterHand],
   );
 
   // The location heatmap reads plate_x/plate_z, which changed reference frame in
@@ -123,16 +145,16 @@ export default function PitchingExplorer({
     [filtered, activeAlignment],
   );
 
-  // Velocity trend: computed from the FULL pitch set (not the filters) so the
-  // line stays a stable season-long story; veloTrend() scopes to the latest
-  // season internally.
+  // Velocity trend: computed from the selected season's pitches, ignoring the
+  // month / pitch / hand filters, so the line stays a stable season-long story;
+  // under "All" veloTrend() scopes to the latest season internally.
   const { trendPitch, trendPoints } = useMemo(() => {
-    const trendPitch = primaryFastball(pitches);
+    const trendPitch = primaryFastball(seasonPitches);
     return {
       trendPitch,
-      trendPoints: trendPitch ? veloTrend(pitches, trendPitch) : [],
+      trendPoints: trendPitch ? veloTrend(seasonPitches, trendPitch) : [],
     };
-  }, [pitches]);
+  }, [seasonPitches]);
 
   const alignLabel = (a: string) =>
     a === "middle" ? t("alignMiddle") : t("alignFront");
@@ -176,6 +198,20 @@ export default function PitchingExplorer({
   return (
     <div className="space-y-6">
       <div className="space-y-1.5">
+        {seasons.length > 1 && (
+          <FilterGroup label={t("filterSeason")}>
+            <Chip active={season === "all"} onClick={() => handleSeasonChange("all")}>
+              {t("filterAll")}
+            </Chip>
+            {seasons.map((s) => (
+              <Chip key={s} active={season === s} onClick={() => handleSeasonChange(s)}>
+                {s}
+                {seasonClubs[s] && <span className="ml-1 opacity-70">· {seasonClubs[s]}</span>}
+              </Chip>
+            ))}
+          </FilterGroup>
+        )}
+
         <FilterGroup label={t("filterMonth")}>
           <Chip active={month === "all"} onClick={() => setMonth("all")}>
             {t("filterFullSeason")}

@@ -150,11 +150,12 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       page.tsx                 # overview: batter = KPI + RecentForm + RollingOpsSparkline + SeasonProgressBar + SeasonStatTable + ContactQualityCard + DisciplineCard + BattedBallProfileCard + WarBreakdown + GameLog; pitcher (P10) = KPI(W-L/SV/IP/ERA/WHIP/K%/WAR + hints) + PitcherRecentForm + PitcherDisciplineCard + RollingEraSparkline + SeasonProgressBar + PitcherSeasonStatTable + PitcherGameLog. Overview modules are Jays-scoped (P12).
       batting/page.tsx         # spray chart + EV/LA scatter
       pitching/page.tsx        # P10: arsenal table + movement chart + zone heatmap + velo trend
-      fielding/page.tsx        # FRV table + multi-position diagram
+      fielding/page.tsx        # FRV table + multi-position diagram (season cell carries the club label)
+      compare/page.tsx         # P12: season vs season incl. other clubs; URL state ?season=&vs=&scope=mlb|jays; What changed + season line + by-club + arc + Statcast
     standings/page.tsx         # P11: three views (AL / NL / Wild Card) + clinch legend
     about/page.tsx
   components/
-    PlayerNav.tsx              # tabs with `available` prop (bazi slot reserved for v2)
+    PlayerNav.tsx              # tabs with `available` prop (compare = >= 2 MLB seasons, P12; bazi slot reserved for v2)
     SeasonProgressBar.tsx      # batter pace projection / pitcher current-vs-prior
     ScheduleCalendar.tsx       # home schedule (rough.js hand-drawn parchment scorecard)
     ScorecardFrame.tsx         # reusable rough.js parchment frame (hero + roster cards)
@@ -165,7 +166,14 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     GameLog.tsx                # P9 last-10 game log (overview)
     ContactQualityCard.tsx     # P9 Avg/Max EV + Hard-Hit% (reuses computeExitVeloStats; as-a-Jay batted balls)
     SeasonCompareCard.tsx      # P12 generic season A vs B table + Δ chips (per-metric direction, † = net of 2026 zone shift)
-    DisciplineCards.tsx        # P12 DisciplineCard / BattedBallProfileCard / PitcherDisciplineCard (read the 015 views; scope prop)
+    DisciplineCards.tsx        # P12 DisciplineCard / BattedBallProfileCard / PitcherDisciplineCard / ContactCompareCard (015 views; scope prop)
+    compare/                   # P12 Compare tab pieces
+      CompareControls.tsx      # season / vs / scope Links (URL state, SlidingPill in control frames)
+      ClubSplits.tsx           # per-club rows when a season spans a trade
+      SeasonArc.tsx            # 2024-2026 small multiples (Recharts, compared seasons highlighted)
+      ArsenalCompareTable.tsx  # usage / velo / spin / Whiff% / xwOBAcon A vs B + NEW / DROPPED
+      VeloCompareChart.tsx     # primary-FB velo by appearance number, two seasons
+      ZoneGrid.tsx             # Savant zone-cell chart (semantic zone, never plate_x/z)
     PitcherSeasonStatTable.tsx # P10 year-by-year pitching line (overview, pitcher-only)
     PitcherRecentForm.tsx      # P10 Last 5 outings / Last 30 / Season (ERA/IP/K/BB/WHIP)
     PitcherGameLog.tsx         # P10 last-10 outings log (overview)
@@ -186,10 +194,10 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     charts/
       ChartTooltip.tsx         # shared animated tooltip for the SVG charts (pairs with use-lingering-hover)
       SprayChart.tsx           # optional secondaryEvents prop for /compare
-      SprayChartExplorer.tsx   # client filter wrapper around SprayChart (month/pitch/outcome/hand)
-      PitchingExplorer.tsx     # client filter wrapper: ArsenalTable + PitchMovementChart + PitchZoneHeatmap + VeloTrendChart
+      SprayChartExplorer.tsx   # client filter wrapper around SprayChart (season chips w/ club labels, month/pitch/outcome/hand)
+      PitchingExplorer.tsx     # client filter wrapper: season chips (P12, club labels) + ArsenalTable + PitchMovementChart + PitchZoneHeatmap + VeloTrendChart
       ArsenalTable.tsx         # P10 per-pitch-type usage bar + velo/spin/whiff%/xwOBAcon (replaced PitchDistribution)
-      PitchMovementChart.tsx   # P10 pfx scatter, pitcher's view (alignment-agnostic)
+      PitchMovementChart.tsx   # P10 pfx scatter, pitcher's view (alignment-agnostic); P12 ghostMeans = comparison-season rings + arrows
       VeloTrendChart.tsx       # P10 per-game primary-fastball velo (Recharts line)
       PitchZoneHeatmap.tsx     # pitch-location heatmap (16x20 grid + Gaussian kernel + SVG blur)
       FieldingDiagram.tsx      # primary chip (brick) + secondary chips (steel)
@@ -207,7 +215,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     batting-form.ts            # P9 pure helpers: summarize / windowByDays (generic) / rollingOps
     pitcher-game-log.ts        # P10 per-appearance pitching log (mirrors batter-game-log)
     pitching-form.ts           # P10 pure helpers: summarizePitching / lastNAppearances / rollingEra
-    pitch-arsenal.ts           # P10 pure: PitchEvent type + buildArsenal (whiff%/xwOBAcon) + veloTrend
+    pitch-arsenal.ts           # P10 pure: PitchEvent type + buildArsenal (whiff%/xwOBAcon) + veloTrend; P12: movementMeans / compareArsenals / zoneDistribution
+    compare.ts                 # P12 web_player_team_season_stats readers + clubsBySeason / getSeasonClubLabels ("2026 · TOR/HOU")
     pitch-colors.ts            # P10: shared PITCH_COLOR map (was in PitchDistribution)
     standings.ts               # P11 web_standings + byDivision / wildCardRace / playoffPicture / clinchMarker
     recent-game.ts             # Today's Blue Jays helpers (HR hero, hardest contact, IP/K/H)

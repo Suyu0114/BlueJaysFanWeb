@@ -21,6 +21,7 @@ export type PlayerAvailability = {
   batting: boolean;
   pitching: boolean;
   fielding: boolean;
+  compare: boolean;
   bazi: boolean;
 };
 
@@ -74,19 +75,23 @@ export async function getPlayer(
 // Which subpages should PlayerNav render for this player?
 // - batting / pitching: derived from web_player_seasons.appeared_as_*
 // - fielding: derived from any web_fielding_frv row (Savant excludes P / C)
+// - compare (P12): >= 2 MLB seasons in web_player_team_season_stats (team_id 0
+//   = season total), with any club -- the 2026 roster only (P12 D13)
 // - bazi: reserved slot for v2; always false in P6
 export async function getPlayerAvailability(
   mlbamId: number,
 ): Promise<PlayerAvailability> {
   const rows = await sql<
-    { has_batting: boolean; has_pitching: boolean; has_fielding: boolean }[]
+    { has_batting: boolean; has_pitching: boolean; has_fielding: boolean; mlb_seasons: number }[]
   >`
     select
       coalesce(bool_or(s.appeared_as_batter),  false) as has_batting,
       coalesce(bool_or(s.appeared_as_pitcher), false) as has_pitching,
       exists (
         select 1 from web_fielding_frv f where f.mlbam_id = ${mlbamId}
-      ) as has_fielding
+      ) as has_fielding,
+      (select count(*)::int from web_player_team_season_stats t
+        where t.mlbam_id = ${mlbamId} and t.team_id = 0) as mlb_seasons
     from web_player_seasons s
     where s.mlbam_id = ${mlbamId}
   `;
@@ -94,6 +99,7 @@ export async function getPlayerAvailability(
     has_batting: false,
     has_pitching: false,
     has_fielding: false,
+    mlb_seasons: 0,
   };
   // Safety net: if web_player_seasons isn't populated yet for this player
   // (e.g., right after a P5-era migration before backfill), default to showing
@@ -103,6 +109,7 @@ export async function getPlayerAvailability(
     batting: seasonsEmpty ? true : row.has_batting,
     pitching: seasonsEmpty ? true : row.has_pitching,
     fielding: row.has_fielding,
+    compare: row.mlb_seasons >= 2,
     bazi: false,
   };
 }

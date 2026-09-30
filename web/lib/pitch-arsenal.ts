@@ -26,6 +26,9 @@ export type PitchEvent = {
   pfx_x: number | null; // horizontal movement, feet, catcher's perspective
   pfx_z: number | null; // vertical movement vs spinless pitch, feet
   estimated_woba: number | null; // xwOBA; batted balls only, null otherwise
+  // P12 (optional so fixtures stay valid; getPitches always sets them):
+  zone?: number | null; // Savant zone cell: 1-9 in the zone, 11-14 outside
+  as_jay?: boolean; // in that game's Blue Jays box score
 };
 
 // Savant swing/whiff convention: foul tips count as whiffs, regular fouls as
@@ -146,4 +149,106 @@ export function veloTrend(
   return [...byGame.entries()]
     .map(([date, g]) => ({ date, avgVelo: g.sum / g.n, n: g.n }))
     .sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+// ---------------------------------------------------------------------------
+// P12 M3: season-vs-season helpers (Compare tab)
+// ---------------------------------------------------------------------------
+
+export type MovementMean = {
+  pitchType: string;
+  hIn: number; // horizontal break, inches, PITCHER'S view (pfx_x sign-flipped)
+  vIn: number; // vertical break, inches
+  n: number;
+  avgVelo: number | null;
+};
+
+// Per-pitch-type average movement. The single place pfx (feet, catcher's view)
+// becomes chart inches (pitcher's view) — PitchMovementChart uses it too.
+export function toMovementInches(p: PitchEvent): [number, number] {
+  return [-(p.pfx_x as number) * 12, (p.pfx_z as number) * 12];
+}
+
+export function movementMeans(pitches: PitchEvent[]): MovementMean[] {
+  const byType = new Map<
+    string,
+    { hSum: number; vSum: number; n: number; veloSum: number; veloN: number }
+  >();
+  for (const p of pitches) {
+    if (p.pfx_x == null || p.pfx_z == null || p.pitch_type == null) continue;
+    const [hx, vy] = toMovementInches(p);
+    const g =
+      byType.get(p.pitch_type) ?? { hSum: 0, vSum: 0, n: 0, veloSum: 0, veloN: 0 };
+    g.hSum += hx;
+    g.vSum += vy;
+    g.n += 1;
+    if (p.release_speed != null) {
+      g.veloSum += p.release_speed;
+      g.veloN += 1;
+    }
+    byType.set(p.pitch_type, g);
+  }
+  return [...byType.entries()]
+    .map(([pitchType, g]) => ({
+      pitchType,
+      hIn: g.hSum / g.n,
+      vIn: g.vSum / g.n,
+      n: g.n,
+      avgVelo: g.veloN === 0 ? null : g.veloSum / g.veloN,
+    }))
+    .sort((a, b) => b.n - a.n);
+}
+
+// NEW / DROPPED = thrown 0 times in one season, >= 5% usage in the other
+// (same rule as etl/season_report.py). Savant sometimes renames a pitch (a NEW
+// sweeper beside a DROPPED slider), so the UI should say "check velo / spin".
+export const NEW_PITCH_USAGE = 0.05;
+
+export type ArsenalCompareRow = {
+  pitchType: string;
+  a: ArsenalRow | null; // focus season
+  b: ArsenalRow | null; // comparison season
+  flag: "new" | "dropped" | null;
+};
+
+export function compareArsenals(a: ArsenalRow[], b: ArsenalRow[]): ArsenalCompareRow[] {
+  const types = new Set([...a.map((r) => r.pitchType), ...b.map((r) => r.pitchType)]);
+  return [...types]
+    .map((pitchType) => {
+      const ra = a.find((r) => r.pitchType === pitchType) ?? null;
+      const rb = b.find((r) => r.pitchType === pitchType) ?? null;
+      const flag: ArsenalCompareRow["flag"] =
+        ra && !rb && ra.usage >= NEW_PITCH_USAGE
+          ? "new"
+          : rb && !ra && rb.usage >= NEW_PITCH_USAGE
+            ? "dropped"
+            : null;
+      return { pitchType, a: ra, b: rb, flag };
+    })
+    .sort((x, y) => (y.a?.count ?? 0) - (x.a?.count ?? 0) || (y.b?.count ?? 0) - (x.b?.count ?? 0));
+}
+
+// Share of pitches per Savant zone cell (1-9 in the zone, 11-14 the four outside
+// quadrants), over pitches that have a zone. Semantic cells, not plate_x/plate_z,
+// so two seasons can sit side by side despite the 2026 coordinate change (P12
+// D3) -- but Savant's 2026 cell boundaries differ, see DATA_MODEL Known gaps #8.
+export type ZoneDistribution = { share: Record<number, number>; total: number };
+
+export function zoneDistribution(pitches: PitchEvent[]): ZoneDistribution {
+  const counts: Record<number, number> = {};
+  let total = 0;
+  for (const p of pitches) {
+    if (p.zone == null) continue;
+    counts[p.zone] = (counts[p.zone] ?? 0) + 1;
+    total += 1;
+  }
+  const share: Record<number, number> = {};
+  for (const [z, n] of Object.entries(counts)) share[Number(z)] = n / total;
+  return { share, total };
+}
+
+// Per-appearance average velo of one pitch type, indexed by appearance number
+// (1, 2, 3, …) so two seasons share an x-axis — dates don't line up across years.
+export function veloByAppearance(pitches: PitchEvent[], pitchType: string): number[] {
+  return veloTrend(pitches, pitchType).map((p) => p.avgVelo);
 }

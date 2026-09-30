@@ -21,6 +21,8 @@ import {
 import CountUp from "@/components/motion/CountUp";
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
+import { getSeasonClubLabels } from "@/lib/compare";
+import { Link } from "@/i18n/navigation";
 import {
   getBatterGamesPlayed,
   getSeasonStats,
@@ -121,15 +123,27 @@ export default async function PlayerOverviewPage({
 
   const t = await getTranslations("Overview");
 
-  const [player, availability, stats] = await Promise.all([
+  const [player, availability, stats, clubLabels] = await Promise.all([
     getPlayer(playerId),
     getPlayerAvailability(playerId),
     getSeasonStats(playerId),
+    getSeasonClubLabels(playerId),
   ]);
 
   if (!player) notFound();
 
   const { latest, prior } = pickLatest(stats);
+
+  // P12: everything on the overview is as a Blue Jay. When he also played for
+  // other clubs (2024-2026), point to the Compare tab's full-MLB seasons.
+  // "SD (2024, 2025), HOU (2026)"
+  const otherClubSeasons = new Map<string, string[]>();
+  for (const [season, label] of Object.entries(clubLabels).sort(([a], [b]) => Number(a) - Number(b))) {
+    for (const club of label.split("/")) {
+      if (club !== "TOR") otherClubSeasons.set(club, [...(otherClubSeasons.get(club) ?? []), season]);
+    }
+  }
+  const otherClubs = [...otherClubSeasons].map(([club, seasons]) => `${club} (${seasons.join(", ")})`);
 
   // Two-way is rare; pick the dominant role for the progress bar based on
   // which stat columns are present in the latest season.
@@ -243,6 +257,17 @@ export default async function PlayerOverviewPage({
           <p className="text-xs uppercase tracking-wide text-navy/55">
             {t("season")} {latest.season}
           </p>
+          {availability.compare && otherClubs.length > 0 && (
+            <p className="text-xs text-navy/60">
+              {t("otherClubsNote", { clubs: otherClubs.join(", ") })}{" "}
+              <Link
+                href={`/players/${playerId}/compare`}
+                className="font-semibold text-brick underline-offset-2 hover:underline"
+              >
+                {t("otherClubsLink")} →
+              </Link>
+            </p>
+          )}
           <RevealGroup className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
             {role === "batter" ? (
               <>

@@ -20,7 +20,12 @@ import { motion, useInView } from "motion/react";
 import ChartTooltip from "@/components/charts/ChartTooltip";
 import { SPRING_SOFT } from "@/lib/motion";
 import { useLingeringHover } from "@/lib/use-lingering-hover";
-import type { PitchEvent } from "@/lib/pitch-arsenal";
+import {
+  movementMeans,
+  toMovementInches,
+  type MovementMean,
+  type PitchEvent,
+} from "@/lib/pitch-arsenal";
 import { colorFor } from "@/lib/pitch-colors";
 
 export type PitchMovementLabels = {
@@ -52,32 +57,32 @@ export default function PitchMovementChart({
   pitches,
   labels,
   width = 420,
+  ghostMeans,
 }: {
   pitches: PitchEvent[];
   labels: PitchMovementLabels;
   width?: number;
+  // P12 Compare tab: the comparison season's per-type averages (movementMeans),
+  // drawn as hollow steel rings with an arrow to this season's mean — "how did
+  // each pitch's shape move?". pfx is release-frame, so seasons compare safely.
+  ghostMeans?: MovementMean[];
 }) {
   const height = width; // movement space is symmetric; keep it square
   const { hovered, last, enter, leave } = useLingeringHover<MeanMark>();
   const svgRef = useRef<SVGSVGElement>(null);
   const inView = useInView(svgRef, { once: true, amount: 0.3 });
 
-  const { dots, means, xScale, yScale, xTicks, yTicks } = useMemo(() => {
-    // Pitcher's view: flip pfx_x; feet -> inches.
-    const toInches = (p: PitchEvent): [number, number] => [
-      -(p.pfx_x as number) * 12,
-      (p.pfx_z as number) * 12,
-    ];
-
+  const { dots, means, ghosts, xScale, yScale, xTicks, yTicks } = useMemo(() => {
     const usable = pitches.filter(
       (p) => p.pfx_x != null && p.pfx_z != null && p.pitch_type != null,
     );
 
     let extent = MIN_RANGE_IN;
     for (const p of usable) {
-      const [hx, vy] = toInches(p);
+      const [hx, vy] = toMovementInches(p);
       extent = Math.max(extent, Math.abs(hx), Math.abs(vy));
     }
+    for (const g of ghostMeans ?? []) extent = Math.max(extent, Math.abs(g.hIn), Math.abs(g.vIn));
     extent += 2; // breathing room
 
     const xScale = scaleLinear(
@@ -93,7 +98,7 @@ export default function PitchMovementChart({
     const dots = usable
       .filter((_, i) => i % stride === 0)
       .map((p) => {
-        const [hx, vy] = toInches(p);
+        const [hx, vy] = toMovementInches(p);
         return {
           id: p.id,
           cx: xScale(hx),
@@ -102,49 +107,28 @@ export default function PitchMovementChart({
         };
       });
 
-    const byType = new Map<
-      string,
-      { hSum: number; vSum: number; n: number; veloSum: number; veloN: number }
-    >();
-    for (const p of usable) {
-      const [hx, vy] = toInches(p);
-      const g =
-        byType.get(p.pitch_type as string) ??
-        { hSum: 0, vSum: 0, n: 0, veloSum: 0, veloN: 0 };
-      g.hSum += hx;
-      g.vSum += vy;
-      g.n += 1;
-      if (p.release_speed != null) {
-        g.veloSum += p.release_speed;
-        g.veloN += 1;
-      }
-      byType.set(p.pitch_type as string, g);
-    }
-    const means: MeanMark[] = [...byType.entries()]
-      .map(([pitchType, g]) => {
-        const hIn = g.hSum / g.n;
-        const vIn = g.vSum / g.n;
-        return {
-          pitchType,
-          cx: xScale(hIn),
-          cy: yScale(vIn),
-          hIn,
-          vIn,
-          n: g.n,
-          avgVelo: g.veloN === 0 ? null : g.veloSum / g.veloN,
-        };
-      })
-      .sort((a, b) => b.n - a.n);
+    const means: MeanMark[] = movementMeans(usable).map((m) => ({
+      ...m,
+      cx: xScale(m.hIn),
+      cy: yScale(m.vIn),
+    }));
+    const ghosts = (ghostMeans ?? []).map((g) => ({
+      pitchType: g.pitchType,
+      cx: xScale(g.hIn),
+      cy: yScale(g.vIn),
+      to: means.find((m) => m.pitchType === g.pitchType) ?? null,
+    }));
 
     return {
       dots,
       means,
+      ghosts,
       xScale,
       yScale,
       xTicks: xScale.ticks(6),
       yTicks: yScale.ticks(6),
     };
-  }, [pitches, width, height]);
+  }, [pitches, width, height, ghostMeans]);
 
   if (means.length === 0) return null;
 
@@ -278,6 +262,57 @@ export default function PitchMovementChart({
             }}
           />
         ))}
+
+        {/* P12: comparison-season means — hollow steel rings, with a thin arrow
+            to where the same pitch sits now. Drawn under the current means. */}
+        {ghosts.length > 0 && (
+          <defs>
+            <marker id="ghost-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M0,0 L8,4 L0,8 z" fill="var(--color-steel)" />
+            </marker>
+          </defs>
+        )}
+        {ghosts.map((g) => {
+          const dx = g.to ? g.to.cx - g.cx : 0;
+          const dy = g.to ? g.to.cy - g.cy : 0;
+          const len = Math.hypot(dx, dy);
+          // Stop short of both rings; skip arrows for shapes that barely moved.
+          const showArrow = g.to != null && len > 18;
+          return (
+            <motion.g
+              key={`ghost-${g.pitchType}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: inView ? 1 : 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+            >
+              {showArrow && (
+                <line
+                  x1={g.cx + (dx / len) * 8}
+                  y1={g.cy + (dy / len) * 8}
+                  x2={g.to!.cx - (dx / len) * 10}
+                  y2={g.to!.cy - (dy / len) * 10}
+                  stroke="var(--color-steel)"
+                  strokeWidth={1.5}
+                  markerEnd="url(#ghost-arrow)"
+                />
+              )}
+              <circle
+                cx={g.cx}
+                cy={g.cy}
+                r={6}
+                fill="none"
+                stroke="var(--color-steel)"
+                strokeWidth={1.5}
+                strokeDasharray="3 2"
+              />
+              {!g.to && (
+                <text x={g.cx + 9} y={g.cy} dominantBaseline="middle" fill="var(--color-navy)" fillOpacity={0.5} fontSize={10}>
+                  {g.pitchType}
+                </text>
+              )}
+            </motion.g>
+          );
+        })}
 
         {/* per-type mean markers + direct labels. Positioned by a motion <g>
             translate so a filter change GLIDES each mean to its new spot; they

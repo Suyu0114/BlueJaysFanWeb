@@ -192,3 +192,38 @@ export async function PitcherDisciplineCard({
     />
   );
 }
+
+// P12 M3 (Compare tab): exit-velocity side of contact — the batted-ball card
+// already carries Hard-Hit% / Sweet-Spot%.
+export async function ContactCompareCard({
+  rows,
+  seasonA,
+  seasonB,
+  scope,
+}: {
+  rows: BattedBallProfile[];
+  seasonA: number;
+  seasonB: number | null;
+  scope: Scope;
+}) {
+  const { a, b } = pick(rows, seasonA, seasonB);
+  if (!a || a.with_ev === 0) return null;
+  const { t, scopeLabel, labels } = await common(scope);
+  const B = b ? seasonB : null;
+  const metrics: CompareRow[] = [
+    { key: "avgev", label: "Avg EV (mph)", hint: t("hintAvgEv"), a: a.avg_ev, b: b?.avg_ev, format: "mph", direction: "higher" },
+    { key: "maxev", label: "Max EV (mph)", hint: t("hintMaxEv"), a: a.max_ev, b: b?.max_ev, format: "mph", direction: "higher" },
+    { key: "xwobacon", label: "xwOBAcon", hint: t("hintXwobaCon"), a: a.xwoba_con, b: b?.xwoba_con, format: "rate3", direction: "higher" },
+  ];
+  return (
+    <SeasonCompareCard
+      title={t("contactTitle")}
+      subtitle={scopeLabel}
+      seasonA={seasonA}
+      seasonB={B}
+      sample={{ label: t("sampleBip"), a: a.bip, b: b?.bip ?? null }}
+      rows={metrics}
+      labels={{ ...labels, changeUnit: undefined }}
+    />
+  );
+}

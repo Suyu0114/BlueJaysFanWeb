@@ -131,7 +131,9 @@
     "kpiHintEra": "每 9 局的自責分 — 越低越好",
     "kpiHintWhip": "每局被上壘數（安打＋保送）— 越低越好",
     "kpiHintKPct": "三振掉的打者比例 — 越高越好",
-    "kpiHintWar": "Wins Above Replacement — 相對替補級球員的總價值"
+    "kpiHintWar": "Wins Above Replacement — 相對替補級球員的總價值",
+    "otherClubsNote": "這裡的數據只算藍鳥時期。他也待過 {clubs}。",
+    "otherClubsLink": "看他完整的大聯盟球季比較"
   },
   "Discipline": {
     "disciplineTitle": "選球",
@@ -168,7 +170,137 @@
     "hintFirstStrike": "第一球就是好球的比例 — 越高越好",
     "hintKBB": "三振率減保送率 — 越高越好",
     "approxNote": "GB / LD / FB / PU 是用擊球仰角推算的近似值。",
-    "zoneShiftNote": "† 已扣除 Savant {newer} 年好球帶定義的變化：從 {older} 到 {newer}，資料庫裡所有投球的 Chase% 自己就變了 {chase} 個百分點、Zone% 變了 {zone} 個百分點，這裡的變化已把這段整體位移扣掉。"
+    "zoneShiftNote": "† 已扣除 Savant {newer} 年好球帶定義的變化：從 {older} 到 {newer}，資料庫裡所有投球的 Chase% 自己就變了 {chase} 個百分點、Zone% 變了 {zone} 個百分點，這裡的變化已把這段整體位移扣掉。",
+    "contactTitle": "擊球力道",
+    "hintAvgEv": "擊出球的平均初速 — 越高越好",
+    "hintMaxEv": "擊球初速最高的一球 — 代表純力量",
+    "hintXwobaCon": "擊出球的預期 wOBA，代表擊球品質 — 越高越好"
+  },
+  "Compare": {
+    "title": "賽季比較",
+    "notEnough": "目前只有他一個大聯盟球季的資料，還沒有東西可以比較。",
+    "controlSeason": "球季",
+    "controlVs": "比較對象",
+    "controlScope": "範圍",
+    "scopeMlb": "全大聯盟",
+    "scopeJays": "藍鳥時期",
+    "jaysDisabled": "這兩季他不是都在藍鳥",
+    "summaryBatter": "{g} G · {pa} PA",
+    "summaryPitcher": "{g} G · {ip} IP",
+    "changedTitle": "有什麼不一樣",
+    "changeLine": "{stat} {dir} {amount} — {meaning}",
+    "up": "上升",
+    "down": "下降",
+    "noBigChanges": "沒有大幅變化——數據上他跟之前差不多。",
+    "smallSampleNote": "{seasons} 樣本較少：這些變化當作參考，不要當定論。",
+    "zoneShiftShort": "† 已扣除 Savant 2026 年好球帶定義改變造成的 Chase% 整體位移（每位球員都受影響）。",
+    "taleTitle": "球季成績",
+    "clubsTitle": "各隊成績",
+    "colClub": "球隊",
+    "colSpan": "期間",
+    "arcTitle": "{from}–{to} 走勢",
+    "statcastTitle": "Statcast 細節",
+    "statcastSubtitle": "逐球 Statcast 資料，例行賽。",
+    "sprayTitle": "擊球落點",
+    "sprayCaption": "{n} 顆擊出球",
+    "noStatcast": "這個球季在目前的範圍內沒有 Statcast 資料。",
+    "arsenalTitle": "球種組合",
+    "colPitch": "球種",
+    "colVeloChange": "球速 Δ",
+    "badgeNew": "新球種",
+    "badgeDropped": "不再使用",
+    "arsenalNote": "新球種 / 不再使用 = 一季完全沒投、另一季使用率 5% 以上。Savant 有時會把同一顆球改名（例如新增 sweeper、同時少了 slider），判斷是不是真的新球種前請先看球速和轉速。",
+    "movementTitle": "球路位移",
+    "movementNote": "點與實心標記：{a}。虛線圈：{b} 的平均位移，箭頭表示每種球的位移怎麼變。投手視角。",
+    "zoneTitle": "進壘位置",
+    "pitchCount": "{n} 球",
+    "zoneNote": "每個 Savant 好球帶格子的投球比例，捕手視角。",
+    "zoneShiftGrid": "Savant 2026 年的格子畫法不同，請看整體分布，不要比較個別格子的小差異。",
+    "veloTitle": "每場速球均速",
+    "veloNote": "依出賽序號的平均球速：{a} 實線、{b} 虛線。",
+    "appearance": "第幾次出賽",
+    "meaning": {
+      "ops": {
+        "better": "打擊產能提升",
+        "worse": "打擊產能下滑"
+      },
+      "wrcPlus": {
+        "better": "相對聯盟是更好的打者",
+        "worse": "相對聯盟打擊變弱"
+      },
+      "war": {
+        "better": "整體價值更高",
+        "worse": "整體價值較低"
+      },
+      "kPct": {
+        "better": "三振變少",
+        "worse": "三振變多"
+      },
+      "bbPct": {
+        "better": "保送變多",
+        "worse": "保送變少"
+      },
+      "chase": {
+        "better": "亂揮的球變少",
+        "worse": "亂揮的球變多"
+      },
+      "whiff": {
+        "better": "更容易碰到球",
+        "worse": "揮空變多"
+      },
+      "hardHit": {
+        "better": "擊球更強勁",
+        "worse": "擊球變軟"
+      },
+      "avgEv": {
+        "better": "擊球更強勁",
+        "worse": "擊球變軟"
+      },
+      "sweetSpot": {
+        "better": "擊球仰角更理想",
+        "worse": "擊球仰角變差"
+      },
+      "xwobaCon": {
+        "better": "擊球品質更好",
+        "worse": "擊球品質變差"
+      },
+      "era": {
+        "better": "失分變少",
+        "worse": "失分變多"
+      },
+      "fip": {
+        "better": "三振、保送、全壘打數據更好",
+        "worse": "三振、保送、全壘打數據變差"
+      },
+      "whip": {
+        "better": "放上壘的人變少",
+        "worse": "放上壘的人變多"
+      },
+      "pKPct": {
+        "better": "三振變多",
+        "worse": "三振變少"
+      },
+      "pBbPct": {
+        "better": "保送變少",
+        "worse": "保送變多"
+      },
+      "csw": {
+        "better": "拿到更多好球與揮空",
+        "worse": "好球與揮空變少"
+      },
+      "pWhiff": {
+        "better": "讓打者揮空更多",
+        "worse": "讓打者揮空變少"
+      },
+      "pChase": {
+        "better": "騙到更多追打",
+        "worse": "騙到的追打變少"
+      },
+      "fbVelo": {
+        "better": "球速提升",
+        "worse": "球速下滑"
+      }
+    }
   },
   "Batting": {
     "sprayChart": "Spray Chart",
@@ -204,6 +336,7 @@
     "subtitle": "他投什麼球、投向哪裡、效果如何 — 收錄所有例行賽投球。",
     "noData": "尚無投球資料。",
     "showing": "共 {total} 球，顯示 {shown} 球",
+    "filterSeason": "賽季",
     "filterMonth": "月份",
     "filterFullSeason": "整季",
     "filterPitchType": "球種",
@@ -240,6 +373,7 @@
     "batting": "打擊",
     "pitching": "投球",
     "fielding": "守備",
+    "compare": "賽季比較",
     "bazi": "八字"
   },
   "Fielding": {
