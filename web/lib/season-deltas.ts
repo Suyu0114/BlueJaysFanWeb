@@ -89,3 +89,30 @@ export function formatChange(d: number, format: ChangeFormat, pts: string): stri
     default: return x.toFixed(0);
   }
 }
+
+// ---------------------------------------------------------------------------
+// M4: prior-season overlay for the rolling sparklines. Two seasons share an
+// x-axis by GAME NUMBER (his Nth game / outing), since dates don't line up.
+// ---------------------------------------------------------------------------
+
+export type OverlayPoint = {
+  game: number;
+  value: number | null; // current season
+  prior: number | null; // comparison season
+  date: string | null; // current season's date for that game, for the tooltip
+};
+
+export function overlayByGame<T extends { game: number; date: string }>(
+  current: T[],
+  prior: T[] | undefined,
+  pick: (p: T) => number,
+): OverlayPoint[] {
+  const byGame = new Map<number, OverlayPoint>();
+  for (const p of current) byGame.set(p.game, { game: p.game, value: pick(p), prior: null, date: p.date });
+  for (const p of prior ?? []) {
+    const row = byGame.get(p.game) ?? { game: p.game, value: null, prior: null, date: null };
+    row.prior = pick(p);
+    byGame.set(p.game, row);
+  }
+  return [...byGame.values()].sort((a, b) => a.game - b.game);
+}

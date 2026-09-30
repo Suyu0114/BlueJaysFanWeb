@@ -133,7 +133,11 @@
     "kpiHintKPct": "Share of batters he strikes out — higher is better",
     "kpiHintWar": "Wins Above Replacement — total value over a fill-in player",
     "otherClubsNote": "Numbers here are as a Blue Jay. He also played for {clubs}.",
-    "otherClubsLink": "Compare his full MLB seasons"
+    "otherClubsLink": "Compare his full MLB seasons",
+    "gameN": "Game {n}",
+    "outingN": "Outing {n}",
+    "byGameNumber": "lined up by game number",
+    "byOutingNumber": "lined up by outing number"
   },
   "Discipline": {
     "disciplineTitle": "Plate Discipline",

@@ -172,19 +172,24 @@ export default async function PlayerOverviewPage({
   // balls drive the contact-quality card. Pitchers skip all of this.
   const isBatter = role === "batter" && latest != null;
   const today = new Date().toISOString().slice(0, 10);
-  const [gameLog, battedBalls, discipline, profile] = isBatter
+  // P12 M4: the prior Jays season's log feeds the dashed overlay on the
+  // rolling sparkline (by game number). Box scores exist for 2024-2026.
+  const priorLogSeason = prior && latest && prior.season < latest.season ? prior.season : null;
+  const [gameLog, battedBalls, discipline, profile, priorGameLog] = isBatter
     ? await Promise.all([
         getBatterGameLog(playerId, latest!.season),
         getBattedBalls(playerId),
         getBatterDiscipline(playerId, "jays"),
         getBattedBallProfile(playerId, "jays"),
+        priorLogSeason ? getBatterGameLog(playerId, priorLogSeason) : Promise.resolve([]),
       ])
-    : [[], [], [], []];
+    : [[], [], [], [], []];
 
   const last7 = summarize(windowByDays(gameLog, 7, today));
   const last30 = summarize(windowByDays(gameLog, 30, today));
   const seasonSplit = summarize(gameLog);
   const rolling = rollingOps(gameLog, 15);
+  const priorRolling = rollingOps(priorGameLog, 15);
   const recentGames = [...gameLog].reverse().slice(0, 10);
   // As a Blue Jay, like every other overview module (and the Hard-Hit% on the
   // batted-ball card below, which reads the same population from the 015 view).
@@ -199,16 +204,18 @@ export default async function PlayerOverviewPage({
   // sparkline, and the last-10 log. The year-by-year table reads the same
   // season stats already fetched above.
   const isPitcher = role === "pitcher" && latest != null;
-  const [pitcherLog, pitcherDiscipline] = isPitcher
+  const [pitcherLog, pitcherDiscipline, priorPitcherLog] = isPitcher
     ? await Promise.all([
         getPitcherGameLog(playerId, latest!.season),
         getPitcherDiscipline(playerId, "jays"),
+        priorLogSeason ? getPitcherGameLog(playerId, priorLogSeason) : Promise.resolve([]),
       ])
-    : [[], []];
+    : [[], [], []];
   const pitcherLast5 = summarizePitching(lastNAppearances(pitcherLog, 5));
   const pitcherLast30 = summarizePitching(windowByDays(pitcherLog, 30, today));
   const pitcherSeason = summarizePitching(pitcherLog);
   const eraTrend = rollingEra(pitcherLog, 5);
+  const priorEraTrend = rollingEra(priorPitcherLog, 5);
   const recentApps = [...pitcherLog].reverse().slice(0, 10);
 
   // P12 M2: newest Jays season vs the one before it. Zone-based rates straddling
@@ -336,7 +343,12 @@ export default async function PlayerOverviewPage({
 
           {isBatter && (
             <Reveal>
-              <RollingOpsSparkline data={rolling} />
+              <RollingOpsSparkline
+                data={rolling}
+                prior={priorRolling}
+                season={latest!.season}
+                priorSeason={priorLogSeason ?? undefined}
+              />
             </Reveal>
           )}
 
@@ -364,7 +376,12 @@ export default async function PlayerOverviewPage({
 
           {isPitcher && (
             <Reveal>
-              <RollingEraSparkline data={eraTrend} />
+              <RollingEraSparkline
+                data={eraTrend}
+                prior={priorEraTrend}
+                season={latest!.season}
+                priorSeason={priorLogSeason ?? undefined}
+              />
             </Reveal>
           )}
 

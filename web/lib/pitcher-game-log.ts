@@ -6,8 +6,10 @@ import { sql } from "./db";
 // (one fetch, derived three ways in lib/pitching-form.ts). Mirrors
 // lib/batter-game-log.ts.
 //
-// Current-season only by nature: web_player_game_stats is maintained by the
-// nightly box-score ingest for the live season; 2024/2025 are not backfilled.
+// Box scores cover every Jays final 2024-2026 (backfilled in P12 M0) and are
+// Jays-only by construction (Toronto's side of the box score). Regular season
+// only: 2025 also holds 18 postseason games, which would otherwise leak into
+// Recent Form / the rolling trend / the prior-season overlay.
 export type PitcherGameRow = {
   game_pk: number;
   game_date: string; // 'YYYY-MM-DD' (web_games.game_date, ET standings date)
@@ -56,6 +58,7 @@ export async function getPitcherGameLog(
     where s.mlbam_id = ${mlbamId}
       and s.stat_group = 'pitching'
       and g.season = ${season}
+      and g.game_type = 'R'
       and g.is_final = true
     order by g.game_date, g.game_number
   `;

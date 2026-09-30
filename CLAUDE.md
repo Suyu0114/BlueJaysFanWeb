@@ -202,18 +202,18 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       PitchZoneHeatmap.tsx     # pitch-location heatmap (16x20 grid + Gaussian kernel + SVG blur)
       FieldingDiagram.tsx      # primary chip (brick) + secondary chips (steel)
       WarBreakdown.tsx         # batter WAR diverging stacked bar (P7)
-      RollingOpsSparkline.tsx  # P9 15-game rolling-OPS trend (Recharts line)
-      RollingEraSparkline.tsx  # P10 5-outing rolling-ERA trend (Recharts line)
+      RollingOpsSparkline.tsx  # P9 15-game rolling-OPS trend (Recharts line); P12 M4 optional prior-season dashed line by game number
+      RollingEraSparkline.tsx  # P10 5-outing rolling-ERA trend (Recharts line); P12 M4 optional prior-season dashed line by outing number
   lib/
     db.ts                      # postgres.js client (PgBouncer-safe: prepare: false)
     players.ts                 # roster modes + getPlayerAvailability
     batting.ts / pitching.ts / fielding.ts
     season-stats.ts            # web_player_season_stats (incl. P9 basic line + P10 pitcher line) + batter games-played
     discipline.ts              # P12 015-view readers (batter/pitcher discipline, batted-ball profile, zone reference), scope 'mlb'|'jays'
-    season-deltas.ts           # P12 pure: delta / per-metric tone / 2026 zone-change helpers (M3 "What changed" extends it)
-    batter-game-log.ts         # P9 per-game batting log (web_player_game_stats + web_games), current season
+    season-deltas.ts           # P12 pure: delta / per-metric tone / 2026 zone-change helpers, biggestChanges (What changed), overlayByGame (M4)
+    batter-game-log.ts         # P9 per-game batting log (web_player_game_stats + web_games), any 2024-2026 season, game_type 'R' only
     batting-form.ts            # P9 pure helpers: summarize / windowByDays (generic) / rollingOps
-    pitcher-game-log.ts        # P10 per-appearance pitching log (mirrors batter-game-log)
+    pitcher-game-log.ts        # P10 per-appearance pitching log (mirrors batter-game-log; 'R' only)
     pitching-form.ts           # P10 pure helpers: summarizePitching / lastNAppearances / rollingEra
     pitch-arsenal.ts           # P10 pure: PitchEvent type + buildArsenal (whiff%/xwOBAcon) + veloTrend; P12: movementMeans / compareArsenals / zoneDistribution
     compare.ts                 # P12 web_player_team_season_stats readers + clubsBySeason / getSeasonClubLabels ("2026 · TOR/HOU")

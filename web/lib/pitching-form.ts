@@ -62,7 +62,9 @@ export function lastNAppearances(
   return rows.slice(-count);
 }
 
-export type RollingEraPoint = { date: string; era: number };
+// `game` = his Nth appearance of the season (1-based) — the shared x-axis when
+// two seasons are overlaid (P12 M4).
+export type RollingEraPoint = { game: number; date: string; era: number };
 
 // Trailing-window ERA per appearance (default 5). Each point aggregates the
 // window's ER and outs and derives one ERA (IP-weighted), NOT a mean of
@@ -77,7 +79,7 @@ export function rollingEra(
   const out: RollingEraPoint[] = [];
   for (let i = window - 1; i < rows.length; i++) {
     const era = summarizePitching(rows.slice(i - window + 1, i + 1)).era;
-    if (era != null) out.push({ date: rows[i].game_date, era });
+    if (era != null) out.push({ game: i + 1, date: rows[i].game_date, era });
   }
   return out;
 }

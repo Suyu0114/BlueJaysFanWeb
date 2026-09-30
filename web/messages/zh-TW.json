@@ -133,7 +133,11 @@
     "kpiHintKPct": "三振掉的打者比例 — 越高越好",
     "kpiHintWar": "Wins Above Replacement — 相對替補級球員的總價值",
     "otherClubsNote": "這裡的數據只算藍鳥時期。他也待過 {clubs}。",
-    "otherClubsLink": "看他完整的大聯盟球季比較"
+    "otherClubsLink": "看他完整的大聯盟球季比較",
+    "gameN": "第 {n} 場",
+    "outingN": "第 {n} 次出賽",
+    "byGameNumber": "依出賽場次對齊",
+    "byOutingNumber": "依出賽次數對齊"
   },
   "Discipline": {
     "disciplineTitle": "選球",

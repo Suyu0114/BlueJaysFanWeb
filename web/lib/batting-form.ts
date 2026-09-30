@@ -94,7 +94,9 @@ export function windowByDays<T extends { game_date: string }>(
   return rows.filter((g) => g.game_date > cutoff);
 }
 
-export type RollingOpsPoint = { date: string; ops: number };
+// `game` = his Nth game of the season (1-based) — the shared x-axis when two
+// seasons are overlaid (dates don't line up across years; P12 M4).
+export type RollingOpsPoint = { game: number; date: string; ops: number };
 
 // Trailing-window OPS per game (default 15). Returns [] when there are fewer
 // than `window` games so the sparkline can be hidden for small samples.
@@ -107,7 +109,7 @@ export function rollingOps(
   for (let i = window - 1; i < rows.length; i++) {
     const slice = rows.slice(i - window + 1, i + 1);
     const ops = summarize(slice).ops;
-    if (ops != null) out.push({ date: rows[i].game_date, ops });
+    if (ops != null) out.push({ game: i + 1, date: rows[i].game_date, ops });
   }
   return out;
 }
