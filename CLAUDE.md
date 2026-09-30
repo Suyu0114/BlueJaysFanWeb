@@ -153,6 +153,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       fielding/page.tsx        # FRV table + multi-position diagram (season cell carries the club label)
       compare/page.tsx         # P12: season vs season incl. other clubs; URL state ?season=&vs=&scope=mlb|jays; What changed + season line + by-club + arc + Statcast
     standings/page.tsx         # P11: three views (AL / NL / Wild Card) + clinch legend
+    season/[year]/page.tsx     # P12 M5: team season vs prior (record strip, games above .500 + run diff by game number, months, splits, leaders, WAR by position); generateStaticParams = seasons with R finals; player modules hide when a season has no player rows (< 2024)
     about/page.tsx
   components/
     PlayerNav.tsx              # tabs with `available` prop (compare = >= 2 MLB seasons, P12; bazi slot reserved for v2)
@@ -183,6 +184,10 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     WildCardTable.tsx          # P11 wild card race + cut line (division leaders excluded)
     PlayoffRace.tsx            # P11 AL seeds 1-6 + cut line + chasers
     HomeStandings.tsx          # P11 home module: AL East table + PlayoffRace in ScorecardFrames
+    Header.tsx                 # async: Nav.team ("Team" / 球隊, after Standings) -> /season/<latest> via getLatestTeamSeason (P13 repoints it to /team); wraps to 2 rows on phones
+    season/                    # P12 M5 charts
+      SeasonTrendChart.tsx     # games above .500 / cumulative run diff by game number, prior season dashed
+      WarByPositionChart.tsx   # team WAR by position group, season vs prior bars
     standings-chrome.ts        # P11 shared table chrome (navy header bar / ledger stripes / rowBg)
     StandingsTabs.tsx          # P11 client view switcher: AL / NL / Wild Card (+ AL-NL toggle inside WC)
     motion/
@@ -219,6 +224,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     compare.ts                 # P12 web_player_team_season_stats readers + clubsBySeason / getSeasonClubLabels ("2026 · TOR/HOU")
     pitch-colors.ts            # P10: shared PITCH_COLOR map (was in PitchDistribution)
     standings.ts               # P11 web_standings + byDivision / wildCardRace / playoffPicture / clinchMarker
+    team-season.ts             # P12 M5 PURE (P13 reuses): gamesAboveSeries / runDiffSeries / monthlyRecords / seasonSplits / longestStreak / teamLeaders / positionGroup / warByPosition
+    team-season-data.ts        # P12 M5 DB readers: getTeamSeasons (cached; the Nav + page season resolver) / getTeamGames / getTeamPlayerSeasons
     recent-game.ts             # Today's Blue Jays helpers (HR hero, hardest contact, IP/K/H)
     field-geometry.ts          # Rogers Centre SVG paths (exports polar())
     motion.ts                  # motion timing tokens (EASE_SOFT / DUR / STAGGER / SPRING_*)

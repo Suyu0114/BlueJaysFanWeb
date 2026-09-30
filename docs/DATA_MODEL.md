@@ -296,9 +296,11 @@ it's a lazy cache, populated only on a lookup miss.
 
 Blue Jays schedule + results — the calendar source. **Doubleheaders → two rows**
 (distinct `game_pk`, same `game_date`, different `game_number`). **Jays games only**
-(P11: never widen it). Seasons 2024–2026 (2024 added in P12 M0 so its box scores
-exist); 2025 = 162 regular + 18 postseason — **filter `game_type = 'R'`** for the
-regular-season record.
+(P11: never widen it). Seasons 2022–2026: 2024 was added in P12 M0 (with box
+scores); 2022–2023 schedules (+ their `web_standings` snapshots) were loaded on
+2026-09-29 for P13 and have **no box scores or player stats**, so anything
+player-level starts in 2024. 2025 = 162 regular + 18 postseason — **filter
+`game_type = 'R'`** for the regular-season record.
 
 | Column | Type | Null | Meaning |
 |---|---|---|---|

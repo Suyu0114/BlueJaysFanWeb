@@ -1,25 +1,32 @@
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { getLatestTeamSeason } from "@/lib/team-season-data";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 
 // Nav links: a steel rule draws in from the left on hover (scale-x on ::after),
 // alongside the colour shift — slow enough to read as a stroke, not a blink.
 const NAV_LINK =
-  "relative transition-colors hover:text-steel after:absolute after:inset-x-0 after:-bottom-1 after:h-0.5 after:origin-left after:scale-x-0 after:rounded-full after:bg-steel after:transition-transform after:duration-500 hover:after:scale-x-100";
+  "relative whitespace-nowrap transition-colors hover:text-steel after:absolute after:inset-x-0 after:-bottom-1 after:h-0.5 after:origin-left after:scale-x-0 after:rounded-full after:bg-steel after:transition-transform after:duration-500 hover:after:scale-x-100";
 
-export function Header() {
-  const t = useTranslations("Nav");
+export async function Header() {
+  const t = await getTranslations("Nav");
+  // P12 M5 (D11): "Team" -> the newest season page, resolved by the same helper
+  // as /season/[year]. P13 repoints this one link to /team — keep key, label and
+  // position unchanged.
+  const teamSeason = await getLatestTeamSeason();
 
   return (
     <header className="border-b-2 border-brick bg-navy text-papaya">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
+      {/* Wraps to two rows at phone width (brand, then the links) instead of
+          overflowing; labels never break mid-word (zh-TW would stack them). */}
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
         <Link
           href="/"
-          className="font-display text-lg uppercase tracking-wide"
+          className="whitespace-nowrap font-display text-lg uppercase tracking-wide"
         >
           {t("brand")}
         </Link>
-        <nav className="flex items-center gap-4 text-sm">
+        <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
           <Link href="/" className={NAV_LINK}>
             {t("home")}
           </Link>
@@ -29,6 +36,11 @@ export function Header() {
           <Link href="/standings" className={NAV_LINK}>
             {t("standings")}
           </Link>
+          {teamSeason != null && (
+            <Link href={`/season/${teamSeason}`} className={NAV_LINK}>
+              {t("team")}
+            </Link>
+          )}
           <Link href="/about" className={NAV_LINK}>
             {t("about")}
           </Link>
