@@ -166,11 +166,12 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       fielding/page.tsx        # FRV table + multi-position diagram (season cell carries the club label)
       compare/page.tsx         # P12: season vs season incl. other clubs; URL state ?season=&vs=&scope=mlb|jays; What changed + season line + by-club + arc + Statcast
     standings/page.tsx         # P11: three views (AL / NL / Wild Card) + clinch legend
-    season/[year]/page.tsx     # P12 M5: team season vs prior (record strip, games above .500 + run diff by game number, months, splits, leaders, WAR by position); generateStaticParams = seasons with R finals; player modules hide when a season has no player rows (< 2024)
-    team/page.tsx              # P13: Blue Jays over the latest 5 seasons vs the MLB average + 30-club ranks — season strip, ① record & run differential, ② offense, ③ run prevention, ④ trajectory + splits, ⑤ strengths & weaknesses, ⑥ glossary & method; SSG, revalidate 3600
+    season/[year]/page.tsx     # P12 M5: team season vs prior (record strip, games above .500 + run diff by game number, months, splits, leaders, WAR by position); generateStaticParams = seasons with R finals; player modules hide when a season has no player rows (< 2024). Post-P13: TeamNav tabs; MLB rank chips on PCT / RS / RA / run diff + "Where {season} ranked" (StrengthsWeaknesses single) from the 022 views, hidden without a Jays row; leaders WAR/OPS/HR/SB + ERA/WHIP/SO/SV
+    team/page.tsx              # P13: Blue Jays over the latest 5 seasons vs the MLB average + 30-club ranks — season strip, ① record & run differential, ② offense, ③ run prevention, ④ trajectory + splits, ⑤ strengths & weaknesses, ⑥ glossary & method; TeamNav tabs on top; SSG, revalidate 3600
     about/page.tsx
   components/
     PlayerNav.tsx              # tabs with `available` prop (compare = >= 2 MLB seasons, P12; bazi slot reserved for v2)
+    TeamNav.tsx                # team section tabs (mirrors PlayerNav): Season review -> /season/[year] | Five-season trends -> /team
     SeasonProgressBar.tsx      # batter pace projection / pitcher current-vs-prior
     ScheduleCalendar.tsx       # home schedule (rough.js hand-drawn parchment scorecard)
     ScorecardFrame.tsx         # reusable rough.js parchment frame (hero + roster cards)
@@ -201,7 +202,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     WildCardTable.tsx          # P11 wild card race + cut line (division leaders excluded)
     PlayoffRace.tsx            # P11 AL seeds 1-6 + cut line + chasers
     HomeStandings.tsx          # P11 home module: AL East table + PlayoffRace in ScorecardFrames
-    Header.tsx                 # Nav.team ("Team" / 球隊, after Standings) -> /team (P13; P12 pointed it at /season/<latest>); wraps to 2 rows on phones
+    Header.tsx                 # "Team ▾" (Nav.team, after Standings) = TeamMenu, fed getTeamSeasons + getTrendSeasons (P12 linked /season/<latest>, P13 /team); wraps to 2 rows on phones
+    TeamMenu.tsx               # client <details> menu (works without JS): newest season review + earlier-season chips + five-season trends; closes on Escape / outside click / navigation; phones: panel spans the header
     team/                      # P13 team page modules
       TeamPanel.tsx            # panel ScorecardFrame + heading + plain-English question; PanelBlock (sub-heading + PNG/copy action + note)
       SeasonStrip.tsx          # one card per season (record, finish, postseason result, run diff + rank chip) -> /season/[year]
@@ -216,7 +218,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       EraFipGap.tsx            # per season ERA − FIP read in plain English (0.15 threshold) + team OAA and rank
       SeasonTrajectoryChart.tsx # client: games above .500 by game number, all window seasons; chips / line click pick the highlight; end labels; PNG of the chart only
       TeamSplitsTable.tsx      # situational records (P12 seasonSplits + Season labels), rows = splits, columns = seasons; copy table
-      StrengthsWeaknesses.tsx  # per season up to 3 top-10 / 3 bottom-10 ranks among distinct skills (lib/team-callouts.ts), descriptive labels; copy table
+      StrengthsWeaknesses.tsx  # per season up to 3 top-10 / 3 bottom-10 ranks among distinct skills (lib/team-callouts.ts), descriptive labels; copy table; `single` = one season, strengths | weaknesses side by side (season page)
       TeamGlossary.tsx         # method notes + every metric's hint grouped like the grids, in a <details> (works without JS)
     season/                    # P12 M5 charts
       SeasonTrendChart.tsx     # games above .500 / cumulative run diff by game number, prior season dashed
@@ -243,7 +245,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       RollingOpsSparkline.tsx  # P9 15-game rolling-OPS trend (Recharts line); P12 M4 optional prior-season dashed line by game number
       RollingEraSparkline.tsx  # P10 5-outing rolling-ERA trend (Recharts line); P12 M4 optional prior-season dashed line by outing number
   lib/
-    db.ts                      # postgres.js client (PgBouncer-safe: prepare: false)
+    db.ts                      # postgres.js client (Supavisor transaction pooler: prepare: false + max_pipeline: 0)
     players.ts                 # roster modes + getPlayerAvailability
     batting.ts / pitching.ts / fielding.ts
     season-stats.ts            # web_player_season_stats (incl. P9 basic line + P10 pitcher line) + batter games-played
@@ -260,7 +262,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     compare.ts                 # P12 web_player_team_season_stats readers + clubsBySeason / getSeasonClubLabels ("2026 · TOR/HOU")
     pitch-colors.ts            # P10: shared PITCH_COLOR map (was in PitchDistribution)
     standings.ts               # P11 web_standings + byDivision / wildCardRace / playoffPicture / clinchMarker
-    team-season.ts             # P12 M5 PURE (P13 reuses): gamesAboveSeries / runDiffSeries / monthlyRecords / seasonSplits / longestStreak / teamLeaders / positionGroup / warByPosition; P13 postseasonResult
+    team-season.ts             # P12 M5 PURE (P13 reuses): gamesAboveSeries / runDiffSeries / monthlyRecords / seasonSplits / longestStreak / teamLeaders (WAR/OPS/HR/SB/ERA/WHIP/SO/SV) / positionGroup / warByPosition; P13 postseasonResult
     team-season-data.ts        # P12 M5 DB readers: getTeamSeasons (cached; season-page resolver) / getTeamGames / getTeamPlayerSeasons
     team-trends.ts             # P13 DB readers over the 022 views: getTrendSeasons (latest 5 with 30 clubs) / getTeamTrend (30 clubs + MLB row) / getPostseasonGames
     team-metrics.ts            # P13 display registry (label / format / group / direction / vsMlb) — directions mirror the 022 view ranks; formatMetric / vsMlb / tiedRank
@@ -320,6 +322,7 @@ Env vars live in `.env` at the repo root (single `DATABASE_URL`). The ETL loads
 - **Pre-aggregate in ETL where possible.** Player season stats go in `web_player_season_stats`; pages should not aggregate 3000 rows on every request.
 - **D3 components receive plain JSON props** (`BattedBallEvent[]`), not Supabase clients. Keep them framework-pure for easier testing.
 - **No new dependencies without a clear reason.** The stack is intentionally small.
+- **Keep `max_pipeline: 0` in `web/lib/db.ts`.** Past 10 concurrent queries in one process, postgres.js pipelines onto busy connections; through Supavisor's transaction pooler that leaves backends stuck in `ClientRead`, and later queries on those connections fail with a statement timeout (2026-10-01: `next build` timed out on /season, /team, /standings once the header queried the DB). Any query in `Header.tsx` / the layout runs on every page.
 
 ## Theme / colors
 
@@ -407,5 +410,7 @@ mirrored in CSS as `--ease-soft`. Don't hand-tune durations in components.
 | P11 | done | Standings & playoff race (en + zh-TW). `/standings` page: six division tables (AL East first) + AL/NL wild card with a cut line + clinch legend. Home module: AL East table + AL playoff picture, between "Today's Blue Jays" and the calendar. Migration `012` + `etl/pull_standings.py` (nightly, both cron jobs) + one-shot `etl/fetch_team_logos.py` (cap logos recoloured to navy-on-papaya, committed to `web/public/team-logos/`). See `docs/P11_spec.md`. |
 | P12 | done | Season review & year-over-year (en + zh-TW). M0: 2024 schedule + 2024/2025 box scores, `web_games.game_type` (`013`), full-MLB 2024–2026 history for the 2026 roster — per-club season lines `web_player_team_season_stats` (`014`, team_id 0 = total) + Statcast `--cohort-season`; 2026 Statcast hole re-pulled. M1: metric views (`015`, scope mlb/jays) + `etl/season_report.py`. M2: discipline + batted-ball cards. M3: Compare tab (`/players/[id]/compare`) + club labels / pitching season filter. M4: prior-season sparkline overlay. M5: `/season/[year]` + `Nav.team`. M6: Savant percentiles / xStats / pitch RV + league averages (`016`–`019`). M7: PNG export + copy-table. See `docs/P12_spec.md` §15 (as built). |
 | P13 | done | Team trends (en + zh-TW): `/team` (Nav.team repointed from `/season/<latest>`), the latest five seasons (2022–2026) with every number next to that season's MLB average and the Jays' rank among 30 clubs. N0: all 30 clubs' team data 2022–2026 — `web_team_season_stats` (`020`, MLB Stats API counts + SP/RP split + wRC+/WAR aggregated from per-club player leaderboards) and `web_team_statcast_season` (`021`, Savant team leaderboards) via `pull_team_stats.py` / `pull_team_statcast.py` (refresh cron); standings + schedule 2022–2023. N1: `022` views (one formula set for clubs and the MLB row; FIP from counts + league constant; ranks). N2–N6: season strip, record & run sources, offense / run-prevention rank grids + trends, rotation vs bullpen, ERA vs FIP, five-season trajectory + splits, strengths & weaknesses, glossary; `team_trends.md/.csv` in the article pack. See `docs/P13_spec.md` §14 (as built). |
+
+**Team section (2026-10-01, post-P13):** "Team" is a menu over two views — the single-season review `/season/[year]` (P12) and the five-season trends `/team` (P13) — and both pages carry `TeamNav` tabs. This supersedes P13 T7 (one link → `/team`), which had left the season pages reachable only from the season strip.
 
 v2 (deferred): BaZi personality / fortune / matchup-prediction / injury-risk; daily WAR snapshots for strict same-date pace comparisons; player-vs-player `/compare` page (SprayChart `secondaryEvents` prop is already wired; the per-player season Compare tab shipped in P12). Team-level backlog after P13 (see `docs/P13_spec.md` §13): AL East rival overlay / AL average toggle, park-adjusted pitching (ERA- / FIP-), extra-inning record (needs innings per game), seasons before 2022.

@@ -34,13 +34,13 @@
    - "Today's Blue Jays" module — HR hero from the most recent game (hardest-contact fallback when nobody homered) + best pitching line (IP / K / H, no fake ERA)
 6. **Per-game box scores**
    - Every Jays player's batting and/or pitching line for a finished game; innings pitched rendered correctly from stored outs (never the "5.2" decimal trap)
-7. **Team trends** (`/team`, nav "Team") — the latest five seasons (2022–2026) as a team, every number next to that season's MLB average and the Jays' rank among 30 clubs
+7. **Team trends** (`/team`, nav "Team ▾" → Five-season trends) — the latest five seasons (2022–2026) as a team, every number next to that season's MLB average and the Jays' rank among 30 clubs
    - Season strip (record, division finish, postseason result, run diff + rank) linking to each season page
    - Record & run differential: "where the wins came from" (offense vs run-prevention runs above an average club) and record vs expected record (luck, one-run games)
    - Offense and run-prevention rank grids (value + rank heat map, Value | vs MLB toggle, hover for the MLB average, the league leader and a plain-English definition), trend small multiples vs the MLB average, contact luck (wOBA vs xwOBA), rotation vs bullpen, ERA vs FIP with team OAA
    - Games above .500 for all five seasons on one chart (pick a season to highlight) + situational splits, strengths & weaknesses in MLB ranks, glossary & method
-8. **Team season page** (`/season/2026`, from the team page's season strip)
-   - Record strip vs the prior season, games above .500 and cumulative run differential by game number (both seasons), month by month, splits (home/road, one-run, blowouts, vs division, vs .500+ teams), team leaders with last year's value, WAR by position group
+8. **Team season review** (`/season/2026`, nav "Team ▾" → Season review, or the team page's season strip; tabs switch between the two team views)
+   - Record strip vs the prior season with MLB ranks among 30 clubs, games above .500 and cumulative run differential by game number (both seasons), where the season ranked (top-10 / bottom-10 skills), month by month, splits (home/road, one-run, blowouts, vs division, vs .500+ teams), team leaders (WAR / OPS / HR / SB / ERA / WHIP / SO / SV) with last year's value, WAR by position group
 9. **Article tooling**
    - "PNG ↓" on every chart (brand colours, caption + source/date footer) and "Copy table" on the stat tables (TSV that pastes into a spreadsheet as a real table)
    - `etl/season_report.py` writes a season-review data pack (team / batters / pitchers / movers / roster moves with every club / league context / five-season team trends vs MLB + definitions and caveats) to `reports/` (git-ignored)
@@ -96,13 +96,15 @@
 │   │   ├── template.tsx          # page-to-page fade (skipped on first load)
 │   │   ├── standings/            # Divisions + wild card + clinch legend
 │   │   ├── team/                 # Team trends: five seasons vs MLB (P13)
-│   │   ├── season/[year]/        # Team season vs the prior season (P12)
+│   │   ├── season/[year]/        # Team season review vs the prior season + MLB ranks (P12)
 │   │   ├── games/[gamePk]/       # Per-game box score detail
 │   │   └── players/
 │   │       ├── page.tsx          # Roster (Current 26-man / All 2024-2026)
 │   │       └── [mlbam_id]/       # Overview + batting / pitching / fielding / compare tabs
 │   ├── components/
 │   │   ├── PlayerNav.tsx
+│   │   ├── Header.tsx / TeamMenu.tsx  # nav; "Team ▾" menu (season review / five-season trends)
+│   │   ├── TeamNav.tsx           # team section tabs (season review | five-season trends)
 │   │   ├── SeasonProgressBar.tsx
 │   │   ├── ScheduleCalendar.tsx  # rough.js hand-drawn parchment scorecard
 │   │   ├── ScorecardFrame.tsx    # reusable rough.js parchment frame (hero + roster cards)
@@ -214,7 +216,7 @@ The cron version runs in GitHub Actions; see `.github/workflows/etl.yml`.
 
 1. Import the repo, set **Root Directory** to `web/`. Vercel auto-detects Next.js + pnpm.
 2. Add environment variables (Production **and** Preview):
-   - `DATABASE_URL` — Supabase Postgres **pooler** connection string (port 6543). `web/lib/db.ts` uses `prepare: false` so PgBouncer transaction mode works.
+   - `DATABASE_URL` — Supabase Postgres **pooler** connection string (port 6543). `web/lib/db.ts` uses `prepare: false` (no prepared statements in transaction mode) and `max_pipeline: 0` (pipelined queries through the pooler can hang).
    - `REVALIDATE_SECRET` — a long random string. The cron passes this to `/api/revalidate`.
 3. Deploy. Note the production URL (e.g. `https://bluejaysfanweb.vercel.app`); the cron needs it.
 

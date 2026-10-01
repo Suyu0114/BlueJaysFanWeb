@@ -348,6 +348,7 @@ from `web_games` (`game_type='R'`), `web_standings`, `web_player_season_stats`:
 7. **WAR by position group** (C, 1B, 2B, 3B, SS, OF, DH, SP, RP) — 2025 vs 2026
    bars. SP/RP split by `gs` share.
 
+*(2026-10-01: the season page is back in the nav — "Team ▾" menu + `TeamNav` tabs; see CLAUDE.md "Team section".)*
 **Nav** *(amended 2026-09-29, D11)*: `Nav.team` ("Team" / 球隊) in `Header.tsx`
 right after Standings → `/season/<latest>`, resolved by the same helper the M5 page
 uses (newest season with `game_type = 'R'` games in `web_games`). No "Season" link.
