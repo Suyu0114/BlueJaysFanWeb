@@ -41,6 +41,7 @@
    - Games above .500 for all five seasons on one chart (pick a season to highlight) + situational splits, strengths & weaknesses in MLB ranks, glossary & method
 8. **Team season review** (`/season/2026`, nav "Team ▾" → Season review, or the team page's season strip; tabs switch between the two team views)
    - Record strip vs the prior season with MLB ranks among 30 clubs, games above .500 and cumulative run differential by game number (both seasons), where the season ranked (top-10 / bottom-10 skills), month by month, splits (home/road, one-run, blowouts, vs division, vs .500+ teams), team leaders (WAR / OPS / HR / SB / ERA / WHIP / SO / SV) with last year's value, WAR by position group
+   - Player stats: every Blue Jay's season line, sortable — position players (offense incl. FanGraphs Off, defense = Def + Savant OAA, WAR) and pitchers; All / Regulars filter, copy table; each leader card's "All →" opens it sorted by that stat
 9. **Article tooling**
    - "PNG ↓" on every chart (brand colours, caption + source/date footer) and "Copy table" on the stat tables (TSV that pastes into a spreadsheet as a real table)
    - `etl/season_report.py` writes a season-review data pack (team / batters / pitchers / movers / roster moves with every club / league context / five-season team trends vs MLB + definitions and caveats) to `reports/` (git-ignored)
@@ -116,7 +117,7 @@
 │   │   ├── StandingsTabs.tsx    # AL / NL / Wild Card view switcher (client)
 │   │   ├── SeasonCompareCard / DisciplineCards / PercentileBars  # P12 season-vs-season + Savant cards
 │   │   ├── compare/              # P12 Compare tab: controls, club splits, arc, arsenal compare, velo, zone grid
-│   │   ├── season/               # P12 season page charts (trend by game number, WAR by position)
+│   │   ├── season/               # season page: trend by game number, WAR by position, player stats table
 │   │   ├── team/                 # P13 team page: season strip, run sources, rank grid, trends,
 │   │   │                         # rotation/bullpen, ERA vs FIP, trajectory, splits, callouts, glossary
 │   │   ├── Exportable / CopyTableButton  # P12 "PNG ↓" and "Copy table" (generic)

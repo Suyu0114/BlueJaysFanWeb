@@ -166,7 +166,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       fielding/page.tsx        # FRV table + multi-position diagram (season cell carries the club label)
       compare/page.tsx         # P12: season vs season incl. other clubs; URL state ?season=&vs=&scope=mlb|jays; What changed + season line + by-club + arc + Statcast
     standings/page.tsx         # P11: three views (AL / NL / Wild Card) + clinch legend
-    season/[year]/page.tsx     # P12 M5: team season vs prior (record strip, games above .500 + run diff by game number, months, splits, leaders, WAR by position); generateStaticParams = seasons with R finals; player modules hide when a season has no player rows (< 2024). Post-P13: TeamNav tabs; MLB rank chips on PCT / RS / RA / run diff + "Where {season} ranked" (StrengthsWeaknesses single) from the 022 views, hidden without a Jays row; leaders WAR/OPS/HR/SB + ERA/WHIP/SO/SV
+    season/[year]/page.tsx     # P12 M5: team season vs prior (record strip, games above .500 + run diff by game number, months, splits, leaders, WAR by position); generateStaticParams = seasons with R finals; player modules hide when a season has no player rows (< 2024). Post-P13: TeamNav tabs; MLB rank chips on PCT / RS / RA / run diff + "Where {season} ranked" (StrengthsWeaknesses single) from the 022 views, hidden without a Jays row; leaders WAR/OPS/HR/SB + ERA/WHIP/SO/SV, each card "All →" (#stats-<tab>-<column>) into the player stats table (last panel)
     team/page.tsx              # P13: Blue Jays over the latest 5 seasons vs the MLB average + 30-club ranks — season strip, ① record & run differential, ② offense, ③ run prevention, ④ trajectory + splits, ⑤ strengths & weaknesses, ⑥ glossary & method; TeamNav tabs on top; SSG, revalidate 3600
     about/page.tsx
   components/
@@ -223,6 +223,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     season/                    # P12 M5 charts
       SeasonTrendChart.tsx     # games above .500 / cumulative run diff by game number, prior season dashed
       WarByPositionChart.tsx   # team WAR by position group, season vs prior bars
+      PlayerStatsTable.tsx     # client: every Jay's season line, sortable — position players (Offense: slash/HR/RBI/SB/wRC+/Off | Defense: Def/OAA | WAR) and pitchers tabs; All | Regulars (100+ PA / 20+ IP); copy table; leader-card hash jumps (rate stats -> Regulars)
     standings-chrome.ts        # P11 shared table chrome (navy header bar / ledger stripes / rowBg); P13 stripeBg(i, highlight) for any table
     StandingsTabs.tsx          # P11 client view switcher: AL / NL / Wild Card (+ AL-NL toggle inside WC)
     motion/
@@ -263,7 +264,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     pitch-colors.ts            # P10: shared PITCH_COLOR map (was in PitchDistribution)
     standings.ts               # P11 web_standings + byDivision / wildCardRace / playoffPicture / clinchMarker
     team-season.ts             # P12 M5 PURE (P13 reuses): gamesAboveSeries / runDiffSeries / monthlyRecords / seasonSplits / longestStreak / teamLeaders (WAR/OPS/HR/SB/ERA/WHIP/SO/SV) / positionGroup / warByPosition; P13 postseasonResult
-    team-season-data.ts        # P12 M5 DB readers: getTeamSeasons (cached; season-page resolver) / getTeamGames / getTeamPlayerSeasons
+    team-season-data.ts        # P12 M5 DB readers: getTeamSeasons (cached; season-page resolver) / getTeamGames / getTeamPlayerSeasons; getSeasonPlayerStats (season line + box-score G/SO + summed Savant OAA)
+    season-player-stats.ts     # PURE: splitPlayerStats (isBatter / isPitcher split, Off = Bat+BsR, Def = Fld+Pos, SP/RP role) + column registry + sortRows + leader anchors
     team-trends.ts             # P13 DB readers over the 022 views: getTrendSeasons (latest 5 with 30 clubs) / getTeamTrend (30 clubs + MLB row) / getPostseasonGames
     team-metrics.ts            # P13 display registry (label / format / group / direction / vsMlb) — directions mirror the 022 view ranks; formatMetric / vsMlb / tiedRank
     percentile-color.ts        # shared steel -> neutral -> brick scale: percentileColor (P12 bars) / rankPercentile / rankTint (P13 ranks)
@@ -387,7 +389,11 @@ mirrored in CSS as `--ease-soft`. Don't hand-tune durations in components.
   same.
 - **No-JS**: `Reveal` SSRs `opacity: 0`. The `<noscript>` rule in the layout
   forces `[data-reveal]` visible — anything new that SSRs hidden needs
-  `data-reveal` (or a matching noscript rule).
+  `data-reveal` (or a matching noscript rule). Client tabs hide the inactive
+  panel with the `hidden` **class** + `data-tabpanel` (the noscript rule shows
+  every panel); never the `hidden` attribute — Tailwind v4's preflight pins it
+  with `display:none !important` inside `@layer base`, and a layered
+  `!important` beats the unlayered noscript one.
 
 ---
 
