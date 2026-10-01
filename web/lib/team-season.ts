@@ -151,9 +151,12 @@ export type PlayerSeasonLine = {
   pa: number | null;
   ops: number | null;
   hr: number | null;
+  sb: number | null;
   war: number | null;
   ip: number | null; // baseball notation
   era: number | null;
+  whip: number | null;
+  sv: number | null;
   gs: number | null;
   so: number | null;
   apps: number | null;
@@ -163,7 +166,7 @@ export type PlayerSeasonLine = {
 export const LEADER_MIN_PA = 300;
 export const LEADER_MIN_IP = 80;
 
-export type LeaderCategory = "war" | "ops" | "hr" | "era" | "so";
+export type LeaderCategory = "war" | "ops" | "hr" | "sb" | "era" | "whip" | "so" | "sv";
 export type Leader = { mlbam_id: number; name: string; value: number; prior: number | null };
 
 const isBatter = (r: PlayerSeasonLine) => (r.pa ?? 0) > 0;
@@ -171,6 +174,8 @@ const isPitcher = (r: PlayerSeasonLine) => r.ip != null && !isBatter(r);
 
 // Top `n` Blue Jays per category in `season`, each with the same player's value
 // in `prior` (null when he wasn't a Jay then, or had no line in that category).
+// Rate stats (OPS / ERA / WHIP) need the PA / IP floor; SB and SV list only
+// players with at least one, so a short list stays short instead of padding zeros.
 export function teamLeaders(
   rows: PlayerSeasonLine[],
   season: number,
@@ -196,8 +201,11 @@ export function teamLeaders(
     war: top(cur, (r) => r.war),
     ops: top(cur.filter((r) => (r.pa ?? 0) >= LEADER_MIN_PA), (r) => r.ops),
     hr: top(cur.filter(isBatter), (r) => r.hr),
+    sb: top(cur.filter((r) => isBatter(r) && (r.sb ?? 0) > 0), (r) => r.sb),
     era: top(cur.filter((r) => isPitcher(r) && (r.ip ?? 0) >= LEADER_MIN_IP), (r) => r.era, true),
+    whip: top(cur.filter((r) => isPitcher(r) && (r.ip ?? 0) >= LEADER_MIN_IP), (r) => r.whip, true),
     so: top(cur.filter(isPitcher), (r) => r.so),
+    sv: top(cur.filter((r) => isPitcher(r) && (r.sv ?? 0) > 0), (r) => r.sv),
   };
 }
 

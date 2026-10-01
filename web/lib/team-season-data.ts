@@ -43,9 +43,12 @@ export type TeamPlayerSeason = {
   pa: number | null;
   ops: number | null;
   hr: number | null;
+  sb: number | null;
   war: number | null;
   ip: number | null; // baseball notation — display / threshold only
   era: number | null;
+  whip: number | null;
+  sv: number | null;
   gs: number | null;
   so: number | null; // pitcher strikeouts, summed from box scores
   apps: number | null; // pitching appearances, from box scores
@@ -61,8 +64,8 @@ export async function getTeamPlayerSeasons(seasons: number[]): Promise<TeamPlaye
       group by 1, 2
     )
     select s.mlbam_id::int as mlbam_id, s.season, p.name, p.position,
-      s.pa::int as pa, s.ops::float8 as ops, s.hr::int as hr, s.war::float8 as war,
-      s.ip::float8 as ip, s.era::float8 as era, s.gs::int as gs,
+      s.pa::int as pa, s.ops::float8 as ops, s.hr::int as hr, s.sb::int as sb, s.war::float8 as war,
+      s.ip::float8 as ip, s.era::float8 as era, s.whip::float8 as whip, s.sv::int as sv, s.gs::int as gs,
       pi.so, pi.apps
     from web_player_season_stats s
     join web_players p on p.mlbam_id = s.mlbam_id

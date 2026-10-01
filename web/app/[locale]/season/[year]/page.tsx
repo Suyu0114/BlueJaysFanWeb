@@ -10,6 +10,8 @@ import SeasonTrendChart from "@/components/season/SeasonTrendChart";
 import WarByPositionChart from "@/components/season/WarByPositionChart";
 import CopyTableButton from "@/components/CopyTableButton";
 import Exportable from "@/components/Exportable";
+import RankChip from "@/components/team/RankChip";
+import StrengthsWeaknesses from "@/components/team/StrengthsWeaknesses";
 import { DIVISION_KEY, getStandings, TORONTO_TEAM_ID } from "@/lib/standings";
 import { getTeamGames, getTeamPlayerSeasons, getTeamSeasons } from "@/lib/team-season-data";
 import {
@@ -34,6 +36,8 @@ import {
 import { deltaTone, overlayByGame, type Direction } from "@/lib/season-deltas";
 import { getLeagueSeason } from "@/lib/savant";
 import { ordinal } from "@/lib/ordinal";
+import { rankKey, tiedRank, type MetricKey } from "@/lib/team-metrics";
+import { getTeamTrend } from "@/lib/team-trends";
 
 // P12 M5: the Blue Jays' regular season on one page, vs the season before —
 // record, games above .500 and run differential by game number, month by
@@ -41,6 +45,9 @@ import { ordinal } from "@/lib/ordinal";
 // web_games (game_type 'R'); x-W/L, division finish and opponents' final
 // winning % from web_standings; player numbers are Jays-scoped. All the math is
 // in the pure lib/team-season.ts, which P13 reuses across five seasons.
+// Since P13 the page also places the season in MLB: rank chips on the record
+// strip and that season's top-10 / bottom-10 skills, read from the 022 views
+// (lib/team-trends.ts) — never re-ranked here.
 
 export const revalidate = 3600;
 
@@ -87,13 +94,14 @@ export default async function SeasonPage({
   const t = await getTranslations("Season");
   const ts = await getTranslations("Standings");
 
-  const [games, priorGames, standings, priorStandings, players, league] = await Promise.all([
+  const [games, priorGames, standings, priorStandings, players, league, trend] = await Promise.all([
     getTeamGames(season),
     prior ? getTeamGames(prior) : Promise.resolve([]),
     getStandings(season),
     prior ? getStandings(prior) : Promise.resolve([]),
     getTeamPlayerSeasons(prior ? [season, prior] : [season]),
     getLeagueSeason(season), // P12 M6: MLB-average reference for the leaders
+    getTeamTrend([season]), // P13 022 views: 30 clubs' ranks for this season
   ]);
 
   const me = standings.find((r) => r.team_id === TORONTO_TEAM_ID);
@@ -103,6 +111,15 @@ export default async function SeasonPage({
     divisionOf: new Map(rows.map((r) => [r.team_id, r.division_id])),
     pctOf: new Map(rows.filter((r) => r.pct != null).map((r) => [r.team_id, r.pct as number])),
   });
+
+  // MLB ranks among 30 clubs. No Jays row in the 022 views (e.g. a new season
+  // before the team pulls ran) hides the chips and the "where it ranked" panel.
+  const clubs = trend.clubs;
+  const jaysRow = clubs.find((r) => r.team_id === TORONTO_TEAM_ID);
+  const rankOf = (key: MetricKey, hint: string) => {
+    const rank = jaysRow?.[rankKey(key)];
+    return rank == null ? null : { rank, tied: tiedRank(clubs, season, key, rank), hint };
+  };
 
   // ---- record strip ---------------------------------------------------------
   const rec = winLoss(games);
@@ -118,6 +135,7 @@ export default async function SeasonPage({
     chip: React.ReactNode,
     priorText?: string | null,
     hint?: string,
+    rank?: { rank: number; tied: boolean; hint: string } | null,
   ) => (
     <div className="rounded-md border border-steel/25 bg-papaya/60 px-3 py-2">
       <div className="font-display text-[11px] uppercase tracking-wider text-navy/55">{label}</div>
@@ -125,6 +143,12 @@ export default async function SeasonPage({
         {value}
         {chip}
       </div>
+      {rank && (
+        <div className="mb-0.5 flex items-center gap-1.5 text-[11px] text-navy/55" title={rank.hint}>
+          {t("rankLabel")}
+          <RankChip rank={rank.rank} tied={rank.tied} locale={locale} small />
+        </div>
+      )}
       {priorText && <div className="text-[11px] text-navy/50">{priorText}</div>}
       {hint && <div className="text-[10px] leading-tight text-navy/45">{hint}</div>}
     </div>
@@ -180,8 +204,12 @@ export default async function SeasonPage({
     { key: "war", label: "WAR", fmt: (v) => v.toFixed(1) },
     { key: "ops", label: "OPS", fmt: (v) => r3(v) },
     { key: "hr", label: "HR", fmt: (v) => v.toFixed(0) },
+    { key: "sb", label: "SB", fmt: (v) => v.toFixed(0) },
+    // second row: pitching
     { key: "era", label: "ERA", fmt: (v) => v.toFixed(2) },
+    { key: "whip", label: "WHIP", fmt: (v) => v.toFixed(2) },
     { key: "so", label: "SO", fmt: (v) => v.toFixed(0) },
+    { key: "sv", label: "SV", fmt: (v) => v.toFixed(0) },
   ];
   const war = warByPosition(players, season);
   const pwar = playerPrior ? warByPosition(players, playerPrior) : null;
@@ -268,10 +296,10 @@ export default async function SeasonPage({
           {/* 1. Record strip */}
           <Reveal className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             {statCard(t("statRecord"), wl(rec), prec && <Chip d={rec.w - prec.w} direction="higher" fmt={(d) => `${signed(d)} W`} />, priorLine(prec && wl(prec)))}
-            {statCard("PCT", r3(pct), ppct != null && pct != null && <Chip d={pct - ppct} direction="higher" fmt={(d) => (d >= 0 ? "+" : "−") + r3(Math.abs(d))} />, priorLine(ppct != null ? r3(ppct) : null))}
-            {statCard(t("statRs"), String(run.rs), prun && <Chip d={run.rs - prun.rs} direction="higher" />, priorLine(prun && String(prun.rs)))}
-            {statCard(t("statRa"), String(run.ra), prun && <Chip d={run.ra - prun.ra} direction="lower" />, priorLine(prun && String(prun.ra)))}
-            {statCard(t("statDiff"), signed(run.diff), prun && <Chip d={run.diff - prun.diff} direction="higher" />, priorLine(prun && signed(prun.diff)))}
+            {statCard("PCT", r3(pct), ppct != null && pct != null && <Chip d={pct - ppct} direction="higher" fmt={(d) => (d >= 0 ? "+" : "−") + r3(Math.abs(d))} />, priorLine(ppct != null ? r3(ppct) : null), undefined, rankOf("pct", t("rankHint")))}
+            {statCard(t("statRs"), String(run.rs), prun && <Chip d={run.rs - prun.rs} direction="higher" />, priorLine(prun && String(prun.rs)), undefined, rankOf("r_per_g", t("rankHintRs")))}
+            {statCard(t("statRa"), String(run.ra), prun && <Chip d={run.ra - prun.ra} direction="lower" />, priorLine(prun && String(prun.ra)), undefined, rankOf("ra_per_g", t("rankHintRa")))}
+            {statCard(t("statDiff"), signed(run.diff), prun && <Chip d={run.diff - prun.diff} direction="higher" />, priorLine(prun && signed(prun.diff)), undefined, rankOf("run_diff", t("rankHint")))}
             {statCard(
               t("statXwl"),
               me?.x_w != null ? `${me.x_w}-${me.x_l}` : "—",
@@ -314,6 +342,16 @@ export default async function SeasonPage({
               t("runDiffNote"),
             )}
           </div>
+
+          {/* Where the season ranked in MLB (P13 callouts, this season only) */}
+          {jaysRow && panel(
+            "season-ranked",
+            t("rankedTitle", { season }),
+            <StrengthsWeaknesses seasons={[season]} clubs={clubs} locale={locale} single />,
+            <Link href="/team" className="text-navy/70 transition-colors hover:text-brick">
+              {t("seeTrends")}
+            </Link>,
+          )}
 
           <div className="grid gap-6 lg:grid-cols-2">
             {/* 4. Monthly record */}
@@ -421,7 +459,7 @@ export default async function SeasonPage({
           {hasPlayers(season) && panel(
             "season-leaders",
             t("leadersTitle"),
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {cats.map((c) => (
                 <div key={c.key} className="rounded-md border border-steel/20 bg-papaya/60 p-2">
                   <div className="font-display text-[11px] uppercase tracking-wider text-navy/60">{c.label}</div>
