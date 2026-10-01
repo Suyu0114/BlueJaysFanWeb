@@ -5,7 +5,13 @@
     "players": "球員",
     "standings": "戰績排名",
     "team": "球隊",
-    "about": "關於"
+    "about": "關於",
+    "teamMenuLabel": "球隊頁面",
+    "seasonReview": "球季回顧",
+    "seasonLink": "{season} 球季",
+    "pastSeasons": "往年球季",
+    "trends": "五季趨勢",
+    "trendsHint": "{from}–{to} 對照大聯盟平均"
   },
   "Home": {
     "title": "Toronto Blue Jays — 球迷中心",
@@ -65,7 +71,6 @@
     "empty": "本球季尚無排名資料。"
   },
   "Season": {
-    "backToTeam": "← 球隊趨勢",
     "title": "{season} 球季",
     "subtitle": "藍鳥例行賽，與 {prior} 並列比較。",
     "subtitleNoPrior": "藍鳥例行賽。",

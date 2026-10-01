@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import ScorecardFrame from "@/components/ScorecardFrame";
+import TeamNav from "@/components/TeamNav";
 import SlidingPill from "@/components/motion/SlidingPill";
 import { Reveal } from "@/components/motion/Reveal";
 import { HEAD_ROW, stripeBg, TD, TD_FIRST, TD_LAST, TH, TH_FIRST, TH_LAST } from "@/components/standings-chrome";
@@ -229,11 +230,9 @@ export default async function SeasonPage({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
+      <TeamNav active="season" season={season} />
       <Reveal className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Link href="/team" className="text-xs text-navy/55 transition-colors hover:text-brick">
-            {t("backToTeam")}
-          </Link>
           <h1 className="font-display text-2xl uppercase tracking-wide text-navy">{t("title", { season })}</h1>
           <p className="mt-1 text-sm text-navy/60">
             {prior ? t("subtitle", { prior }) : t("subtitleNoPrior")}

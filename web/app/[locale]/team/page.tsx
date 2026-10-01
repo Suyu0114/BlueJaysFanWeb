@@ -13,6 +13,7 @@ import SeasonTrajectoryChart from "@/components/team/SeasonTrajectoryChart";
 import StrengthsWeaknesses from "@/components/team/StrengthsWeaknesses";
 import TeamGlossary from "@/components/team/TeamGlossary";
 import TeamPanel, { PanelBlock } from "@/components/team/TeamPanel";
+import TeamNav from "@/components/TeamNav";
 import TeamSplitsTable from "@/components/team/TeamSplitsTable";
 import TrendSmallMultiples from "@/components/team/TrendSmallMultiples";
 import { ordinal } from "@/lib/ordinal";
@@ -21,7 +22,7 @@ import { DIVISION_KEY, TORONTO_TEAM_ID } from "@/lib/standings";
 import { buildGrid, toTrends } from "@/lib/team-grid";
 import { metricsIn, tiedRank } from "@/lib/team-metrics";
 import { gamesAboveSeries, postseasonResult, seasonSplits, type PostseasonResult, type WinLoss } from "@/lib/team-season";
-import { getTeamGames } from "@/lib/team-season-data";
+import { getLatestTeamSeason, getTeamGames } from "@/lib/team-season-data";
 import { getPostseasonGames, getTeamTrend, getTrendSeasons, type TeamSeasonRow } from "@/lib/team-trends";
 
 // P13: the Blue Jays over five seasons from a team / analyst angle — every
@@ -51,10 +52,11 @@ export default async function TeamPage({ params }: { params: Promise<{ locale: s
   const tst = await getTranslations("Standings");
 
   const seasons = await getTrendSeasons();
-  const [{ clubs, mlb }, postGames, games] = await Promise.all([
+  const [{ clubs, mlb }, postGames, games, latestSeason] = await Promise.all([
     getTeamTrend(seasons),
     getPostseasonGames(seasons),
     Promise.all(seasons.map((s) => getTeamGames(s))),
+    getLatestTeamSeason(), // the TeamNav season tab: the same newest season as the header menu
   ]);
   const jays = clubs.filter((r) => r.team_id === TORONTO_TEAM_ID).sort((a, b) => a.season - b.season);
 
@@ -119,6 +121,7 @@ export default async function TeamPage({ params }: { params: Promise<{ locale: s
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
+      {latestSeason != null && <TeamNav active="trends" season={latestSeason} />}
       <Reveal className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl uppercase tracking-wide text-navy">{t("title", { from: first, to: last })}</h1>

@@ -5,7 +5,13 @@
     "players": "Players",
     "standings": "Standings",
     "team": "Team",
-    "about": "About"
+    "about": "About",
+    "teamMenuLabel": "Team pages",
+    "seasonReview": "Season review",
+    "seasonLink": "{season} Season",
+    "pastSeasons": "Earlier seasons",
+    "trends": "Five-season trends",
+    "trendsHint": "{from}–{to} vs the MLB average"
   },
   "Home": {
     "title": "Toronto Blue Jays — Fan Hub",
@@ -65,7 +71,6 @@
     "empty": "Standings aren't available yet for this season."
   },
   "Season": {
-    "backToTeam": "← Team trends",
     "title": "{season} Season",
     "subtitle": "The Blue Jays' regular season, next to {prior}.",
     "subtitleNoPrior": "The Blue Jays' regular season.",
