@@ -169,8 +169,10 @@ export const LEADER_MIN_IP = 80;
 export type LeaderCategory = "war" | "ops" | "hr" | "sb" | "era" | "whip" | "so" | "sv";
 export type Leader = { mlbam_id: number; name: string; value: number; prior: number | null };
 
-const isBatter = (r: PlayerSeasonLine) => (r.pa ?? 0) > 0;
-const isPitcher = (r: PlayerSeasonLine) => r.ip != null && !isBatter(r);
+// One role per player-season (the season page's leaders, WAR by position and
+// player-stats tabs all split the same way): any PA = batter; IP and no PA = pitcher.
+export const isBatter = (r: Pick<PlayerSeasonLine, "pa">) => (r.pa ?? 0) > 0;
+export const isPitcher = (r: Pick<PlayerSeasonLine, "pa" | "ip">) => r.ip != null && !isBatter(r);
 
 // Top `n` Blue Jays per category in `season`, each with the same player's value
 // in `prior` (null when he wasn't a Jay then, or had no line in that category).

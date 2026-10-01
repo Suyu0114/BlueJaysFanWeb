@@ -59,9 +59,11 @@ export default async function LocaleLayout({
     >
       <body className="flex min-h-full flex-col bg-papaya text-navy">
         {/* Reveal SSRs its hidden start state (opacity 0); without JS nothing
-            would ever animate it in, so force those elements visible. */}
+            would ever animate it in, so force those elements visible. Tab
+            panels hidden by class (data-tabpanel) and their no-JS headings
+            (data-nojs-label) show too, since the tabs can't switch. */}
         <noscript>
-          <style>{`[data-reveal]{opacity:1!important;transform:none!important}.anim-paused *{animation:none!important}`}</style>
+          <style>{`[data-reveal]{opacity:1!important;transform:none!important}.anim-paused *{animation:none!important}[data-tabpanel],[data-nojs-label]{display:block!important}`}</style>
         </noscript>
         <NextIntlClientProvider>
           <MotionProvider>

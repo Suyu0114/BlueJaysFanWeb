@@ -6,6 +6,7 @@ import TeamNav from "@/components/TeamNav";
 import SlidingPill from "@/components/motion/SlidingPill";
 import { Reveal } from "@/components/motion/Reveal";
 import { HEAD_ROW, stripeBg, TD, TD_FIRST, TD_LAST, TH, TH_FIRST, TH_LAST } from "@/components/standings-chrome";
+import PlayerStatsTable from "@/components/season/PlayerStatsTable";
 import SeasonTrendChart from "@/components/season/SeasonTrendChart";
 import WarByPositionChart from "@/components/season/WarByPositionChart";
 import CopyTableButton from "@/components/CopyTableButton";
@@ -13,7 +14,8 @@ import Exportable from "@/components/Exportable";
 import RankChip from "@/components/team/RankChip";
 import StrengthsWeaknesses from "@/components/team/StrengthsWeaknesses";
 import { DIVISION_KEY, getStandings, TORONTO_TEAM_ID } from "@/lib/standings";
-import { getTeamGames, getTeamPlayerSeasons, getTeamSeasons } from "@/lib/team-season-data";
+import { getSeasonPlayerStats, getTeamGames, getTeamPlayerSeasons, getTeamSeasons } from "@/lib/team-season-data";
+import { LEADER_ANCHORS, splitPlayerStats } from "@/lib/season-player-stats";
 import {
   gamesAboveSeries,
   LEADER_MIN_IP,
@@ -94,7 +96,7 @@ export default async function SeasonPage({
   const t = await getTranslations("Season");
   const ts = await getTranslations("Standings");
 
-  const [games, priorGames, standings, priorStandings, players, league, trend] = await Promise.all([
+  const [games, priorGames, standings, priorStandings, players, league, trend, seasonStats] = await Promise.all([
     getTeamGames(season),
     prior ? getTeamGames(prior) : Promise.resolve([]),
     getStandings(season),
@@ -102,6 +104,7 @@ export default async function SeasonPage({
     getTeamPlayerSeasons(prior ? [season, prior] : [season]),
     getLeagueSeason(season), // P12 M6: MLB-average reference for the leaders
     getTeamTrend([season]), // P13 022 views: 30 clubs' ranks for this season
+    getSeasonPlayerStats(season), // every Jay's season line for the player-stats table
   ]);
 
   const me = standings.find((r) => r.team_id === TORONTO_TEAM_ID);
@@ -216,6 +219,7 @@ export default async function SeasonPage({
   const warData = POSITION_GROUPS.map((g) => ({ group: g, a: +war[g].toFixed(2), b: pwar ? +pwar[g].toFixed(2) : null }));
   const warTotal = Object.values(war).reduce((a, b) => a + b, 0);
   const pwarTotal = pwar ? Object.values(pwar).reduce((a, b) => a + b, 0) : null;
+  const { hitters, pitchers } = splitPlayerStats(seasonStats);
 
   // M7: `copy` adds a "Copy table" button (plain headers + rows) to the panel header.
   const panel = (
@@ -462,7 +466,13 @@ export default async function SeasonPage({
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {cats.map((c) => (
                 <div key={c.key} className="rounded-md border border-steel/20 bg-papaya/60 p-2">
-                  <div className="font-display text-[11px] uppercase tracking-wider text-navy/60">{c.label}</div>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="font-display text-[11px] uppercase tracking-wider text-navy/60">{c.label}</div>
+                    {/* Plain hash link: PlayerStatsTable switches tab + sorts on hashchange. */}
+                    <a href={`#${LEADER_ANCHORS[c.key]}`} className="text-[11px] text-navy/50 transition-colors hover:text-brick">
+                      {t("leadersAll")}
+                    </a>
+                  </div>
                   <ol className="mt-1 space-y-1 text-sm">
                     {leaders[c.key].length === 0 && <li className="text-navy/45">—</li>}
                     {leaders[c.key].map((l) => (
@@ -508,6 +518,14 @@ export default async function SeasonPage({
               total: warTotal.toFixed(1),
               prior: playerPrior ? t("warPriorTotal", { season: playerPrior, total: (pwarTotal ?? 0).toFixed(1) }) : "",
             }),
+          )}
+
+          {/* 8. Every Jay's season line: position players (offense | defense), pitchers */}
+          {hasPlayers(season) && panel(
+            "season-player-stats",
+            t("statsTitle", { season }),
+            <PlayerStatsTable hitters={hitters} pitchers={pitchers} season={season} />,
+            t("statsNote"),
           )}
         </div>
       )}
