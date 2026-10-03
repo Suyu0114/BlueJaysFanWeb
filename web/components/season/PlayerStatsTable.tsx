@@ -27,6 +27,8 @@ import {
 // (offense | defense) and pitchers as tabs. Leader cards link here with
 // #stats-<tab>-<column> — a hashchange switches the tab and sorts by that
 // column; the matching empty anchors below make the jump work without JS too.
+// An MLB-average row (rate columns, from the 022 MLB row) is pinned in <tfoot>,
+// outside sorting and the Regulars filter.
 // No JS: both tables show (the layout's <noscript> rule un-hides
 // [data-tabpanel] / [data-nojs-label]; class `hidden`, not the attribute, which
 // Tailwind's preflight pins with a layered !important).
@@ -38,14 +40,19 @@ const CENTERED = new Set<string>(["pos", "role"]);
 
 const columnsOf = (tab: Tab) => (tab === "hitters" ? HITTER_COLUMNS : PITCHER_COLUMNS) as Column<HitterRow | PitcherRow>[];
 
+/** The MLB-average reference row, rate columns only (from the 022 MLB row). */
+export type MlbReference = { hitters: Partial<HitterRow>; pitchers: Partial<PitcherRow> };
+
 export default function PlayerStatsTable({
   hitters,
   pitchers,
   season,
+  mlbRef,
 }: {
   hitters: HitterRow[];
   pitchers: PitcherRow[];
   season: number;
+  mlbRef: MlbReference | null; // pinned under the rows, outside sort / filter
 }) {
   const t = useTranslations("Season");
   const [tab, setTab] = useState<Tab>("hitters");
@@ -95,7 +102,17 @@ export default function PlayerStatsTable({
   const current = visible(tab);
   const currentCols = columnsOf(tab);
   const copyHeaders = currentCols.map(label);
-  const copyRows = current.rows.map((r) => currentCols.map((c) => c.format(r[c.key as keyof typeof r])));
+  // The MLB-average row's cells: a value only where the reference has that column.
+  const refCells = (x: Tab) => {
+    const ref = mlbRef?.[x] as Record<string, unknown> | undefined;
+    return columnsOf(x).map((c, j) =>
+      j === 0 ? t("mlbAvgRow") : ref && c.key in ref && ref[c.key] != null ? c.format(ref[c.key]) : "",
+    );
+  };
+  const copyRows = [
+    ...current.rows.map((r) => currentCols.map((c) => c.format(r[c.key as keyof typeof r]))),
+    ...(mlbRef ? [refCells(tab)] : []),
+  ];
 
   const toggle = (
     group: string,
@@ -207,6 +224,24 @@ export default function PlayerStatsTable({
                 </tr>
               ))}
             </tbody>
+            {mlbRef && (
+              <tfoot>
+                <tr>
+                  {refCells(x).map((v, j) => (
+                    <td
+                      key={cols[j].key}
+                      className={
+                        j === 0
+                          ? "sticky left-0 z-[1] border-t-2 border-navy/25 bg-papaya py-1.5 pl-3 pr-2 text-left font-display text-[11px] uppercase tracking-wider text-navy/70"
+                          : `${j === last ? TD_LAST : TD} border-t-2 border-navy/25 bg-navy/5 text-navy/70 ${CENTERED.has(cols[j].key) ? "text-center" : ""}`
+                      }
+                    >
+                      {v}
+                    </td>
+                  ))}
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>

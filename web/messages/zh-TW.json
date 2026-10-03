@@ -139,7 +139,10 @@
     "groupDefense": "防守",
     "sortBy": "依 {column} 排序",
     "statsCount": "{season} {tab}：{n} 人",
-    "statsNote": "只算藍鳥時期。Off = 打擊 + 跑壘、Def = 守備 + 守位調整，單位都是比平均多的分數（FanGraphs，經 MLB 提供）；Def 含捕手框球。OAA 是 Savant 跨所有 MLB 球隊的全季數值，不含捕手。字色較淡的列未達主力門檻。點欄位標題可排序。"
+    "statsNote": "只算藍鳥時期。Off = 打擊 + 跑壘、Def = 守備 + 守位調整，單位都是比平均多的分數（FanGraphs，經 MLB 提供）；Def 含捕手框球。OAA 是 Savant 跨所有 MLB 球隊的全季數值，不含捕手。字色較淡的列未達主力門檻；最下方固定的那一列是 MLB 平均。點欄位標題可排序。",
+    "teamStatsTitle": "{season} 球隊數據 vs MLB",
+    "teamStatsNote": "所有比率都由球隊整季的次數換算；MLB 平均是 30 隊次數加總後再換算，不是把各隊比率再平均。排名第 1 = 30 隊中最好。擊球品質相關列來自 Statcast（Baseball Savant）；OAA 是全隊的 Outs Above Average。灰色欄是前一季的數值。滑鼠移到數據名稱上可看說明。",
+    "mlbAvgRow": "MLB 平均"
   },
   "Team": {
     "title": "藍鳥 {from}–{to}",

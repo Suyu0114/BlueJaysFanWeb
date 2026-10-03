@@ -139,7 +139,10 @@
     "groupDefense": "Defense",
     "sortBy": "Sort by {column}",
     "statsCount": "{n} {tab}, {season}",
-    "statsNote": "As a Blue Jay. Off = batting + baserunning and Def = fielding + positional adjustment, both in runs above average (FanGraphs, via MLB); Def includes catcher framing. OAA is Savant's season total across all MLB clubs and doesn't cover catchers. Faded rows are under the Regulars line. Click a column to sort."
+    "statsNote": "As a Blue Jay. Off = batting + baserunning and Def = fielding + positional adjustment, both in runs above average (FanGraphs, via MLB); Def includes catcher framing. OAA is Savant's season total across all MLB clubs and doesn't cover catchers. Faded rows are under the Regulars line; the pinned last row is the MLB average. Click a column to sort.",
+    "teamStatsTitle": "{season} team stats vs MLB",
+    "teamStatsNote": "Every rate is built from the club's season counts, and the MLB average from all 30 clubs' summed counts (never an average of averages). Rank 1st = best among the 30 clubs. Contact-quality rows are Statcast (Baseball Savant); OAA is team Outs Above Average. The grey column is the previous season. Hover a stat for what it means.",
+    "mlbAvgRow": "MLB average"
   },
   "Team": {
     "title": "Blue Jays, {from}–{to}",

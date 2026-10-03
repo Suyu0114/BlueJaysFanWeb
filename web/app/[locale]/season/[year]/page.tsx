@@ -6,7 +6,8 @@ import TeamNav from "@/components/TeamNav";
 import SlidingPill from "@/components/motion/SlidingPill";
 import { Reveal } from "@/components/motion/Reveal";
 import { HEAD_ROW, stripeBg, TD, TD_FIRST, TD_LAST, TH, TH_FIRST, TH_LAST } from "@/components/standings-chrome";
-import PlayerStatsTable from "@/components/season/PlayerStatsTable";
+import PlayerStatsTable, { type MlbReference } from "@/components/season/PlayerStatsTable";
+import TeamSeasonStats from "@/components/season/TeamSeasonStats";
 import SeasonTrendChart from "@/components/season/SeasonTrendChart";
 import WarByPositionChart from "@/components/season/WarByPositionChart";
 import CopyTableButton from "@/components/CopyTableButton";
@@ -103,7 +104,9 @@ export default async function SeasonPage({
     prior ? getStandings(prior) : Promise.resolve([]),
     getTeamPlayerSeasons(prior ? [season, prior] : [season]),
     getLeagueSeason(season), // P12 M6: MLB-average reference for the leaders
-    getTeamTrend([season]), // P13 022 views: 30 clubs' ranks for this season
+    // P13 022 views: 30 clubs' ranks + the MLB row for this season (and the
+    // prior one, for the team-stats table's comparison column)
+    getTeamTrend(prior ? [prior, season] : [season]),
     getSeasonPlayerStats(season), // every Jay's season line for the player-stats table
   ]);
 
@@ -118,7 +121,24 @@ export default async function SeasonPage({
   // MLB ranks among 30 clubs. No Jays row in the 022 views (e.g. a new season
   // before the team pulls ran) hides the chips and the "where it ranked" panel.
   const clubs = trend.clubs;
-  const jaysRow = clubs.find((r) => r.team_id === TORONTO_TEAM_ID);
+  const jaysRow = clubs.find((r) => r.team_id === TORONTO_TEAM_ID && r.season === season);
+  // MLB-average reference row for the player-stats table (rate columns only),
+  // the same 022 MLB row the team-stats table shows — so wRC+ is the view's
+  // PA-weighted value (99 in 2025), not a hard-coded 100. The pitching rates are
+  // the MLB row's pit_* columns (per BF / IP, same units as the players').
+  const mlbRow = trend.mlb.find((r) => r.season === season);
+  const mlbRef: MlbReference | null = mlbRow
+    ? {
+        hitters: { avg: mlbRow.avg ?? null, obp: mlbRow.obp ?? null, slg: mlbRow.slg ?? null, ops: mlbRow.ops ?? null, wrc_plus: mlbRow.wrc_plus ?? 100 },
+        pitchers: {
+          era: mlbRow.era ?? null,
+          fip: mlbRow.fip ?? null,
+          whip: mlbRow.whip ?? null,
+          k_pct: mlbRow.pit_k_pct ?? null,
+          bb_pct: mlbRow.pit_bb_pct ?? null,
+        },
+      }
+    : null;
   const rankOf = (key: MetricKey, hint: string) => {
     const rank = jaysRow?.[rankKey(key)];
     return rank == null ? null : { rank, tied: tiedRank(clubs, season, key, rank), hint };
@@ -520,11 +540,19 @@ export default async function SeasonPage({
             }),
           )}
 
-          {/* 8. Every Jay's season line: position players (offense | defense), pitchers */}
+          {/* 8. The team's season line vs the MLB average + 30-club ranks (022 views) */}
+          {jaysRow && panel(
+            "season-team-stats",
+            t("teamStatsTitle", { season }),
+            <TeamSeasonStats season={season} prior={prior} clubs={clubs} mlb={trend.mlb} locale={locale} />,
+            t("teamStatsNote"),
+          )}
+
+          {/* 9. Every Jay's season line: position players (offense | defense), pitchers */}
           {hasPlayers(season) && panel(
             "season-player-stats",
             t("statsTitle", { season }),
-            <PlayerStatsTable hitters={hitters} pitchers={pitchers} season={season} />,
+            <PlayerStatsTable hitters={hitters} pitchers={pitchers} season={season} mlbRef={mlbRef} />,
             t("statsNote"),
           )}
         </div>
