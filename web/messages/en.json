@@ -115,7 +115,7 @@
     "warTitle": "WAR by position",
     "warNote": "Batters grouped by primary position; pitchers split into starters (SP) and relievers (RP) by share of games started. Team total {total} WAR{prior}.",
     "warPriorTotal": " ({season}: {total})",
-    "noPlayerData": "Player numbers (leaders, WAR by position) start in 2024; {season} shows the team record only.",
+    "noPlayerData": "Player numbers (leaders, WAR by position, player stats) start in 2024; {season} shows team numbers only.",
     "leagueRef": "MLB average in {season}: OPS {ops} · ERA {era}",
     "rankLabel": "MLB rank",
     "rankHint": "Among the 30 clubs that season",

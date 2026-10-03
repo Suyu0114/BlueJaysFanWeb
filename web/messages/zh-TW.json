@@ -115,7 +115,7 @@
     "warTitle": "各守位 WAR",
     "warNote": "打者依主要守位分組；投手依先發比例分成先發（SP）與後援（RP）。全隊合計 {total} WAR{prior}。",
     "warPriorTotal": "（{season}：{total}）",
-    "noPlayerData": "球員數據（隊內領先者、各守位 WAR）從 2024 年開始；{season} 只顯示球隊戰績。",
+    "noPlayerData": "球員數據（隊內領先者、各守位 WAR、全隊球員數據）從 2024 年開始；{season} 只顯示球隊數據。",
     "leagueRef": "{season} 大聯盟平均：OPS {ops} · ERA {era}",
     "rankLabel": "大聯盟排名",
     "rankHint": "該季 30 隊中的排名",

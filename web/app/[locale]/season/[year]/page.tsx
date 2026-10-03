@@ -475,11 +475,19 @@ export default async function SeasonPage({
             )}
           </div>
 
+          {/* 6. The team's season line vs the MLB average + 30-club ranks (022 views) */}
+          {jaysRow && panel(
+            "season-team-stats",
+            t("teamStatsTitle", { season }),
+            <TeamSeasonStats season={season} prior={prior} clubs={clubs} mlb={trend.mlb} locale={locale} />,
+            t("teamStatsNote"),
+          )}
+
           {!hasPlayers(season) && (
             <p className="text-sm text-navy/55">{t("noPlayerData", { season })}</p>
           )}
 
-          {/* 6. Team leaders */}
+          {/* 7. Team leaders */}
           {hasPlayers(season) && panel(
             "season-leaders",
             t("leadersTitle"),
@@ -524,7 +532,7 @@ export default async function SeasonPage({
             </>,
           )}
 
-          {/* 7. WAR by position group */}
+          {/* 8. WAR by position group */}
           {hasPlayers(season) && panel(
             "season-war",
             t("warTitle"),
@@ -538,14 +546,6 @@ export default async function SeasonPage({
               total: warTotal.toFixed(1),
               prior: playerPrior ? t("warPriorTotal", { season: playerPrior, total: (pwarTotal ?? 0).toFixed(1) }) : "",
             }),
-          )}
-
-          {/* 8. The team's season line vs the MLB average + 30-club ranks (022 views) */}
-          {jaysRow && panel(
-            "season-team-stats",
-            t("teamStatsTitle", { season }),
-            <TeamSeasonStats season={season} prior={prior} clubs={clubs} mlb={trend.mlb} locale={locale} />,
-            t("teamStatsNote"),
           )}
 
           {/* 9. Every Jay's season line: position players (offense | defense), pitchers */}
