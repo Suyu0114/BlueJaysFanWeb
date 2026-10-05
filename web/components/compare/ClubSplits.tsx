@@ -1,4 +1,4 @@
-import CopyTableButton from "@/components/CopyTableButton";
+import TableExport from "@/components/TableExport";
 import { TeamLogo } from "@/components/TeamLogo";
 import { SEASON_TOTAL, type TeamSeasonLine } from "@/lib/compare";
 import { teamAbbr } from "@/lib/team-abbr";
@@ -24,6 +24,7 @@ export default function ClubSplits({
   role,
   locale,
   labels,
+  exportName,
 }: {
   lines: TeamSeasonLine[];
   seasonA: number;
@@ -31,6 +32,7 @@ export default function ClubSplits({
   role: "batter" | "pitcher";
   locale: string;
   labels: { title: string; club: string; span: string };
+  exportName?: string; // player name, leads the table PNG caption
 }) {
   const clubRows = (season: number) =>
     lines
@@ -55,11 +57,17 @@ export default function ClubSplits({
   const copyRows = groups.flatMap((g) =>
     g.rows.map((l) => [g.season, teamAbbr(l.team_id), `${fmtDay(l.first_game)} – ${fmtDay(l.last_game)}`, ...cells(l)]),
   );
+  const caption = [exportName, labels.title, groups.map((g) => g.season).join(" & ")].filter(Boolean).join(" · ");
   return (
     <div className="rounded-lg border border-navy/10 bg-white/50 p-4">
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold text-navy">{labels.title}</h3>
-        <CopyTableButton headers={["Season", labels.club, labels.span, ...head]} rows={copyRows} />
+        <TableExport
+          headers={["Season", labels.club, labels.span, ...head]}
+          rows={copyRows}
+          name={caption}
+          caption={caption}
+        />
       </div>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full min-w-[520px] text-sm tabular-nums">

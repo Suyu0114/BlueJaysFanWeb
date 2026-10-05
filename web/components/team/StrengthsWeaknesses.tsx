@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import CopyTableButton from "@/components/CopyTableButton";
+import TableExport from "@/components/TableExport";
 import { RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import RankChip from "@/components/team/RankChip";
 import { PanelBlock } from "@/components/team/TeamPanel";
@@ -27,6 +27,14 @@ export default async function StrengthsWeaknesses({
   single?: boolean;
 }) {
   const t = await getTranslations("Team");
+  const te = await getTranslations("Export");
+  const span =
+    seasons.length === 0
+      ? ""
+      : single || seasons.length === 1
+        ? te("jaysSeason", { season: seasons[0] })
+        : t("title", { from: seasons[0], to: seasons[seasons.length - 1] });
+  const title = single ? t("calloutsTitleSingle") : t("calloutsTitle");
   const label = (c: Callout) => t(`calloutLabels.${c.key}`);
   const value = (c: Callout) => formatMetric(c.value, METRIC[c.key].format);
   const bySeason = seasons.map((s) => ({ season: s, ...seasonCallouts(clubs, s) }));
@@ -63,11 +71,13 @@ export default async function StrengthsWeaknesses({
 
   return (
     <PanelBlock
-      title={single ? t("calloutsTitleSingle") : t("calloutsTitle")}
+      title={title}
       action={
-        <CopyTableButton
+        <TableExport
           headers={[t("colSeason"), t("colSide"), t("colMetric"), t("colValue"), t("colMlbRank")]}
           rows={copyRows}
+          name={`${span} ${title}`}
+          caption={[span, title].filter(Boolean).join(" · ")}
         />
       }
       note={t("calloutsNote")}

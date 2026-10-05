@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Link } from "@/i18n/navigation";
-import CopyTableButton from "@/components/CopyTableButton";
+import TableExport from "@/components/TableExport";
 import ScorecardFrame from "@/components/ScorecardFrame";
 import SlidingPill from "@/components/motion/SlidingPill";
 import { HEAD_ROW, stripeBg, TD, TD_LAST, TH, TH_FIRST, TH_LAST } from "@/components/standings-chrome";
@@ -55,6 +55,7 @@ export default function PlayerStatsTable({
   mlbRef: MlbReference | null; // pinned under the rows, outside sort / filter
 }) {
   const t = useTranslations("Season");
+  const te = useTranslations("Export");
   const [tab, setTab] = useState<Tab>("hitters");
   const [regulars, setRegulars] = useState(false);
   const [sorts, setSorts] = useState<Record<Tab, Sort>>({ hitters: DEFAULT_SORT, pitchers: DEFAULT_SORT });
@@ -83,6 +84,10 @@ export default function PlayerStatsTable({
 
   const label = (c: Column<HitterRow | PitcherRow>) => (c.labelKey ? t(c.labelKey) : (c.label ?? c.key));
   const tabLabel = (x: Tab) => (x === "hitters" ? t("tabHitters") : t("tabPitchers"));
+  const regularsLabel =
+    tab === "hitters"
+      ? t("filterRegularsHitters", { pa: REGULAR_MIN_PA })
+      : t("filterRegularsPitchers", { ip: REGULAR_MIN_IP });
 
   const visible = (x: Tab) => {
     const rows = (x === "hitters" ? hitters : pitchers) as (HitterRow | PitcherRow)[];
@@ -271,16 +276,18 @@ export default function PlayerStatsTable({
           { key: "all", label: t("filterAll"), active: !regulars, onClick: () => setRegulars(false) },
           {
             key: "regulars",
-            label:
-              tab === "hitters"
-                ? t("filterRegularsHitters", { pa: REGULAR_MIN_PA })
-                : t("filterRegularsPitchers", { ip: REGULAR_MIN_IP }),
+            label: regularsLabel,
             active: regulars,
             onClick: () => setRegulars(true),
           },
         ])}
         <div className="ml-auto">
-          <CopyTableButton headers={copyHeaders} rows={copyRows} />
+          <TableExport
+            headers={copyHeaders}
+            rows={copyRows}
+            name={`${te("jaysSeason", { season })} ${tabLabel(tab)}`}
+            caption={[te("jaysSeason", { season }), tabLabel(tab), regulars ? regularsLabel : ""].filter(Boolean).join(" · ")}
+          />
         </div>
       </div>
       {TABS.map(table)}

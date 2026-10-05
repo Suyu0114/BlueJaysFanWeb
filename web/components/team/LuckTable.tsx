@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import CopyTableButton from "@/components/CopyTableButton";
+import TableExport from "@/components/TableExport";
 import { HEAD_ROW, stripeBg, TD, TD_FIRST, TD_LAST, TH, TH_FIRST, TH_LAST } from "@/components/standings-chrome";
 import { PanelBlock } from "@/components/team/TeamPanel";
 import RankChip from "@/components/team/RankChip";
@@ -27,6 +27,7 @@ export default async function LuckTable({
   locale: string;
 }) {
   const t = await getTranslations("Team");
+  const span = rows.length ? t("title", { from: rows[0].season, to: rows[rows.length - 1].season }) : "";
   const headers = [t("colSeason"), "W-L", t("colExpected"), t("colLuck"), t("colOneRun"), t("labels.run_diff"), t("colMlbRank")];
   const cells = rows.map((r) => {
     const rank = r.run_diff_rank;
@@ -46,9 +47,11 @@ export default async function LuckTable({
     <PanelBlock
       title={t("luckTitle")}
       action={
-        <CopyTableButton
+        <TableExport
           headers={headers}
           rows={cells.map((c) => [c.season, c.record, c.expected, c.luck, c.oneRun, c.runDiff, c.rankText])}
+          name={`${span} ${t("luckTitle")}`}
+          caption={[span, t("luckTitle")].filter(Boolean).join(" · ")}
         />
       }
       note={t("luckNote")}

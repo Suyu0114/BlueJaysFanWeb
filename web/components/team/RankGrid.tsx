@@ -12,7 +12,7 @@
 import { Fragment, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import ChartTooltip from "@/components/charts/ChartTooltip";
-import CopyTableButton from "@/components/CopyTableButton";
+import TableExport from "@/components/TableExport";
 import ScorecardFrame from "@/components/ScorecardFrame";
 import SlidingPill from "@/components/motion/SlidingPill";
 import { TeamLogo } from "@/components/TeamLogo";
@@ -116,7 +116,18 @@ export default function RankGrid({
             })}
           </div>
         </ScorecardFrame>
-        <CopyTableButton headers={[copyName, ...seasons]} rows={copyRows} />
+        <TableExport
+          headers={[copyName, ...seasons]}
+          rows={copyRows}
+          name={`${copyName} ${seasons[0]} ${seasons[seasons.length - 1]} ${mode}`}
+          caption={[
+            seasons.length ? t("title", { from: seasons[0], to: seasons[seasons.length - 1] }) : "",
+            copyName,
+            t(mode === "value" ? "modeValue" : "modeVsMlb"),
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        />
       </div>
 
       <div className="overflow-x-auto">

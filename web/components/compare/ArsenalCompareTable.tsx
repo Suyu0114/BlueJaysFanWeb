@@ -1,4 +1,4 @@
-import CopyTableButton from "@/components/CopyTableButton";
+import TableExport from "@/components/TableExport";
 import type { ArsenalCompareRow } from "@/lib/pitch-arsenal";
 import { colorFor } from "@/lib/pitch-colors";
 
@@ -31,6 +31,7 @@ export default function ArsenalCompareTable({
   seasonA,
   seasonB,
   labels,
+  caption,
 }: {
   rows: ArsenalCompareRow[];
   seasonA: number;
@@ -46,6 +47,7 @@ export default function ArsenalCompareTable({
     new: string;
     dropped: string;
   };
+  caption?: string; // table PNG caption, e.g. "<player> · Arsenal · 2026 vs 2025"
 }) {
   if (rows.length === 0) return null;
   const dvOf = (r: ArsenalCompareRow) =>
@@ -72,7 +74,12 @@ export default function ArsenalCompareTable({
   return (
     <div className="overflow-x-auto">
       <div className="mb-1 flex justify-end">
-        <CopyTableButton headers={copyHeaders} rows={copyRows} />
+        <TableExport
+          headers={copyHeaders}
+          rows={copyRows}
+          name={caption ?? `arsenal ${seasonA} vs ${seasonB}`}
+          caption={caption}
+        />
       </div>
       <table className="w-full min-w-[560px] text-sm tabular-nums">
         <thead>

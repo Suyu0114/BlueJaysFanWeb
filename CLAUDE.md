@@ -10,7 +10,7 @@ This file gives Claude (and other AI coding agents) the project context that isn
 
 ## What this project is
 
-A Toronto Blue Jays fan website with two MVP features:
+**Suyu's Jays Notes** (formerly "Blue Jays Fan Hub", renamed 2026-10-04): a Toronto Blue Jays data site by Suyu Cheng. It doubles as the author's portfolio for sports-analytics work, so the author credit (About page, site-wide footer, every exported PNG / copied table) is a feature, not decoration. It started with two MVP features:
 
 1. **Data visualizations** — spray chart, pitching distribution, fielding heatmap (filterable by season / month / pitch type)
 2. **Player pages** — beginner-friendly overview cards for the 26-man active roster
@@ -171,7 +171,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     standings/page.tsx         # P11: three views (AL / NL / Wild Card) + clinch legend
     season/[year]/page.tsx     # P12 M5: team season vs prior (record strip, games above .500 + run diff by game number, months, splits, leaders, value by position); generateStaticParams = seasons with R finals; player modules hide when a season has no player rows (< 2024). Post-P13: TeamNav tabs; MLB rank chips on PCT / RS / RA / run diff + "Where {season} ranked" (StrengthsWeaknesses single) from the 022 views, hidden without a Jays row; leaders WAR/OPS/HR/SB + ERA/WHIP/SO/SV, each card "All →" (#stats-<tab>-<column>) into the player stats table (last panel), preceded by "team stats vs MLB" (TeamSeasonStats); getTeamTrend loads season + prior
     team/page.tsx              # P13: Blue Jays over the latest 5 seasons vs the MLB average + 30-club ranks — season strip, ① record & run differential, ② offense, ③ run prevention, ④ trajectory + splits, ⑤ strengths & weaknesses, ⑥ glossary & method; TeamNav tabs on top; SSG, revalidate 3600
-    about/page.tsx
+    about/page.tsx             # bio + contact card (#contact: LinkedIn / portfolio / email / X when set) + how the data works + sharing credit; JSON-LD Person (no email)
   components/
     PlayerNav.tsx              # tabs with `available` prop (compare = >= 2 MLB seasons, P12; bazi slot reserved for v2)
     TeamNav.tsx                # team section tabs (mirrors PlayerNav): Season review -> /season/[year] | Five-season trends -> /team
@@ -187,7 +187,9 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     SeasonCompareCard.tsx      # P12 generic season A vs B table + Δ chips (per-metric direction, † = net of 2026 zone shift)
     DisciplineCards.tsx        # P12 DisciplineCard / BattedBallProfileCard / PitcherDisciplineCard / ContactCompareCard (015 views; scope prop)
     Exportable.tsx             # P12 M7 wrap any chart -> "PNG ↓" button (exports the largest <svg> inside; generic, P13 reuses)
-    CopyTableButton.tsx        # P12 M7 "Copy table" -> TSV on the clipboard from plain headers + rows (generic, P13 reuses)
+    TableExport.tsx            # "PNG ↓" (lib/export-table) + "Copy table" (TSV + source line) from plain headers + rows; replaced P12's CopyTableButton (2026-10-04). Pass `name` + `caption` (player tables take an `exportName` prop = player name)
+    Footer.tsx                 # site-wide credit + contact strip (navy, mirrors the header); static, never queries the DB
+    ContactEmail.tsx           # email as "(at)" text on the server / no-JS, a mailto: link after hydration
     PercentileBars.tsx         # P12 M6 Savant percentile bars (steel -> neutral -> brick), season switch, not-qualified state, batter luck line (wOBA vs xwOBA, Barrel%)
     compare/                   # P12 Compare tab pieces
       CompareControls.tsx      # season / vs / scope Links (URL state, SlidingPill in control frames)
@@ -205,7 +207,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     WildCardTable.tsx          # P11 wild card race + cut line (division leaders excluded)
     PlayoffRace.tsx            # P11 AL seeds 1-6 + cut line + chasers
     HomeStandings.tsx          # P11 home module: AL East table + PlayoffRace in ScorecardFrames
-    Header.tsx                 # "Team ▾" (Nav.team, after Standings) = TeamMenu, fed getTeamSeasons + getTrendSeasons (P12 linked /season/<latest>, P13 /team); wraps to 2 rows on phones
+    Header.tsx                 # brand = SITE.name; "Team ▾" (Nav.team, after Standings) = TeamMenu, fed getTeamSeasons + getTrendSeasons (P12 linked /season/<latest>, P13 /team); wraps to 2 rows on phones
     TeamMenu.tsx               # client <details> menu (works without JS): newest season review + earlier-season chips + five-season trends; closes on Escape / outside click / navigation; phones: panel spans the header
     team/                      # P13 team page modules
       TeamPanel.tsx            # panel ScorecardFrame + heading + plain-English question; PanelBlock (sub-heading + PNG/copy action + note)
@@ -255,8 +257,11 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     batting.ts / pitching.ts / fielding.ts
     season-stats.ts            # web_player_season_stats (incl. P9 basic line + P10 pitcher line) + batter games-played
     discipline.ts              # P12 015-view readers (batter/pitcher discipline, batted-ball profile, zone reference), scope 'mlb'|'jays'
-    export-svg.ts              # P12 M7 any <svg> -> PNG: resolves var(--color-*), inlines class paint, 2x canvas, caption + source/date footer
-    copy-table.ts              # P12 M7 toTsv (N-N record cells -> en dash so Excel/Sheets don't read dates) + copyText (clipboard w/ fallback)
+    site.ts                    # SITE (name / author / url / contact links / email parts) + sourceLine(): the only place the brand and contacts live
+    export-png.ts              # shared PNG back half: papaya paper, brick rule, credit footer (caption | wordmark in Graduate, host · data sources · date), 2x canvas, download
+    export-svg.ts              # P12 M7 any <svg> -> PNG: resolves var(--color-*), inlines class paint, rasterises, then export-png
+    export-table.ts            # headers + rows -> ledger-style table PNG on a canvas (navy header bar, papaya stripes; numeric columns right-aligned), then export-png. Flat: no per-cell tints
+    copy-table.ts              # P12 M7 toTsv (N-N record cells -> en dash so Excel/Sheets don't read dates; optional source line after a blank row) + copyText (clipboard w/ fallback)
     savant.ts                  # P12 M6 readers: percentiles, Savant season (xwOBA / Barrel%), pitch RV/100, league season
     season-deltas.ts           # P12 pure: delta / per-metric tone / 2026 zone-change helpers, biggestChanges (What changed), overlayByGame (M4) — now built on P13's N-series mergeByGame
     batter-game-log.ts         # P9 per-game batting log (web_player_game_stats + web_games), any 2024-2026 season, game_type 'R' only
@@ -328,6 +333,7 @@ Env vars live in `.env` at the repo root (single `DATABASE_URL`). The ETL loads
 - **Pre-aggregate in ETL where possible.** Player season stats go in `web_player_season_stats`; pages should not aggregate 3000 rows on every request.
 - **D3 components receive plain JSON props** (`BattedBallEvent[]`), not Supabase clients. Keep them framework-pure for easier testing.
 - **No new dependencies without a clear reason.** The stack is intentionally small.
+- **Site name, author and contact links live only in `web/lib/site.ts`.** Header, footer, About, layout metadata and every export read `SITE`; the brand is a proper noun and stays English in zh-TW, so it is not in `messages/` (there is no `Nav.brand`). Opening the X account = set `SITE.links.x`, nothing else.
 - **Keep `max_pipeline: 0` in `web/lib/db.ts`.** Past 10 concurrent queries in one process, postgres.js pipelines onto busy connections; through Supavisor's transaction pooler that leaves backends stuck in `ClientRead`, and later queries on those connections fail with a statement timeout (2026-10-01: `next build` timed out on /season, /team, /standings once the header queried the DB). Any query in `Header.tsx` / the layout runs on every page.
 
 ## Theme / colors

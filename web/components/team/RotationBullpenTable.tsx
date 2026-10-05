@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import CopyTableButton from "@/components/CopyTableButton";
+import TableExport from "@/components/TableExport";
 import { HEAD_ROW, stripeBg, TD, TD_FIRST, TD_LAST, TH, TH_FIRST, TH_LAST } from "@/components/standings-chrome";
 import RankChip from "@/components/team/RankChip";
 import { PanelBlock } from "@/components/team/TeamPanel";
@@ -25,6 +25,7 @@ export default async function RotationBullpenTable({
   locale: string;
 }) {
   const t = await getTranslations("Team");
+  const span = rows.length ? t("title", { from: rows[0].season, to: rows[rows.length - 1].season }) : "";
   const keys = [...ROTATION, ...BULLPEN];
   const label = (k: MetricKey) => metricLabel(METRIC[k], t);
 
@@ -51,7 +52,14 @@ export default async function RotationBullpenTable({
   ]);
 
   return (
-    <PanelBlock title={t("rolesTitle")} action={<CopyTableButton headers={copyHeaders} rows={copyRows} />} note={t("rolesNote")}>
+    <PanelBlock title={t("rolesTitle")} action={
+        <TableExport
+          headers={copyHeaders}
+          rows={copyRows}
+          name={`${span} ${t("rolesTitle")}`}
+          caption={[span, t("rolesTitle")].filter(Boolean).join(" · ")}
+        />
+      } note={t("rolesNote")}>
       <div className="overflow-x-auto">
         <table className="w-full whitespace-nowrap border-separate border-spacing-0 text-right text-sm tabular-nums">
           <thead>

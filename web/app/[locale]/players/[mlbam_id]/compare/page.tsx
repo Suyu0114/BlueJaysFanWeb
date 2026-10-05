@@ -442,6 +442,7 @@ export default async function ComparePage({
             seasonB={vs}
             rows={tale}
             labels={cardLabels}
+            exportName={player.name}
           />
         </Reveal>
         {scope === "mlb" && (
@@ -453,6 +454,7 @@ export default async function ComparePage({
               role={role}
               locale={locale}
               labels={{ title: t("clubsTitle"), club: t("colClub"), span: t("colSpan") }}
+              exportName={player.name}
             />
           </Reveal>
         )}
@@ -477,13 +479,13 @@ export default async function ComparePage({
         {role === "batter" ? (
           <>
             <Reveal>
-              <DisciplineCard rows={discipline} seasonA={season} seasonB={vs} scope={scope} zoneRef={zoneRef} />
+              <DisciplineCard rows={discipline} seasonA={season} seasonB={vs} scope={scope} zoneRef={zoneRef} exportName={player.name} />
             </Reveal>
             <Reveal>
-              <ContactCompareCard rows={profile} seasonA={season} seasonB={vs} scope={scope} />
+              <ContactCompareCard rows={profile} seasonA={season} seasonB={vs} scope={scope} exportName={player.name} />
             </Reveal>
             <Reveal>
-              <BattedBallProfileCard rows={profile} seasonA={season} seasonB={vs} scope={scope} />
+              <BattedBallProfileCard rows={profile} seasonA={season} seasonB={vs} scope={scope} exportName={player.name} />
             </Reveal>
             <Reveal className="rounded-lg border border-navy/10 bg-white/50 p-4">
               <h3 className="text-sm font-semibold text-navy">{t("sprayTitle")}</h3>
@@ -518,7 +520,7 @@ export default async function ComparePage({
         ) : (
           <>
             <Reveal>
-              <PitcherDisciplineCard rows={pDiscipline} seasonA={season} seasonB={vs} scope={scope} zoneRef={zoneRef} />
+              <PitcherDisciplineCard rows={pDiscipline} seasonA={season} seasonB={vs} scope={scope} zoneRef={zoneRef} exportName={player.name} />
             </Reveal>
             <Reveal className="rounded-lg border border-navy/10 bg-white/50 p-4">
               <h3 className="mb-2 text-sm font-semibold text-navy">
@@ -542,6 +544,7 @@ export default async function ComparePage({
                     new: t("badgeNew"),
                     dropped: t("badgeDropped"),
                   }}
+                  caption={`${player.name} · ${t("arsenalTitle")} · ${scopeLabel} · ${season} vs ${vs}`}
                 />
               )}
               <p className="mt-2 text-[11px] text-navy/50">{t("arsenalNote")}</p>

@@ -1,4 +1,4 @@
-import CopyTableButton from "@/components/CopyTableButton";
+import TableExport from "@/components/TableExport";
 import { delta, deltaTone, type Direction } from "@/lib/season-deltas";
 
 // P12: one card, two season columns + a Δ chip per metric. Server component,
@@ -83,6 +83,7 @@ export default function SeasonCompareCard({
   rows,
   notes,
   labels,
+  exportName,
 }: {
   title: string;
   subtitle?: string;
@@ -95,6 +96,7 @@ export default function SeasonCompareCard({
   // changeUnit: shown once in the header (cards that are all pct). ptsSuffix:
   // appended to each pct chip instead (mixed-format cards, e.g. the season line).
   labels: { metric: string; change: string; changeUnit?: string; ptsSuffix?: string; smallSample: string };
+  exportName?: string; // player name, leads the table PNG caption
 }) {
   const hasB = seasonB != null;
   // Delta + tone per row, shared by the rendered chips and the copied TSV.
@@ -123,6 +125,7 @@ export default function SeasonCompareCard({
         : []),
     ]),
   ];
+  const caption = [exportName, title, subtitle, hasB ? `${seasonA} vs ${seasonB}` : seasonA].filter(Boolean).join(" · ");
   return (
     <div className="rounded-lg border border-navy/10 bg-white/50 p-4">
       <div className="flex items-start justify-between gap-2">
@@ -130,7 +133,7 @@ export default function SeasonCompareCard({
           {title}
           {subtitle && <span className="font-normal text-navy/45"> · {subtitle}</span>}
         </h3>
-        <CopyTableButton headers={copyHeaders} rows={copyRows} />
+        <TableExport headers={copyHeaders} rows={copyRows} name={caption} caption={caption} />
       </div>
       <table className="mt-3 w-full text-sm tabular-nums">
         <thead>

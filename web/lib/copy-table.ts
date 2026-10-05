@@ -10,7 +10,9 @@ export type Cell = string | number | null | undefined;
 // and Sheets (10-11 -> Oct 11). An en dash keeps it text and reads the same.
 const RECORD_LIKE = /^(\d{1,4})-(\d{1,4})$/;
 
-export function toTsv(headers: Cell[], rows: Cell[][]): string {
+// `source` (lib/site sourceLine) goes after one blank row, so a spreadsheet's
+// auto-detected data range stops before the credit line.
+export function toTsv(headers: Cell[], rows: Cell[][], source?: string): string {
   const cell = (v: Cell) =>
     v == null
       ? ""
@@ -18,7 +20,8 @@ export function toTsv(headers: Cell[], rows: Cell[][]): string {
           .replace(/[\t\r\n]+/g, " ")
           .trim()
           .replace(RECORD_LIKE, "$1–$2");
-  return [headers, ...rows].map((r) => r.map(cell).join("\t")).join("\n");
+  const tsv = [headers, ...rows].map((r) => r.map(cell).join("\t")).join("\n");
+  return source ? `${tsv}\n\n${cell(source)}` : tsv;
 }
 
 export async function copyText(text: string): Promise<boolean> {

@@ -10,7 +10,7 @@ import PlayerStatsTable, { type MlbReference } from "@/components/season/PlayerS
 import TeamSeasonStats from "@/components/season/TeamSeasonStats";
 import SeasonTrendChart from "@/components/season/SeasonTrendChart";
 import PositionValueChart from "@/components/season/PositionValueChart";
-import CopyTableButton from "@/components/CopyTableButton";
+import TableExport from "@/components/TableExport";
 import Exportable from "@/components/Exportable";
 import RankChip from "@/components/team/RankChip";
 import StrengthsWeaknesses from "@/components/team/StrengthsWeaknesses";
@@ -102,6 +102,7 @@ export default async function SeasonPage({
 
   const t = await getTranslations("Season");
   const ts = await getTranslations("Standings");
+  const te = await getTranslations("Export");
 
   const [games, priorGames, standings, priorStandings, players, league, trend, seasonStats, positionSplits] = await Promise.all([
     getTeamGames(season),
@@ -259,7 +260,14 @@ export default async function SeasonPage({
         <div className="relative z-10 p-4">
           <div className="flex items-start justify-between gap-2">
             <h2 className="font-display text-base uppercase tracking-wide text-navy">{title}</h2>
-            {copy && <CopyTableButton headers={copy.headers} rows={copy.rows} />}
+            {copy && (
+              <TableExport
+                headers={copy.headers}
+                rows={copy.rows}
+                name={`${te("jaysSeason", { season })} ${title}`}
+                caption={`${te("jaysSeason", { season })} · ${title}`}
+              />
+            )}
           </div>
           <div className="mt-2">{children}</div>
           {note && <p className="mt-2 text-[11px] leading-snug text-navy/55">{note}</p>}

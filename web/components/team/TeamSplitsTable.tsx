@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import CopyTableButton from "@/components/CopyTableButton";
+import TableExport from "@/components/TableExport";
 import { HEAD_ROW, stripeBg, TD, TD_FIRST, TD_LAST, TH, TH_FIRST, TH_LAST } from "@/components/standings-chrome";
 import { PanelBlock } from "@/components/team/TeamPanel";
 import { winPct, type SplitKey, type WinLoss } from "@/lib/team-season";
@@ -33,13 +33,21 @@ export default async function TeamSplitsTable({
 }) {
   const t = await getTranslations("Team");
   const ts = await getTranslations("Season");
+  const span = seasons.length ? t("title", { from: seasons[0].season, to: seasons[seasons.length - 1].season }) : "";
   const label = (k: SplitKey) => ts(LABEL_KEY[k], { division });
 
   const copyHeaders = [t("colSplit"), ...seasons.map((s) => s.season)];
   const copyRows = ORDER.map((k) => [label(k), ...seasons.map((s) => `${wl(s.splits[k])} (${pct3(winPct(s.splits[k]))})`)]);
 
   return (
-    <PanelBlock title={t("splitsTitle")} action={<CopyTableButton headers={copyHeaders} rows={copyRows} />} note={t("splitsNote")}>
+    <PanelBlock title={t("splitsTitle")} action={
+        <TableExport
+          headers={copyHeaders}
+          rows={copyRows}
+          name={`${span} ${t("splitsTitle")}`}
+          caption={[span, t("splitsTitle")].filter(Boolean).join(" · ")}
+        />
+      } note={t("splitsNote")}>
       <div className="overflow-x-auto">
         <table className="w-full whitespace-nowrap border-separate border-spacing-0 text-right text-sm tabular-nums">
           <thead>

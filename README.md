@@ -1,4 +1,6 @@
-# Blue Jays Fan Web
+# Suyu's Jays Notes
+
+Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) · [Portfolio](https://suyu-portfolio.vercel.app) · Live: [bluejaysfanweb.vercel.app](https://bluejaysfanweb.vercel.app/en)
 
 一個給多倫多藍鳥隊球迷的觀察站。同時提供英文和繁體中文切換。
 
@@ -44,7 +46,8 @@
    - Team stats vs MLB: the club's offense and run-prevention line next to the MLB average, its rank among 30 clubs and the prior season
    - Player stats: every Blue Jay's season line, sortable — position players (offense incl. FanGraphs Off, defense = Def + Savant OAA, WAR) and pitchers; All / Regulars filter, copy table; each leader card's "All →" opens it sorted by that stat; an MLB-average row stays pinned at the bottom
 9. **Article tooling**
-   - "PNG ↓" on every chart (brand colours, caption + source/date footer) and "Copy table" on the stat tables (TSV that pastes into a spreadsheet as a real table)
+   - "PNG ↓" on every chart and every stat table (brand colours; footer = caption, the site wordmark, address, data sources and date) and "Copy table" on the stat tables (TSV that pastes into a spreadsheet as a real table, ending with a source line)
+10. **About & credit**: `/about` (bio, contact card, how the data works, sharing credit) and a footer on every page with the author and contact links
    - `etl/season_report.py` writes a season-review data pack (team / batters / pitchers / movers / roster moves with every club / league context / five-season team trends vs MLB + definitions and caveats) to `reports/` (git-ignored)
 
 **v2 (not in this milestone):** BaZi personality analysis, matchup predictions, injury-risk beta, daily WAR snapshots, player-vs-player `/compare` page (the per-player season Compare tab shipped in P12; the SprayChart `secondaryEvents` prop is still in place for it).
@@ -122,7 +125,8 @@
 │   │   ├── season/               # season page: trend by game number, value by position, player stats table
 │   │   ├── team/                 # P13 team page: season strip, run sources, rank grid, trends,
 │   │   │                         # rotation/bullpen, ERA vs FIP, trajectory, splits, callouts, glossary
-│   │   ├── Exportable / CopyTableButton  # P12 "PNG ↓" and "Copy table" (generic)
+│   │   ├── Exportable / TableExport  # "PNG ↓" on charts; "PNG ↓" + "Copy table" on tables (generic)
+│   │   ├── Footer.tsx / ContactEmail.tsx  # site-wide credit strip; scraper-shy email link
 │   │   ├── TeamLogo.tsx          # recoloured cap logo + TeamCell
 │   │   ├── SketchDefs.tsx        # shared SVG #sketch filter (hand-drawn wobble)
 │   │   ├── motion/               # MotionProvider, Reveal/RevealGroup/RevealItem, CountUp,
@@ -137,6 +141,7 @@
 │   │                             # motion (timing tokens), ink-draw, use-lingering-hover,
 │   │                             # P12: compare, discipline, season-deltas, savant,
 │   │                             # team-season (pure) + team-season-data, export-svg, copy-table,
+│   │                             # site (brand + contacts), export-png, export-table,
 │   │                             # P13: team-trends, team-metrics, team-grid, team-callouts,
 │   │                             # percentile-color, ordinal, team-ids
 │   └── messages/{en,zh-TW}.json
@@ -310,4 +315,5 @@ What stays English in zh-TW (do **not** translate):
 
 - Statcast data © MLB Advanced Media. Pulled via [pybaseball](https://github.com/jldbc/pybaseball).
 - Player headshots from `https://midfield.mlbstatic.com/...` — non-commercial use only; see About page.
+- Built and maintained by Suyu Cheng. Brand name, author and contact links live in `web/lib/site.ts`.
 - This is a fan project, not affiliated with the Toronto Blue Jays or MLB.

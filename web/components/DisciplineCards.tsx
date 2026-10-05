@@ -80,12 +80,14 @@ export async function DisciplineCard({
   seasonB,
   scope,
   zoneRef,
+  exportName,
 }: {
   rows: BatterDiscipline[];
   seasonA: number;
   seasonB: number | null;
   scope: Scope;
   zoneRef?: ZoneReference[];
+  exportName?: string; // player name, for the table PNG caption
 }) {
   const { a, b } = pick(rows, seasonA, seasonB);
   if (!a) return null;
@@ -104,6 +106,7 @@ export async function DisciplineCard({
     <SeasonCompareCard
       title={t("disciplineTitle")}
       subtitle={scopeLabel}
+      exportName={exportName}
       seasonA={seasonA}
       seasonB={B}
       sample={{ label: "PA", a: a.pa, b: b?.pa ?? null, small: a.pa < MIN_PA || (b != null && b.pa < MIN_PA) }}
@@ -119,11 +122,13 @@ export async function BattedBallProfileCard({
   seasonA,
   seasonB,
   scope,
+  exportName,
 }: {
   rows: BattedBallProfile[];
   seasonA: number;
   seasonB: number | null;
   scope: Scope;
+  exportName?: string; // player name, for the table PNG caption
 }) {
   const { a, b } = pick(rows, seasonA, seasonB);
   if (!a || a.bip === 0) return null;
@@ -144,6 +149,7 @@ export async function BattedBallProfileCard({
     <SeasonCompareCard
       title={t("battedBallTitle")}
       subtitle={scopeLabel}
+      exportName={exportName}
       seasonA={seasonA}
       seasonB={B}
       sample={{ label: t("sampleBip"), a: a.bip, b: b?.bip ?? null }}
@@ -160,12 +166,14 @@ export async function PitcherDisciplineCard({
   seasonB,
   scope,
   zoneRef,
+  exportName,
 }: {
   rows: PitcherDiscipline[];
   seasonA: number;
   seasonB: number | null;
   scope: Scope;
   zoneRef?: ZoneReference[];
+  exportName?: string; // player name, for the table PNG caption
 }) {
   const { a, b } = pick(rows, seasonA, seasonB);
   if (!a) return null;
@@ -183,6 +191,7 @@ export async function PitcherDisciplineCard({
     <SeasonCompareCard
       title={t("pitcherTitle")}
       subtitle={scopeLabel}
+      exportName={exportName}
       seasonA={seasonA}
       seasonB={B}
       sample={{ label: t("sampleBf"), a: a.pa, b: b?.pa ?? null, small: a.pa < MIN_BF || (b != null && b.pa < MIN_BF) }}
@@ -200,11 +209,13 @@ export async function ContactCompareCard({
   seasonA,
   seasonB,
   scope,
+  exportName,
 }: {
   rows: BattedBallProfile[];
   seasonA: number;
   seasonB: number | null;
   scope: Scope;
+  exportName?: string; // player name, for the table PNG caption
 }) {
   const { a, b } = pick(rows, seasonA, seasonB);
   if (!a || a.with_ev === 0) return null;
@@ -219,6 +230,7 @@ export async function ContactCompareCard({
     <SeasonCompareCard
       title={t("contactTitle")}
       subtitle={scopeLabel}
+      exportName={exportName}
       seasonA={seasonA}
       seasonB={B}
       sample={{ label: t("sampleBip"), a: a.bip, b: b?.bip ?? null }}

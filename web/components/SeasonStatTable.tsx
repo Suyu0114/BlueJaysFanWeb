@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import CopyTableButton from "@/components/CopyTableButton";
+import TableExport from "@/components/TableExport";
 import type { SeasonStats } from "@/lib/season-stats";
 
 // Baseball convention: drop the leading zero on sub-1.000 rates (".308"), keep
@@ -21,8 +21,10 @@ function dec(v: number | null, d: number): string {
 // render "—".
 export default async function SeasonStatTable({
   stats,
+  exportName,
 }: {
   stats: SeasonStats[];
+  exportName?: string; // player name, leads the table PNG caption
 }) {
   const t = await getTranslations("Overview");
   // getSeasonStats returns seasons descending; show the most recent three.
@@ -38,7 +40,12 @@ export default async function SeasonStatTable({
     <div className="rounded-lg border border-navy/10 bg-white/50 p-4">
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold text-navy">{t("statTableTitle")}</h3>
-        <CopyTableButton headers={headers} rows={cells} />
+        <TableExport
+          headers={headers}
+          rows={cells}
+          name={`${exportName ?? ""} ${t("statTableTitle")}`}
+          caption={[exportName, t("statTableTitle")].filter(Boolean).join(" · ")}
+        />
       </div>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full min-w-[34rem] text-right text-sm tabular-nums">

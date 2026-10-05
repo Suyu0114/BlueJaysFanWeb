@@ -1,4 +1,4 @@
-# 藍鳥 Fan Hub — ETL 更新流程
+# Suyu's Jays Notes — ETL 更新流程
 
 ## 每季一次性 Backfill（新賽季或補歷史資料）
 

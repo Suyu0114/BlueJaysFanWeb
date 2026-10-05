@@ -430,6 +430,7 @@ export default async function PlayerOverviewPage({
                 seasonB={cardSeasonB}
                 scope="jays"
                 zoneRef={zoneRef}
+                exportName={player.name}
               />
             </Reveal>
           )}
@@ -466,13 +467,13 @@ export default async function PlayerOverviewPage({
 
           {isBatter && (
             <Reveal>
-              <SeasonStatTable stats={stats} />
+              <SeasonStatTable stats={stats} exportName={player.name} />
             </Reveal>
           )}
 
           {isPitcher && (
             <Reveal>
-              <PitcherSeasonStatTable stats={stats} />
+              <PitcherSeasonStatTable stats={stats} exportName={player.name} />
             </Reveal>
           )}
 
@@ -490,6 +491,7 @@ export default async function PlayerOverviewPage({
                 seasonB={cardSeasonB}
                 scope="jays"
                 zoneRef={zoneRef}
+                exportName={player.name}
               />
             </Reveal>
           )}
@@ -501,6 +503,7 @@ export default async function PlayerOverviewPage({
                 seasonA={latest!.season}
                 seasonB={priorSeason(profile, latest!.season)}
                 scope="jays"
+                exportName={player.name}
               />
             </Reveal>
           )}

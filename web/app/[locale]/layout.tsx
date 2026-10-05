@@ -4,9 +4,11 @@ import { notFound } from "next/navigation";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
+import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { SketchDefs } from "@/components/SketchDefs";
 import MotionProvider from "@/components/motion/MotionProvider";
+import { SITE } from "@/lib/site";
 import "../globals.css";
 
 // Body / UI / data face (Gabriela has a single 400 style — no Sans/Mono variants).
@@ -24,10 +26,16 @@ const graduate = Graduate({
   display: "swap",
 });
 
+const DESCRIPTION = `Toronto Blue Jays data visualizations and player pages, by ${SITE.author}.`;
+
 export const metadata: Metadata = {
-  title: "Blue Jays Fan Hub",
-  description:
-    "Data visualizations and player pages for Toronto Blue Jays fans.",
+  metadataBase: new URL(SITE.url),
+  title: { default: SITE.name, template: `%s · ${SITE.name}` },
+  description: DESCRIPTION,
+  applicationName: SITE.name,
+  authors: [{ name: SITE.author, url: SITE.links.linkedin }],
+  creator: SITE.author,
+  openGraph: { type: "website", siteName: SITE.name, title: SITE.name, description: DESCRIPTION },
   // Tab icon: the recoloured Jays cap mark from etl/fetch_team_logos.py (navy
   // ink on papaya paper), reusing the same asset the standings tables render.
   // The stock create-next-app app/favicon.ico was removed — left in place it
@@ -70,6 +78,7 @@ export default async function LocaleLayout({
             <SketchDefs />
             <Header />
             <main className="flex-1">{children}</main>
+            <Footer />
           </MotionProvider>
         </NextIntlClientProvider>
       </body>

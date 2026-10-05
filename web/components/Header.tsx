@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getTeamSeasons } from "@/lib/team-season-data";
 import { getTrendSeasons } from "@/lib/team-trends";
+import { SITE } from "@/lib/site";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 import TeamMenu from "./TeamMenu";
 
@@ -29,7 +30,7 @@ export async function Header() {
           href="/"
           className="whitespace-nowrap font-display text-lg uppercase tracking-wide"
         >
-          {t("brand")}
+          {SITE.name}
         </Link>
         <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
           <Link href="/" className={NAV_LINK}>

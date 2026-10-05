@@ -1,6 +1,5 @@
 {
   "Nav": {
-    "brand": "Blue Jays Fan Hub",
     "home": "Home",
     "players": "Players",
     "standings": "Standings",
@@ -14,7 +13,7 @@
     "trendsHint": "{from}–{to} vs the MLB average"
   },
   "Home": {
-    "title": "Toronto Blue Jays — Fan Hub",
+    "title": "Toronto Blue Jays — Suyu's Jays Notes",
     "subtitle": "Data visualizations and beginner-friendly player pages for Blue Jays fans.",
     "viewRoster": "View the 26-man roster",
     "todayTitle": "Today's Blue Jays",
@@ -628,7 +627,9 @@
     "copy": "Copy table",
     "copyTitle": "Copy this table to paste into a spreadsheet or document",
     "copied": "Copied ✓",
-    "failed": "Failed"
+    "failed": "Failed",
+    "tablePngTitle": "Download this table as a PNG (for posts and articles)",
+    "jaysSeason": "{season} Blue Jays"
   },
   "Batting": {
     "sprayChart": "Spray Chart",
@@ -723,7 +724,31 @@
   },
   "About": {
     "title": "About",
-    "body": "A fan project. Statcast data via pybaseball / Baseball Savant. Not affiliated with the Toronto Blue Jays or MLB."
+    "lede": "{site} is a Toronto Blue Jays data site, built and written by {author}.",
+    "whoTitle": "Who's behind it",
+    "bio1": "I'm Suyu Cheng, a software developer based in Toronto. I've spent 6 years building production data systems: databases, reporting pipelines and internal tools. This site is where I point those skills at the team I follow every night.",
+    "bio2": "I designed and built it end to end: a Python pipeline that pulls Statcast and MLB Stats API data every morning, a Postgres warehouse where the metric definitions live in SQL, and every chart on these pages.",
+    "bio3": "I'm open to data and software roles, and sports analytics is high on my list. If you're hiring, or just want to talk baseball, get in touch.",
+    "contactTitle": "Contact",
+    "linkedinNote": "Best way to reach me",
+    "portfolioNote": "My other projects",
+    "emailNote": "Email",
+    "xNote": "Charts and notes as I post them",
+    "dataTitle": "How the data works",
+    "data1": "Pitch-by-pitch Statcast data comes from Baseball Savant (via pybaseball). Season lines, WAR, standings and box scores come from the MLB Stats API; its WAR is FanGraphs data licensed to MLB.",
+    "data2": "A scheduled pipeline refreshes everything every morning around 9:00 ET, and re-pulls the last 7 days because Statcast corrects pitch classifications after the fact.",
+    "data3": "Rates like Chase% or a team's FIP are defined once, in SQL views over the raw counts, so every page reads the same numbers.",
+    "shareTitle": "Sharing charts and tables",
+    "shareBody": "Every chart and table has a PNG ↓ button, and tables also have Copy table. Both carry the site name and address. If you post one, please keep that credit line."
+  },
+  "Footer": {
+    "label": "Site credits and contact",
+    "madeBy": "Made by {author} in Toronto",
+    "linkedin": "LinkedIn",
+    "portfolio": "Portfolio",
+    "x": "X",
+    "contact": "Contact",
+    "disclaimer": "A fan project, not affiliated with the Toronto Blue Jays or MLB. Data: Baseball Savant and MLB Stats API, updated every morning."
   },
   "LocaleSwitcher": {
     "label": "Language"

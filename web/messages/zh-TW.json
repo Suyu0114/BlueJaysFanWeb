@@ -1,6 +1,5 @@
 {
   "Nav": {
-    "brand": "Blue Jays Fan Hub",
     "home": "首頁",
     "players": "球員",
     "standings": "戰績排名",
@@ -14,7 +13,7 @@
     "trendsHint": "{from}–{to} 對照大聯盟平均"
   },
   "Home": {
-    "title": "Toronto Blue Jays — 球迷中心",
+    "title": "Toronto Blue Jays — Suyu's Jays Notes",
     "subtitle": "給藍鳥球迷的數據視覺化與新手友善的球員頁面。",
     "viewRoster": "查看 26 人現役名單",
     "todayTitle": "今日藍鳥",
@@ -628,7 +627,9 @@
     "copy": "複製表格",
     "copyTitle": "複製這個表格，可直接貼進試算表或文件",
     "copied": "已複製 ✓",
-    "failed": "失敗"
+    "failed": "失敗",
+    "tablePngTitle": "把這個表格下載成 PNG（可放進貼文或文章）",
+    "jaysSeason": "{season} 藍鳥"
   },
   "Batting": {
     "sprayChart": "Spray Chart",
@@ -723,7 +724,31 @@
   },
   "About": {
     "title": "關於",
-    "body": "這是一個球迷專案。Statcast 數據來自 pybaseball / Baseball Savant，與 Toronto Blue Jays 及 MLB 無官方關聯。"
+    "lede": "{site} 是一個多倫多藍鳥隊的數據網站，由 {author} 製作與撰寫。",
+    "whoTitle": "關於作者",
+    "bio1": "我是 Suyu Cheng，住在多倫多的軟體開發者。過去 6 年我在業界打造資料系統：資料庫、報表流程與內部工具。這個網站是我把這些技能用在每天晚上都在追的球隊上。",
+    "bio2": "從頭到尾都由我設計與打造：每天早上抓取 Statcast 與 MLB Stats API 數據的 Python 流程、把指標定義寫在 SQL 裡的 Postgres 資料倉儲，以及這裡的每一張圖。",
+    "bio3": "我願意考慮資料與軟體相關的職位，其中運動數據分析是我最想投入的方向之一。如果你正在徵才，或只是想聊聊棒球，歡迎聯絡我。",
+    "contactTitle": "聯絡",
+    "linkedinNote": "最快聯絡到我的方式",
+    "portfolioNote": "我的其他作品",
+    "emailNote": "Email",
+    "xNote": "我發布的圖表與筆記",
+    "dataTitle": "數據怎麼來",
+    "data1": "逐球的 Statcast 數據來自 Baseball Savant（透過 pybaseball）。球季成績、WAR、戰績與 box score 來自 MLB Stats API；其中的 WAR 是 FanGraphs 授權給 MLB 的數據。",
+    "data2": "排程流程每天美東時間早上 9 點左右更新全部數據，並重抓最近 7 天，因為 Statcast 事後會修正球種分類。",
+    "data3": "Chase%、球隊 FIP 這類比率只在一個地方定義：建立在原始計數上的 SQL views，所以每一頁讀到的數字都一致。",
+    "shareTitle": "分享圖表與表格",
+    "shareBody": "每張圖和表格都有 PNG ↓ 按鈕，表格還有「複製表格」。兩者都帶有網站名稱和網址；轉貼時請保留這行出處。"
+  },
+  "Footer": {
+    "label": "網站署名與聯絡方式",
+    "madeBy": "{author} 在多倫多製作",
+    "linkedin": "LinkedIn",
+    "portfolio": "作品集",
+    "x": "X",
+    "contact": "聯絡",
+    "disclaimer": "球迷專案，與 Toronto Blue Jays 及 MLB 無官方關聯。數據來源：Baseball Savant 與 MLB Stats API，每天早上更新。"
   },
   "LocaleSwitcher": {
     "label": "語言"

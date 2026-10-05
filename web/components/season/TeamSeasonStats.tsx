@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import CopyTableButton from "@/components/CopyTableButton";
+import TableExport from "@/components/TableExport";
 import { HEAD_ROW, stripeBg, TD, TD_FIRST, TD_LAST, TH, TH_FIRST, TH_LAST } from "@/components/standings-chrome";
 import RankChip from "@/components/team/RankChip";
 import { PanelBlock } from "@/components/team/TeamPanel";
@@ -40,6 +40,7 @@ export default async function TeamSeasonStats({
   locale: string;
 }) {
   const t = await getTranslations("Team");
+  const te = await getTranslations("Export");
   const hasPrior = prior != null && clubs.some((r) => r.season === prior && r.team_id === TORONTO_TEAM_ID);
   const seasons = hasPrior ? [prior, season] : [season];
   const cur = seasons.length - 1;
@@ -64,7 +65,14 @@ export default async function TeamSeasonStats({
     const width = headers.length;
 
     return (
-      <PanelBlock title={title} action={<CopyTableButton headers={headers} rows={copyRows} />}>
+      <PanelBlock title={title} action={
+          <TableExport
+            headers={headers}
+            rows={copyRows}
+            name={`${te("jaysSeason", { season })} ${title}`}
+            caption={`${te("jaysSeason", { season })} · ${title}`}
+          />
+        }>
         <div className="overflow-x-auto">
           <table className="w-full whitespace-nowrap border-separate border-spacing-0 text-right text-sm tabular-nums">
             <thead>

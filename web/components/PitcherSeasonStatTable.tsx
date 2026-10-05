@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import CopyTableButton from "@/components/CopyTableButton";
+import TableExport from "@/components/TableExport";
 import type { SeasonStats } from "@/lib/season-stats";
 
 function int0(v: number | null): string {
@@ -22,8 +22,10 @@ function ip1(v: number | null): string {
 // locales (CLAUDE.md). Missing values render "—".
 export default async function PitcherSeasonStatTable({
   stats,
+  exportName,
 }: {
   stats: SeasonStats[];
+  exportName?: string; // player name, leads the table PNG caption
 }) {
   const t = await getTranslations("Overview");
   // getSeasonStats returns seasons descending; show the most recent three.
@@ -41,7 +43,12 @@ export default async function PitcherSeasonStatTable({
     <div className="rounded-lg border border-navy/10 bg-white/50 p-4">
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold text-navy">{t("pitcherStatTableTitle")}</h3>
-        <CopyTableButton headers={headers} rows={cells} />
+        <TableExport
+          headers={headers}
+          rows={cells}
+          name={`${exportName ?? ""} ${t("pitcherStatTableTitle")}`}
+          caption={[exportName, t("pitcherStatTableTitle")].filter(Boolean).join(" · ")}
+        />
       </div>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full min-w-[38rem] text-right text-sm tabular-nums">

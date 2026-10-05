@@ -7,7 +7,7 @@ import PitchMovementChart from "@/components/charts/PitchMovementChart";
 import PitchZoneHeatmap from "@/components/charts/PitchZoneHeatmap";
 import VeloTrendChart from "@/components/charts/VeloTrendChart";
 import { Reveal } from "@/components/motion/Reveal";
-import CopyTableButton from "@/components/CopyTableButton";
+import TableExport from "@/components/TableExport";
 import Exportable from "@/components/Exportable";
 import {
   buildArsenal,
@@ -298,7 +298,12 @@ export default function PitchingExplorer({
       <Reveal as="section">
         <div className="mb-2 flex items-start justify-between gap-2">
           <h2 className="text-sm font-semibold text-navy">{t("arsenalTitle")}</h2>
-          <CopyTableButton headers={copyHeaders} rows={copyRows} />
+          <TableExport
+            headers={copyHeaders}
+            rows={copyRows}
+            name={`${exportName} arsenal ${season}`}
+            caption={`${exportName} · ${t("arsenalTitle")} · ${seasonLabel}`}
+          />
         </div>
         <ArsenalTable pitches={filtered} labels={arsenalLabels} runValues={seasonRv} />
         <p className="mt-2 text-xs text-navy/50">{t("arsenalStory")}</p>
