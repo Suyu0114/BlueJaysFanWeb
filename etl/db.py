@@ -439,3 +439,28 @@ def replace_position_splits(conn, season: int, rows: Iterable[dict]) -> int:
             rows,
         )
         return cur.rowcount
+
+
+# --- Post-P13: batting line by position, all 30 clubs ---
+
+TEAM_POSITION_SPLIT_COLUMNS = ["season", "team_id"] + POSITION_SPLIT_COLUMNS[2:]
+
+
+def replace_team_position_splits(conn, season: int, rows: Iterable[dict]) -> int:
+    """Replace one season of web_team_position_splits
+    (db/migrations/024_team_position_splits.sql) -- delete + insert in the
+    caller's transaction, as replace_position_splits does and for the same
+    reason (a re-scored game can drop a row).
+    """
+    rows = [{c: r.get(c) for c in TEAM_POSITION_SPLIT_COLUMNS} for r in rows]
+    cols = ", ".join(TEAM_POSITION_SPLIT_COLUMNS)
+    placeholders = ", ".join(f"%({c})s" for c in TEAM_POSITION_SPLIT_COLUMNS)
+    with conn.cursor() as cur:
+        cur.execute("delete from web_team_position_splits where season = %s", (season,))
+        if not rows:
+            return 0
+        cur.executemany(
+            f"insert into web_team_position_splits ({cols}) values ({placeholders})",
+            rows,
+        )
+        return cur.rowcount

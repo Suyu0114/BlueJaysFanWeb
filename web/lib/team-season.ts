@@ -225,7 +225,9 @@ export const offRuns = (r: Pick<PlayerSeasonLine, "war_batting" | "war_baserunni
 
 // A batting position -> its group. PH and P (a position player batting while
 // on the mound, 1-2 PA a season) count as DH, the bat-only slot — so C … OF
-// match MLB's own by-position splits exactly.
+// match MLB's own by-position splits exactly. The 025 view
+// (db/migrations/025_team_position_views.sql, pos_group) groups all 30 clubs the
+// same way for the season page's "vs MLB" — change both together.
 function batterGroup(position: string | null): PositionGroup {
   const p = (position ?? "").toUpperCase();
   if (p === "LF" || p === "CF" || p === "RF" || p === "OF") return "OF";

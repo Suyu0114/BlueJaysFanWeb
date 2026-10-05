@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { sql } from "./db";
+import { seasonPosition } from "./season-position";
 import type { TeamGame } from "./team-season";
 
 // P12 M5: DB readers for the team season page. The math lives in the pure
@@ -31,18 +32,6 @@ export async function getTeamGames(season: number): Promise<TeamGame[]> {
     order by game_date, game_number
   `;
 }
-
-// A player's position in a season = the position he batted at most for the Jays
-// (PH / P excluded; ties -> more games). web_players.position is his CURRENT
-// MLB primary position — one value per player (Bichette 2025 read 3B after he
-// moved to the Mets) — so it is only the fallback, for pitchers and anyone
-// without a split row. Both season-page readers join this one definition.
-const seasonPosition = (seasons: number[]) => sql`
-  select distinct on (mlbam_id, season) mlbam_id, season, position
-  from web_player_position_splits
-  where season = any(${seasons}) and position not in ('PH', 'P')
-  order by mlbam_id, season, pa desc, g desc, position
-`;
 
 // One row per Blue Jay per season: the season line plus the two numbers the
 // page needs from box scores — pitcher strikeouts (not a web_player_season_stats

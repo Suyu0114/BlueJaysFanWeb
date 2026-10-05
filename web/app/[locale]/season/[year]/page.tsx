@@ -10,6 +10,7 @@ import PlayerStatsTable, { type MlbReference } from "@/components/season/PlayerS
 import TeamSeasonStats from "@/components/season/TeamSeasonStats";
 import SeasonTrendChart from "@/components/season/SeasonTrendChart";
 import PositionValueChart from "@/components/season/PositionValueChart";
+import PositionVsMlbTable from "@/components/season/PositionVsMlbTable";
 import TableExport from "@/components/TableExport";
 import Exportable from "@/components/Exportable";
 import RankChip from "@/components/team/RankChip";
@@ -47,6 +48,7 @@ import { getLeagueSeason } from "@/lib/savant";
 import { ordinal } from "@/lib/ordinal";
 import { rankKey, tiedRank, type MetricKey } from "@/lib/team-metrics";
 import { getTeamTrend } from "@/lib/team-trends";
+import { getTeamPositionVsMlb } from "@/lib/team-position";
 
 // P12 M5: the Blue Jays' regular season on one page, vs the season before —
 // record, games above .500 and run differential by game number, month by
@@ -104,7 +106,7 @@ export default async function SeasonPage({
   const ts = await getTranslations("Standings");
   const te = await getTranslations("Export");
 
-  const [games, priorGames, standings, priorStandings, players, league, trend, seasonStats, positionSplits] = await Promise.all([
+  const [games, priorGames, standings, priorStandings, players, league, trend, seasonStats, positionSplits, positionVsMlb] = await Promise.all([
     getTeamGames(season),
     prior ? getTeamGames(prior) : Promise.resolve([]),
     getStandings(season),
@@ -116,6 +118,7 @@ export default async function SeasonPage({
     getTeamTrend(prior ? [prior, season] : [season]),
     getSeasonPlayerStats(season), // every Jay's season line for the player-stats table
     getTeamPositionSplits(prior ? [season, prior] : [season]), // value by position
+    getTeamPositionVsMlb(season), // each position vs the MLB average + rank among 30 (025 view)
   ]);
 
   const me = standings.find((r) => r.team_id === TORONTO_TEAM_ID);
@@ -536,12 +539,21 @@ export default async function SeasonPage({
             </>,
           )}
 
-          {/* 8. Value by position group: WAR / Off / HR / OPS, vs the prior season or the change */}
-          {hasPlayers(season) && panel(
+          {/* 8. Value by position group: WAR / Off / HR / OPS, vs the prior season, the
+              change, or vs MLB (HR / OPS) — then each position vs MLB as a table. The
+              table needs only the 025 view (2022 on); the chart needs player rows (2024 on). */}
+          {(hasPlayers(season) || positionVsMlb.length > 0) && panel(
             "season-war",
             t("posTitle"),
-            <PositionValueChart data={positionData} season={season} priorSeason={playerPrior} />,
-            t("posNote"),
+            <div className="space-y-6">
+              {hasPlayers(season) && (
+                <div>
+                  <PositionValueChart data={positionData} season={season} priorSeason={playerPrior} vsMlb={positionVsMlb} />
+                  <p className="mt-2 text-[11px] leading-snug text-navy/55">{t("posNote")}</p>
+                </div>
+              )}
+              {positionVsMlb.length > 0 && <PositionVsMlbTable rows={positionVsMlb} season={season} locale={locale} />}
+            </div>,
           )}
 
           {/* 9. Every Jay's season line: position players (offense | defense), pitchers */}

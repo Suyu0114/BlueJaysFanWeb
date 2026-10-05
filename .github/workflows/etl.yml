@@ -5,8 +5,9 @@
 #     sabermetrics -- WAR etc.; no FanGraphs CSV needed), per-club season lines
 #     for the roster incl. other clubs (P12, pull_player_splits), Savant
 #     leaderboards + league averages (P12 M6), THEN a current-season schedule +
-#     standings refresh, all 30 clubs' team lines + Savant team leaderboards
-#     (P13, pull_team_stats / pull_team_statcast), and a 3-day box-score
+#     standings refresh, all 30 clubs' team lines + batting by position +
+#     Savant team leaderboards (P13, pull_team_stats / post-P13
+#     pull_team_position_splits / pull_team_statcast), and a 3-day box-score
 #     re-pull. The box-score re-pull
 #     is the West-Coast / late-final backfill: games still in progress at the
 #     11:30 PM ET run get completed here.
@@ -136,6 +137,13 @@ jobs:
       # Refresh job only: team totals don't need the 11:30 PM freshness run.
       - name: Pull team season lines, all clubs (web_team_season_stats)
         run: python etl/pull_team_stats.py --season "$SEASON"
+
+      # Post-P13: all 30 clubs' batting by position (1 call) -- the season
+      # page's "each position vs MLB". Reconciles each club's PA against the
+      # team lines above and the Jays rows against pull_position_splits, so it
+      # runs after both.
+      - name: Pull batting by position, all clubs (web_team_position_splits)
+        run: python etl/pull_team_position_splits.py --season "$SEASON"
 
       - name: Pull Savant team leaderboards, all clubs (web_team_statcast_season)
         run: python etl/pull_team_statcast.py --season "$SEASON"

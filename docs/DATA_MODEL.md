@@ -12,6 +12,7 @@ the columns that **don't** exist so nobody assumes them.
 >
 > **Verified against live DB: 2026-09-30** (migrations `001`–`019` applied, plus
 > P13's `020`–`022`; `023` applied 2026-10-04 — `web_player_position_splits` at 17;
+> `024` + `025` applied 2026-10-05 — `web_team_position_splits` at 17, `web_v_team_position` at 13;
 > `web_player_season_stats` at 32 columns, `web_statcast_events` at 29,
 > `web_standings` at 38, `web_games` at 17, `web_player_team_season_stats` at 37,
 > `web_team_season_stats` at 69, `web_team_statcast_season` at 36).
@@ -43,6 +44,7 @@ the columns that **don't** exist so nobody assumes them.
 | `web_league_season` | 15 | (season, league) | MLB Stats API team totals, summed (P12 M6; 2022–2023 added by P13 N1) |
 | [`web_team_season_stats`](#web_team_season_stats) | 150 | one row per (season, club) — **all 30 clubs**, counts | MLB Stats API team stats + per-club player leaderboard (P13) |
 | [`web_team_statcast_season`](#web_team_statcast_season) | 150 | one row per (season, club) — **all 30 clubs** | Baseball Savant team leaderboards (P13) |
+| [`web_team_position_splits`](#web_team_position_splits) | 1,606 | one row per (season, club, position batted at) — **all 30 clubs**, counts | MLB Stats API team `statSplits` by position; refresh cron (post-P13, @ 2026-10-05) |
 
 ---
 
@@ -55,7 +57,7 @@ and is genuinely absent:
 |---|---|---|
 | `bb_type` | `web_statcast_events` | **Absent.** `docs/P7_spec.md:360` backlog assumed GB/FB/LD can be derived from it. They cannot — it was never pulled into the schema. To add GB/FB/LD you must extend the ETL (`STATCAST_COLUMNS` + a migration) or approximate from `launch_angle`. |
 | `launch_speed_angle` / barrel flag | `web_statcast_events` | **Absent.** Statcast's per-event barrel classification is not stored. The P8 EV/LA "barrel zone" is a *visual reference rectangle only*, not per-point truth. |
-| `position` as a **per-season** position | `web_players` | **It is the player's CURRENT MLB primary position** (bio), one value per player, overwritten by every ETL run — Bichette's 2025 row read `3B` once the Mets moved him there. A season's position = his most-PA position in [`web_player_position_splits`](#web_player_position_splits) (PH / P excluded), which the season-page readers resolve (`lib/team-season-data.ts` `seasonPosition`). |
+| `position` as a **per-season** position | `web_players` | **It is the player's CURRENT MLB primary position** (bio), one value per player, overwritten by every ETL run — Bichette's 2025 row read `3B` once the Mets moved him there. A season's position = his most-PA position in [`web_player_position_splits`](#web_player_position_splits) (PH / P excluded), which the season-page readers resolve (`lib/season-position.ts` `seasonPosition`). A departed player's player-page header and all-time roster card show his **last Jays** position (`lastJaysPosition`, same file). |
 | `name_tc` (Chinese name) | `web_players` | **Intentionally absent.** Single English `name` field by design — see CLAUDE.md → "What stays English even in zh-TW". Do not add it. |
 | `woba` / `babip` / per-event run value | `web_statcast_events` | **Absent.** Only the raw Statcast fields below are stored; sabermetric aggregates live in `web_player_season_stats` (season grain), not per pitch. |
 | `games_back` as a **number** | `web_standings` | **It is `text`, not numeric** — and deliberately so. MLB sends display strings with sentinels: `'-'` (this team *is* the reference), `'+9.5'` (ahead of the wild card cut line), `'E'` (eliminated, on `elimination_number`). Same for `wc_games_back`, `elimination_number`, `wc_elimination_number`, `magic_number`. Never cast or arithmetic them; **order by the `*_rank` columns instead.** |
@@ -245,10 +247,16 @@ no by-position WAR / Off / wRC+).
 
 - **Σ `pa` per (player, season) = `web_player_season_stats.pa`** (the writer logs any
   mismatch; 0 for 2024–2026). Σ per (season, position) = MLB's team split
-  (`/teams/141/stats?stats=statSplits`, e.g. 2025 SS = 722 PA / 16 HR).
+  (`/teams/141/stats?stats=statSplits`, e.g. 2025 SS = 722 PA / 16 HR) = the Jays
+  rows of [`web_team_position_splits`](#web_team_position_splits) on every count.
 - **Season position** = the most-PA row excluding `PH` / `P` (ties → more `g`) —
-  `seasonPosition` in [`web/lib/team-season-data.ts`](../web/lib/team-season-data.ts);
+  `seasonPosition` in [`web/lib/season-position.ts`](../web/lib/season-position.ts);
   falls back to `web_players.position` for pitchers / no rows.
+- **Last Jays position** = the same rule over his latest season with rows —
+  `lastJaysPosition` (same file). The player-page header and the all-time roster
+  card show it for anyone not on the 26-man (`is_active_26` not true), e.g.
+  Bichette → `SS (Blue Jays, 2025)`, not the Mets' `3B`. Pitchers have no rows and
+  keep `web_players.position` (`P`).
 - **Value by position** (season page) — [`valueByPosition`](../web/lib/team-season.ts):
   HR / PA / OPS summed from these counts (exact; OPS = OBP + SLG from summed counts,
   so it can differ by .001 from MLB's display OPS, which adds the rounded OBP and SLG);
@@ -559,6 +567,39 @@ The OAA CSV carries numeric MLB ids directly.
 
 ---
 
+## `web_team_position_splits`
+*Migration: `024` (post-P13, 2026-10-05). Writer: [`etl/pull_team_position_splits.py`](../etl/pull_team_position_splits.py)
+(`db.replace_team_position_splits`: delete + insert per season). Key: `(season, team_id, position)`.*
+
+Every club's regular-season **batting line split by the position its batters were
+playing**, all 30 clubs, 2022–2026 — the reference for the season page's "each
+position vs MLB". Source: **one call per season** —
+`/teams/stats?stats=statSplits&group=hitting&gameType=R&sportIds=1&sitCodes=p1,p2,…,p9,pD,pH&limit=1000`
+(`mlb_api.fetch_league_position_splits`, same codes / stat mapping as the Jays-only
+fetcher). ⚠️ **`limit` is required**: the default page is 50 rows, which silently
+dropped clubs (2025: 29 clubs on 4 codes, no error); the fetcher raises when any of
+`p2`…`pH` has fewer than 30 clubs (`p1` legitimately has ~20). Refresh cron for the
+current season (after `pull_team_stats`); 2022–2026 backfilled. **Counts only** —
+OPS, the MLB row and ranks live in [`web_v_team_position`](#team-position-view-migration-025-post-p13).
+
+- **Jays (141) rows = [`web_player_position_splits`](#web_player_position_splits)
+  summed per position**, on every count but `g` (0 mismatches 2024–2026; no player
+  rows before 2024).
+- **Σ `pa` per club ≈ `web_team_season_stats.bat_pa`**: equal for most clubs, but
+  7–14 clubs a season come up **1–3 PA short** upstream (`pX` / `pR` are empty, so
+  nothing fills the gap). The writer logs a gap ≤ 3 as INFO, > 3 as WARNING.
+
+| Column | Type | Null | Meaning |
+|---|---|---|---|
+| `season` | int | NO | **PK** part. |
+| `team_id` | int | NO | **PK** part. MLB Stats API team id (141 = Jays). |
+| `position` | text | NO | **PK** part. As in `web_player_position_splits`: `C` … `RF`, `DH`, `PH` = pinch-hitters, `P` = a position player batting on the mound (not every club). |
+| `g` | int | yes | Games with a PA at that position. |
+| `pa` `ab` `h` `doubles` `triples` `hr` `rbi` `bb` `so` `hbp` `sf` `tb` | int | yes | Counting line at that position. |
+| `updated_at` | timestamptz | NO | default `now()`. |
+
+---
+
 ## Views (migration `015`, P12)
 
 Read-only metric views — **the one place** the plate-discipline and batted-ball
@@ -618,6 +659,35 @@ fractions; IP = outs / 3. Ranks and raw counts (`games pa bf hr sb rs ra`) are c
 
 ---
 
+## Team position view (migration `025`, post-P13)
+
+**The one place** by-position offense for all 30 clubs, the MLB average at each
+position and the club's rank among 30 are defined — read by the season page
+([`lib/team-position.ts`](../web/lib/team-position.ts) `getTeamPositionVsMlb`, the
+"vs MLB" chart view + "Each position vs MLB" table). Built on
+[`web_team_position_splits`](#web_team_position_splits). Rates are `float8` fractions.
+
+| View | Grain | What |
+|---|---|---|
+| `web_v_team_position` | (season, team_id, pos_group): 30 clubs + an MLB row `team_id = 0` | `pa`, `hr`, `avg`, `obp`, `slg`, `ops`, `ops_rank`, `ops_tied`, `hr_rank`, `hr_tied`. |
+
+- **`pos_group`** = `C` `1B` `2B` `3B` `SS`, `OF` = LF + CF + RF, `DH` = DH + PH + P —
+  **the same grouping as `web/lib/team-season.ts::batterGroup`** (value by position);
+  change both together.
+- **Rates from summed counts** for clubs and the MLB row alike (never an average of
+  club rates); OPS = OBP + SLG unrounded (can be .001 off MLB's display OPS).
+- **MLB `pa` / `hr` = mean per club** (Σ ÷ clubs) — HR is a club total, so the
+  reference is an average club (the `022` exception for WAR / OAA).
+- **Ranks**: club rows only (NULL on the MLB row), 1 = best (higher OPS / more HR),
+  `rank()` within (season, pos_group); `*_tied` = another club has the same value
+  (HR ties are common — 650 of 1,050 club rows).
+- **Verified 2026-10-05**: every (season, pos_group) has 30 ranks + 1 MLB row; 2025
+  Jays 2B OPS = .617 (= the value-by-position chart), SS = 722 PA / 16 HR. MLB OPS by
+  position (2022, 2025 checked): 1B highest in both; C lowest in 2022 (.663) but 2B
+  lowest in 2025 (.680 vs C .700).
+
+---
+
 ## Cross-cutting invariants (the ETL relies on these)
 
 1. **Regular season = `game_type = 'R'`.** pybaseball returns postseason by
@@ -658,7 +728,13 @@ fractions; IP = outs / 3. Ranks and raw counts (`games pa bf hr sb rs ra`) are c
 9. **`web_players.position` is the current bio position, never per season.**
    Anything that labels a past season (season page Pos column, value by position)
    reads [`web_player_position_splits`](#web_player_position_splits), whose Σ `pa`
-   per player-season equals `web_player_season_stats.pa`.
+   per player-season equals `web_player_season_stats.pa`. The player-page header
+   and the all-time roster card show a departed player's last Jays position
+   (`lastJaysPosition` in `web/lib/season-position.ts`) instead.
+10. **`web_team_position_splits` Jays rows = the player splits summed**, exactly
+   (per position, every count but `g`); each club's Σ `pa` is within 3 of
+   `web_team_season_stats.bat_pa` (an upstream gap, not an ETL bug). Position
+   groups in `web_v_team_position` mirror `batterGroup` in `web/lib/team-season.ts`.
 
 ---
 
@@ -732,7 +808,8 @@ for line in Path(".env").read_text().splitlines():
 tables = ["web_players","web_statcast_events","web_player_season_stats",
           "web_player_seasons","web_fielding_frv","web_id_map",
           "web_games","web_player_game_stats","web_standings",
-          "web_player_team_season_stats","web_player_position_splits"]
+          "web_player_team_season_stats","web_player_position_splits",
+          "web_team_position_splits"]
 with psycopg.connect(os.environ["DATABASE_URL"], prepare_threshold=None) as c:
     for t in tables:
         cols = c.execute("""select column_name, data_type, is_nullable
@@ -742,5 +819,5 @@ with psycopg.connect(os.environ["DATABASE_URL"], prepare_threshold=None) as c:
 ```
 
 Run: `conda run -n MLBxBaZi python <script>.py`. Expect the column counts in the
-table index above (11 / 29 / 32 / 7 / 12 / 6 / 17 / 27 / 38 / 37 / 17). Re-confirm the anti-index
+table index above (11 / 29 / 32 / 7 / 12 / 6 / 17 / 27 / 38 / 37 / 17 / 17). Re-confirm the anti-index
 holds (`bb_type`, `launch_speed_angle` still absent).

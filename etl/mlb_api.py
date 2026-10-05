@@ -759,3 +759,64 @@ def fetch_team_player_leaderboard(
                 s.get("stat", {})
             )
     return list(by_id.values())
+
+
+# --- Post-P13: batting by position, all 30 clubs ---
+
+# Codes every club has a row for (p1 = a position player pitching: ~20 clubs).
+_EVERY_CLUB_POSITION_CODES = [c for c in POSITION_SIT_CODES if c != "p1"]
+
+
+def fetch_league_position_splits(season: int, expected_teams: int = 30) -> list[dict]:
+    """Regular-season batting line per (club, position) for every club, in ONE
+    call: the team statSplits leaderboard with one situation code per position
+    (the same codes and stat mapping as fetch_team_position_splits).
+
+    `limit` is required: the default page is 50 rows, which silently dropped
+    clubs (2025: 29 clubs on 4 codes, no error). Raises if any code other than
+    p1 comes back with fewer than `expected_teams` clubs.
+
+    One record per (club, position): {season, team_id, position, <counts>}.
+    """
+    data = _get_json(
+        TEAMS_STATS_URL,
+        {
+            "stats": "statSplits",
+            "group": "hitting",
+            "season": season,
+            "sportIds": 1,
+            "gameType": "R",
+            "sitCodes": ",".join(POSITION_SIT_CODES),
+            "limit": 1000,
+        },
+    )
+    rows: list[dict] = []
+    clubs_by_code: dict[str, set[int]] = {}
+    for block in data.get("stats", []):
+        for s in block.get("splits", []):
+            code = s.get("split", {}).get("code")
+            position = POSITION_SIT_CODES.get(code)
+            if position is None:
+                continue
+            team_id = s["team"]["id"]
+            clubs_by_code.setdefault(code, set()).add(team_id)
+            stat = s.get("stat", {})
+            rows.append(
+                {
+                    "season": season,
+                    "team_id": team_id,
+                    "position": position,
+                    **{col: stat.get(key) for key, col in _POSITION_SPLIT_STATS.items()},
+                }
+            )
+    short = {
+        code: len(clubs_by_code.get(code, ()))
+        for code in _EVERY_CLUB_POSITION_CODES
+        if len(clubs_by_code.get(code, ())) < expected_teams
+    }
+    if short:
+        raise RuntimeError(
+            f"{season}: position splits short of {expected_teams} clubs "
+            f"(code -> clubs): {short}"
+        )
+    return rows

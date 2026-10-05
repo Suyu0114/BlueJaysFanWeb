@@ -132,6 +132,9 @@ python etl/pull_schedule.py  --season 2023
 python etl/pull_team_stats.py    --season 2022 --season 2023 --season 2024 --season 2025 --season 2026
 # 3) 30 隊的 Savant 排行榜（Barrel% / Hard-hit% / xwOBA / OAA，每季 5 個 CSV）
 python etl/pull_team_statcast.py --season 2022 --season 2023 --season 2024 --season 2025 --season 2026
+# 4) post-P13：30 隊依守位的打擊 split（Season 頁「各守位 vs MLB」，每季 1 個 request）
+#    要在 2) 之後跑（對帳 bat_pa），2024 起也要在 pull_position_splits 之後跑（對帳藍鳥列）
+python etl/pull_team_position_splits.py --season 2022 --season 2023 --season 2024 --season 2025 --season 2026
 ```
 > - **不要**把 2022/2023 加進 `backfill.py`——它是 Statcast 重型流程，只認 2024–2026。
 > - `pull_team_stats` 最後會把藍鳥的 wRC+ / WAR 跟 `web_player_season_stats` 對一次
@@ -140,7 +143,11 @@ python etl/pull_team_statcast.py --season 2022 --season 2023 --season 2024 --sea
 > - `pull_team_statcast` 用**隊名**對 MLB team id（Savant 的縮寫會回溯改，2022 的運動家
 >   也寫 `ATH`）。有對不上的隊名會**直接失敗**，要去 `pull_team_statcast.py` 補對應，
 >   不要跳過。
-> - 當季兩支都已排進 09:00 ET cron。
+> - `pull_team_position_splits`（2026-10-05 已跑 2022–2026）：API 一定要帶 `limit`，預設只回
+>   50 列會**默默少隊**，所以任何守位（p1 除外）不足 30 隊就直接失敗。對帳 log：每隊各守位 PA
+>   加總比 `bat_pa` 少 1–3 是上游缺口（INFO，每季 7–14 隊），差 > 3 才是 WARNING；藍鳥列必須
+>   等於 `web_player_position_splits` 加總（0 筆不符）。
+> - 當季三支都已排進 09:00 ET cron。
 
 ---
 
@@ -184,7 +191,8 @@ P7 起 GitHub Actions 有**兩個**排程（都 idempotent、都會 upsert）：
   在這裡補完）、season stats（WAR / OPS / ERA …，MLB Stats API）、當季名單的每隊
   season line（`pull_player_splits`，被交易走的球員在新球隊的成績也會每天更新）、
   依守位的打擊 split（`pull_position_splits`）、
-  30 隊球隊成績 + Savant 球隊排行榜（`pull_team_stats` / `pull_team_statcast`，P13）。
+  30 隊球隊成績 + Savant 球隊排行榜（`pull_team_stats` / `pull_team_statcast`，P13）、
+  30 隊依守位的打擊 split（`pull_team_position_splits`，接在 `pull_team_stats` 之後）。
 - **~23:30 ET**：今天的賽程 refresh + 排名 refresh + 今天 final 場次的 box score。
 
 > 兩班的順序都是 **schedule → standings → boxscore → revalidate**。
@@ -216,6 +224,20 @@ SELECT season, COUNT(*) AS clubs,
 FROM web_team_season_stats GROUP BY season ORDER BY season;
 SELECT season, COUNT(*) AS clubs, COUNT(oaa) AS with_oaa
 FROM web_team_statcast_season GROUP BY season ORDER BY season;
+
+-- post-P13 守位 vs MLB：每個 (season, pos_group) 有 30 個排名 + 1 列 MLB（應該 0 列）
+SELECT season, pos_group, COUNT(ops_rank) AS ranked, COUNT(*) FILTER (WHERE team_id = 0) AS mlb
+FROM web_v_team_position GROUP BY 1, 2
+HAVING COUNT(ops_rank) <> 30 OR COUNT(*) FILTER (WHERE team_id = 0) <> 1;
+-- 藍鳥列 = 球員 split 加總（bad 應為 0；2022–2023 沒有球員 split，不列）
+SELECT t.season, COUNT(*) FILTER (WHERE t.pa <> p.pa OR t.hr <> p.hr) AS bad
+FROM web_team_position_splits t
+JOIN (SELECT season, position, SUM(pa) AS pa, SUM(hr) AS hr
+      FROM web_player_position_splits GROUP BY 1, 2) p USING (season, position)
+WHERE t.team_id = 141 GROUP BY t.season ORDER BY t.season;
+-- 2025 藍鳥 2B OPS 應為 .617、SS = 722 PA / 16 HR
+SELECT pos_group, pa, hr, round(ops::numeric, 3) AS ops, ops_rank, hr_rank
+FROM web_v_team_position WHERE season = 2025 AND team_id = 141 ORDER BY pos_group;
 
 -- wild_card_rank 應該剛好在 6 支分區龍頭上是 NULL（上游本來就沒有這個欄位）
 SELECT COUNT(*) FILTER (WHERE wild_card_rank IS NULL) AS wc_null,

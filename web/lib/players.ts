@@ -1,8 +1,11 @@
 import { sql } from "./db";
+import { lastJaysPosition } from "./season-position";
 
 export type RosterPlayer = {
   mlbam_id: number;
   name: string;
+  // web_players.position = his CURRENT MLB primary position, except in the
+  // all-time roster, where a departed player shows his last Jays position.
   position: string | null;
   bats: string | null;
   throws: string | null;
@@ -13,6 +16,10 @@ export type RosterPlayer = {
   // On the current 26-man? The all-time view puts these in a "Still on the
   // roster" group, separate from departed players bucketed by last_season.
   is_active_26?: boolean | null;
+  // getPlayer only: the position he batted at most in his last Jays season
+  // (lastJaysPosition) — null for pitchers / no split rows.
+  last_jays_position?: string | null;
+  last_jays_season?: number | null;
 };
 
 export type RosterMode = "current" | "all-time";
@@ -42,15 +49,24 @@ export async function getRoster(): Promise<RosterPlayer[]> {
 // their most-recent Jays season. Ordered so current 26-man players come first,
 // then departed players by last season descending (2026, 2025, 2024); name
 // breaks ties. The page groups on `is_active_26` then `last_season`.
+// Position: the current 26-man show web_players.position (today's position);
+// everyone else shows the position he played in his last Jays season, since
+// web_players.position follows him to his new club (Bichette: SS, not the
+// Mets' 3B). Pitchers have no split rows and keep `P`, which RosterExplorer's
+// pitcher filter reads.
 export async function getRosterAllTime(): Promise<RosterPlayer[]> {
   return sql<RosterPlayer[]>`
-    select p.mlbam_id, p.name, p.position, p.bats, p.throws, p.headshot_url,
+    select p.mlbam_id, p.name,
+      case when coalesce(p.is_active_26, false) then p.position
+           else coalesce(lp.position, p.position) end as position,
+      p.bats, p.throws, p.headshot_url,
       coalesce(p.is_active_26, false) as is_active_26,
       max(s.season) as last_season
     from web_players p
     join web_player_seasons s on s.mlbam_id = p.mlbam_id
+    left join (${lastJaysPosition()}) lp on lp.mlbam_id = p.mlbam_id
     where s.season in (2024, 2025, 2026) and s.team_id = 141
-    group by p.mlbam_id, p.name, p.position, p.bats, p.throws, p.headshot_url,
+    group by p.mlbam_id, p.name, p.position, lp.position, p.bats, p.throws, p.headshot_url,
       p.is_active_26
     order by coalesce(p.is_active_26, false) desc, max(s.season) desc, p.name
   `;
@@ -64,9 +80,12 @@ export async function getPlayer(
   mlbamId: number,
 ): Promise<RosterPlayer | null> {
   const rows = await sql<RosterPlayer[]>`
-    select mlbam_id, name, position, bats, throws, headshot_url
-    from web_players
-    where mlbam_id = ${mlbamId}
+    select p.mlbam_id, p.name, p.position, p.bats, p.throws, p.headshot_url,
+      coalesce(p.is_active_26, false) as is_active_26,
+      lp.position as last_jays_position, lp.season as last_jays_season
+    from web_players p
+    left join (${lastJaysPosition()}) lp on lp.mlbam_id = p.mlbam_id
+    where p.mlbam_id = ${mlbamId}
     limit 1
   `;
   return rows[0] ?? null;

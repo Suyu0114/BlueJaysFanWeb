@@ -302,7 +302,11 @@ export default async function PlayerOverviewPage({
             {player.name}
           </h1>
           <p className="mt-0.5 text-sm text-navy/60">
-            {player.position ?? "—"}
+            {/* Off the 26-man, web_players.position is wherever he plays now
+                (Bichette: the Mets' 3B), so show his last Jays position instead. */}
+            {!player.is_active_26 && player.last_jays_position && player.last_jays_season
+              ? t("positionAsJay", { position: player.last_jays_position, season: player.last_jays_season })
+              : (player.position ?? "—")}
             {player.bats && player.throws && (
               <>
                 {" · "}
