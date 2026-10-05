@@ -9,13 +9,19 @@ import { HEAD_ROW, stripeBg, TD, TD_FIRST, TD_LAST, TH, TH_FIRST, TH_LAST } from
 import PlayerStatsTable, { type MlbReference } from "@/components/season/PlayerStatsTable";
 import TeamSeasonStats from "@/components/season/TeamSeasonStats";
 import SeasonTrendChart from "@/components/season/SeasonTrendChart";
-import WarByPositionChart from "@/components/season/WarByPositionChart";
+import PositionValueChart from "@/components/season/PositionValueChart";
 import CopyTableButton from "@/components/CopyTableButton";
 import Exportable from "@/components/Exportable";
 import RankChip from "@/components/team/RankChip";
 import StrengthsWeaknesses from "@/components/team/StrengthsWeaknesses";
 import { DIVISION_KEY, getStandings, TORONTO_TEAM_ID } from "@/lib/standings";
-import { getSeasonPlayerStats, getTeamGames, getTeamPlayerSeasons, getTeamSeasons } from "@/lib/team-season-data";
+import {
+  getSeasonPlayerStats,
+  getTeamGames,
+  getTeamPlayerSeasons,
+  getTeamPositionSplits,
+  getTeamSeasons,
+} from "@/lib/team-season-data";
 import { LEADER_ANCHORS, splitPlayerStats } from "@/lib/season-player-stats";
 import {
   gamesAboveSeries,
@@ -28,7 +34,7 @@ import {
   runs,
   seasonSplits,
   teamLeaders,
-  warByPosition,
+  valueByPosition,
   winLoss,
   winPct,
   type LeaderCategory,
@@ -44,7 +50,7 @@ import { getTeamTrend } from "@/lib/team-trends";
 
 // P12 M5: the Blue Jays' regular season on one page, vs the season before —
 // record, games above .500 and run differential by game number, month by
-// month, splits, leaders, WAR by position. Game-by-game numbers come from
+// month, splits, leaders, value by position. Game-by-game numbers come from
 // web_games (game_type 'R'); x-W/L, division finish and opponents' final
 // winning % from web_standings; player numbers are Jays-scoped. All the math is
 // in the pure lib/team-season.ts, which P13 reuses across five seasons.
@@ -97,7 +103,7 @@ export default async function SeasonPage({
   const t = await getTranslations("Season");
   const ts = await getTranslations("Standings");
 
-  const [games, priorGames, standings, priorStandings, players, league, trend, seasonStats] = await Promise.all([
+  const [games, priorGames, standings, priorStandings, players, league, trend, seasonStats, positionSplits] = await Promise.all([
     getTeamGames(season),
     prior ? getTeamGames(prior) : Promise.resolve([]),
     getStandings(season),
@@ -108,6 +114,7 @@ export default async function SeasonPage({
     // prior one, for the team-stats table's comparison column)
     getTeamTrend(prior ? [prior, season] : [season]),
     getSeasonPlayerStats(season), // every Jay's season line for the player-stats table
+    getTeamPositionSplits(prior ? [season, prior] : [season]), // value by position
   ]);
 
   const me = standings.find((r) => r.team_id === TORONTO_TEAM_ID);
@@ -234,11 +241,9 @@ export default async function SeasonPage({
     { key: "so", label: "SO", fmt: (v) => v.toFixed(0) },
     { key: "sv", label: "SV", fmt: (v) => v.toFixed(0) },
   ];
-  const war = warByPosition(players, season);
-  const pwar = playerPrior ? warByPosition(players, playerPrior) : null;
-  const warData = POSITION_GROUPS.map((g) => ({ group: g, a: +war[g].toFixed(2), b: pwar ? +pwar[g].toFixed(2) : null }));
-  const warTotal = Object.values(war).reduce((a, b) => a + b, 0);
-  const pwarTotal = pwar ? Object.values(pwar).reduce((a, b) => a + b, 0) : null;
+  const byPos = valueByPosition(players, positionSplits, season);
+  const pbyPos = playerPrior ? valueByPosition(players, positionSplits, playerPrior) : null;
+  const positionData = POSITION_GROUPS.map((g) => ({ group: g, a: byPos[g], b: pbyPos ? pbyPos[g] : null }));
   const { hitters, pitchers } = splitPlayerStats(seasonStats);
 
   // M7: `copy` adds a "Copy table" button (plain headers + rows) to the panel header.
@@ -271,15 +276,6 @@ export default async function SeasonPage({
       {prior}
     </span>
   );
-  const barLegend = playerPrior != null && (
-    <span className="flex items-center gap-2 text-xs text-navy/55">
-      <span className="inline-block h-2.5 w-2.5 rounded-sm bg-brick" aria-hidden />
-      {season}
-      <span className="inline-block h-2.5 w-2.5 rounded-sm bg-steel" aria-hidden />
-      {playerPrior}
-    </span>
-  );
-
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <TeamNav active="season" season={season} />
@@ -532,20 +528,12 @@ export default async function SeasonPage({
             </>,
           )}
 
-          {/* 8. WAR by position group */}
+          {/* 8. Value by position group: WAR / Off / HR / OPS, vs the prior season or the change */}
           {hasPlayers(season) && panel(
             "season-war",
-            t("warTitle"),
-            <>
-              {barLegend}
-              <Exportable name={`blue jays war by position ${season}`} caption={`Blue Jays · ${t("warTitle")} · ${season}${playerPrior ? ` vs ${playerPrior}` : ""}`}>
-                <WarByPositionChart data={warData} season={season} priorSeason={playerPrior} />
-              </Exportable>
-            </>,
-            t("warNote", {
-              total: warTotal.toFixed(1),
-              prior: playerPrior ? t("warPriorTotal", { season: playerPrior, total: (pwarTotal ?? 0).toFixed(1) }) : "",
-            }),
+            t("posTitle"),
+            <PositionValueChart data={positionData} season={season} priorSeason={playerPrior} />,
+            t("posNote"),
           )}
 
           {/* 9. Every Jay's season line: position players (offense | defense), pitchers */}

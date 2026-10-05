@@ -139,7 +139,7 @@ export function longestStreak(games: TeamGame[], result: "W" | "L"): Streak {
 }
 
 // ---------------------------------------------------------------------------
-// Player-level team views (leaders, WAR by position group)
+// Player-level team views (leaders, value by position group)
 // ---------------------------------------------------------------------------
 
 // Minimal player-season shape (lib/team-season-data.ts::TeamPlayerSeason fits).
@@ -153,6 +153,8 @@ export type PlayerSeasonLine = {
   hr: number | null;
   sb: number | null;
   war: number | null;
+  war_batting: number | null; // runs above average (WAR component)
+  war_baserunning: number | null;
   ip: number | null; // baseball notation
   era: number | null;
   whip: number | null;
@@ -213,30 +215,113 @@ export function teamLeaders(
 
 export const POSITION_GROUPS = ["C", "1B", "2B", "3B", "SS", "OF", "DH", "SP", "RP"] as const;
 export type PositionGroup = (typeof POSITION_GROUPS)[number];
+/** The groups with a batting line (Off / HR / OPS): everything but SP / RP. */
+export const BATTING_GROUPS: readonly PositionGroup[] = POSITION_GROUPS.filter((g) => g !== "SP" && g !== "RP");
 
-// Batters by primary position (web_players.position — one per player, not per
-// season: a simplification the page labels). Pitchers split SP / RP by the share
-// of appearances that were starts. Position players who pitched mop-up innings
-// stay in their position group.
+// FanGraphs' Off: batting + baserunning runs above average, from the WAR
+// components. The player-stats table and value by position share this one rule.
+export const offRuns = (r: Pick<PlayerSeasonLine, "war_batting" | "war_baserunning">) =>
+  r.war_batting == null || r.war_baserunning == null ? null : r.war_batting + r.war_baserunning;
+
+// A batting position -> its group. PH and P (a position player batting while
+// on the mound, 1-2 PA a season) count as DH, the bat-only slot — so C … OF
+// match MLB's own by-position splits exactly.
+function batterGroup(position: string | null): PositionGroup {
+  const p = (position ?? "").toUpperCase();
+  if (p === "LF" || p === "CF" || p === "RF" || p === "OF") return "OF";
+  if (p === "C" || p === "1B" || p === "2B" || p === "3B" || p === "SS") return p;
+  return "DH";
+}
+
+// One group per player-season. Batters by that season's position (the readers
+// resolve it from web_player_position_splits, falling back to web_players.position).
+// Pitchers split SP / RP by the share of appearances that were starts. Position
+// players who pitched mop-up innings stay in their position group.
 export function positionGroup(r: PlayerSeasonLine): PositionGroup {
-  if (isBatter(r)) {
-    const p = (r.position ?? "").toUpperCase();
-    if (p === "LF" || p === "CF" || p === "RF" || p === "OF") return "OF";
-    if (p === "C" || p === "1B" || p === "2B" || p === "3B" || p === "SS") return p;
-    return "DH";
-  }
+  if (isBatter(r)) return batterGroup(r.position);
   const apps = r.apps ?? 0;
   const gs = r.gs ?? 0;
   return (apps > 0 ? gs / apps >= 0.5 : gs > 0) ? "SP" : "RP";
 }
 
-export function warByPosition(rows: PlayerSeasonLine[], season: number): Record<PositionGroup, number> {
-  const out = Object.fromEntries(POSITION_GROUPS.map((g) => [g, 0])) as Record<PositionGroup, number>;
-  for (const r of rows) {
-    if (r.season !== season || r.war == null) continue;
-    out[positionGroup(r)] += r.war;
+// Minimal by-position batting line (lib/team-season-data.ts::PositionSplit fits).
+export type PositionSplitLine = {
+  mlbam_id: number;
+  season: number;
+  position: string; // C / 1B / … / RF / DH, PH = pinch-hitter, P = batting while on the mound
+  pa: number;
+  ab: number;
+  h: number;
+  bb: number;
+  hbp: number;
+  sf: number;
+  tb: number;
+  hr: number;
+};
+
+export type PositionValue = { war: number; off: number; hr: number; pa: number; ops: number | null };
+
+// Team value by position group in `season`. A position player is split across
+// the positions he batted at, by plate appearances:
+// - HR / PA / OPS are summed from the by-position counts, so they are exact
+//   (OPS = OBP + SLG from the summed counts, never an average of rates);
+// - WAR and Off are season values with no by-position split, so each is shared
+//   out by his PA share at each position (the totals are conserved).
+// LF / CF / RF -> OF; PH and P -> DH (batterGroup). Pitchers' WAR goes to SP / RP.
+// A batter without split rows falls back to one group for the whole season.
+export function valueByPosition(
+  rows: PlayerSeasonLine[],
+  splits: PositionSplitLine[],
+  season: number,
+): Record<PositionGroup, PositionValue> {
+  const acc = Object.fromEntries(
+    POSITION_GROUPS.map((g) => [g, { war: 0, off: 0, hr: 0, pa: 0, ab: 0, h: 0, bb: 0, hbp: 0, sf: 0, tb: 0 }]),
+  ) as Record<PositionGroup, { war: number; off: number; hr: number } & Omit<PositionSplitLine, "mlbam_id" | "season" | "position">>;
+  const byPlayer = new Map<number, PositionSplitLine[]>();
+  for (const s of splits) {
+    if (s.season !== season) continue;
+    byPlayer.set(s.mlbam_id, [...(byPlayer.get(s.mlbam_id) ?? []), s]);
   }
-  return out;
+
+  for (const r of rows) {
+    if (r.season !== season) continue;
+    const war = r.war ?? 0;
+    const own = isBatter(r) ? (byPlayer.get(r.mlbam_id) ?? []) : [];
+    const total = own.reduce((sum, s) => sum + s.pa, 0);
+    if (total === 0) {
+      const g = acc[positionGroup(r)];
+      g.war += war;
+      if (isBatter(r)) {
+        g.off += offRuns(r) ?? 0;
+        g.hr += r.hr ?? 0;
+      }
+      continue;
+    }
+    const off = offRuns(r) ?? 0;
+    for (const s of own) {
+      const g = acc[batterGroup(s.position)];
+      const share = s.pa / total;
+      g.war += war * share;
+      g.off += off * share;
+      g.hr += s.hr;
+      g.pa += s.pa;
+      g.ab += s.ab;
+      g.h += s.h;
+      g.bb += s.bb;
+      g.hbp += s.hbp;
+      g.sf += s.sf;
+      g.tb += s.tb;
+    }
+  }
+
+  return Object.fromEntries(
+    POSITION_GROUPS.map((group) => {
+      const g = acc[group];
+      const obpDen = g.ab + g.bb + g.hbp + g.sf;
+      const ops = g.ab > 0 && obpDen > 0 ? (g.h + g.bb + g.hbp) / obpDen + g.tb / g.ab : null;
+      return [group, { war: g.war, off: g.off, hr: g.hr, pa: g.pa, ops }];
+    }),
+  ) as Record<PositionGroup, PositionValue>;
 }
 
 // P13: how a season ended, from the Jays' postseason games (game_type F / D / L /

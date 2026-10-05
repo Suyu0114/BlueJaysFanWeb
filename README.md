@@ -40,7 +40,7 @@
    - Offense and run-prevention rank grids (value + rank heat map, Value | vs MLB toggle, hover for the MLB average, the league leader and a plain-English definition), trend small multiples vs the MLB average, contact luck (wOBA vs xwOBA), rotation vs bullpen, ERA vs FIP with team OAA
    - Games above .500 for all five seasons on one chart (pick a season to highlight) + situational splits, strengths & weaknesses in MLB ranks, glossary & method
 8. **Team season review** (`/season/2026`, nav "Team ▾" → Season review, or the team page's season strip; tabs switch between the two team views)
-   - Record strip vs the prior season with MLB ranks among 30 clubs, games above .500 and cumulative run differential by game number (both seasons), where the season ranked (top-10 / bottom-10 skills), month by month, splits (home/road, one-run, blowouts, vs division, vs .500+ teams), team leaders (WAR / OPS / HR / SB / ERA / WHIP / SO / SV) with last year's value, WAR by position group
+   - Record strip vs the prior season with MLB ranks among 30 clubs, games above .500 and cumulative run differential by game number (both seasons), where the season ranked (top-10 / bottom-10 skills), month by month, splits (home/road, one-run, blowouts, vs division, vs .500+ teams), team leaders (WAR / OPS / HR / SB / ERA / WHIP / SO / SV) with last year's value, value by position group (WAR / Off / HR / OPS, vs last year or the change)
    - Team stats vs MLB: the club's offense and run-prevention line next to the MLB average, its rank among 30 clubs and the prior season
    - Player stats: every Blue Jay's season line, sortable — position players (offense incl. FanGraphs Off, defense = Def + Savant OAA, WAR) and pitchers; All / Regulars filter, copy table; each leader card's "All →" opens it sorted by that stat; an MLB-average row stays pinned at the bottom
 9. **Article tooling**
@@ -84,6 +84,7 @@
 │   │                             # line + pitcher line W/L/SV/GS/IP/WHIP/K%/BB% (MLB Stats API)
 │   ├── season_line.py            # shared API season line -> stat columns mapping
 │   ├── pull_player_splits.py     # per-club + total season lines, every club (P12)
+│   ├── pull_position_splits.py   # each Jay's batting line by position (per-season position)
 │   ├── pull_savant_leaderboards.py # Savant percentiles / xStats + barrels / pitch run value (P12)
 │   ├── pull_league_averages.py   # MLB / AL / NL averages from summed team stats (P12)
 │   ├── season_report.py          # SELECT-only article data pack -> reports/ (P12; team_trends P13)
@@ -91,7 +92,7 @@
 │   ├── pull_team_statcast.py     # Savant team leaderboards, all 30 clubs (P13)
 │   ├── fetch_team_logos.py       # ONE-SHOT: cap logos → web/public/team-logos (recoloured)
 │   └── backfill.py               # one-shot orchestrator
-├── db/migrations/                # plain SQL: 001 → 022
+├── db/migrations/                # plain SQL: 001 → 023
 ├── web/                          # Next.js app
 │   ├── app/[locale]/
 │   │   ├── page.tsx              # Home: standings + schedule calendar + "Today's Blue Jays"
@@ -118,7 +119,7 @@
 │   │   ├── StandingsTabs.tsx    # AL / NL / Wild Card view switcher (client)
 │   │   ├── SeasonCompareCard / DisciplineCards / PercentileBars  # P12 season-vs-season + Savant cards
 │   │   ├── compare/              # P12 Compare tab: controls, club splits, arc, arsenal compare, velo, zone grid
-│   │   ├── season/               # season page: trend by game number, WAR by position, player stats table
+│   │   ├── season/               # season page: trend by game number, value by position, player stats table
 │   │   ├── team/                 # P13 team page: season strip, run sources, rank grid, trends,
 │   │   │                         # rotation/bullpen, ERA vs FIP, trajectory, splits, callouts, glossary
 │   │   ├── Exportable / CopyTableButton  # P12 "PNG ↓" and "Copy table" (generic)

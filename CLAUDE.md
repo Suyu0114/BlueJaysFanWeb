@@ -29,9 +29,9 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 
 ### Supabase tables are shared — prefix everything with `web_`
 - This Supabase project is **shared with other projects** that already have a `players` table.
-- **Every table for this app is prefixed `web_`**: `web_players`, `web_statcast_events`, `web_player_season_stats`, `web_player_team_season_stats`, `web_player_seasons`, `web_fielding_frv`, `web_id_map`, `web_games`, `web_player_game_stats`, `web_standings`, `web_savant_percentiles`, `web_savant_season`, `web_pitch_arsenal_rv`, `web_league_season`, `web_team_season_stats`, `web_team_statcast_season`.
+- **Every table for this app is prefixed `web_`**: `web_players`, `web_statcast_events`, `web_player_season_stats`, `web_player_team_season_stats`, `web_player_position_splits`, `web_player_seasons`, `web_fielding_frv`, `web_id_map`, `web_games`, `web_player_game_stats`, `web_standings`, `web_savant_percentiles`, `web_savant_season`, `web_pitch_arsenal_rv`, `web_league_season`, `web_team_season_stats`, `web_team_statcast_season`.
 - Never create an unprefixed table here; it will collide.
-- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6) → `006_games.sql` + `007_player_game_stats.sql` + `008_war_components.sql` (P7) → `009_basic_season_stats.sql` (P9) → `010_pitching_season_stats.sql` + `011_statcast_pitch_detail.sql` (P10) → `012_standings.sql` (P11) → `013_games_game_type.sql` + `014_player_team_season_stats.sql` + `015_metric_views.sql` + `016_savant_percentiles.sql` + `017_savant_season.sql` + `018_pitch_arsenal_rv.sql` + `019_league_season.sql` (P12) → `020_team_season_stats.sql` + `021_team_statcast_season.sql` + `022_team_metric_views.sql` (P13). One concern per migration file.
+- Schema is layered: `001_initial_schema.sql` (P0) → `002_fielding_frv.sql` (P4) → `003_player_seasons.sql` + `004_plate_alignment.sql` + `005_id_map.sql` (P6) → `006_games.sql` + `007_player_game_stats.sql` + `008_war_components.sql` (P7) → `009_basic_season_stats.sql` (P9) → `010_pitching_season_stats.sql` + `011_statcast_pitch_detail.sql` (P10) → `012_standings.sql` (P11) → `013_games_game_type.sql` + `014_player_team_season_stats.sql` + `015_metric_views.sql` + `016_savant_percentiles.sql` + `017_savant_season.sql` + `018_pitch_arsenal_rv.sql` + `019_league_season.sql` (P12) → `020_team_season_stats.sql` + `021_team_statcast_season.sql` + `022_team_metric_views.sql` (P13) → `023_player_position_splits.sql` (post-P13). One concern per migration file.
 
 ### Audience & language
 - **Primary audience: English-speaking Toronto locals**, including non-Chinese speakers curious about BaZi. Chinese (TW/HK) fans are secondary.
@@ -54,6 +54,7 @@ BaZi (八字) personality / fortune / matchup-prediction / injury-risk features 
 ### ETL gotchas (will silently produce wrong data if missed)
 - pybaseball returns playoffs by default. Filter `game_type == 'R'` for regular season; `transform.regular_season_only(df, keep_postseason=True)` opts in (used for 2025 playoff backfill).
 - 2026 season changed Savant's `plate_x` / `plate_z` from front-of-plate to middle-of-plate alignment. `transform.tag_plate_alignment()` writes `'front'` (≤2025) or `'middle'` (≥2026) to `web_statcast_events.plate_alignment`. `PitchZoneHeatmap` must render rows from a single alignment value at a time — overlaying both mis-aligns the zone by 1–3 inches. Enforced in `PitchingExplorer` via the "Zone coords" filter (the heatmap is scoped to one alignment; the usage bars stay cross-season). `getPitches` still fetches all seasons, so any **new** plate-coordinate consumer must filter alignment itself. See `docs/DATA_MODEL.md` → plate_alignment invariant.
+- **`web_players.position` is the player's CURRENT MLB primary position** (a bio field, one value per player, overwritten every run) — never use it to label a past season (Bichette 2025 read `3B` after the Mets moved him there). A season's position = his most-PA position in `web_player_position_splits` (PH / P excluded; `seasonPosition` in `web/lib/team-season-data.ts`), whose Σ PA per player-season equals `web_player_season_stats.pa`. It is batting-by-position counts only — the API has no by-position WAR / Off.
 - Pitch classifications get retroactively corrected → daily ETL re-pulls the last 7 days and upserts (current season only). Historical seasons are static after `etl/backfill.py`.
 - Spray chart coordinate transform (must apply in ETL, not in the chart component):
   ```
@@ -123,6 +124,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   pull_season_stats.py         # OPS/wRC+/ERA/FIP/WAR + Value components + basic line + pitcher line (MLB Stats API)
   season_line.py               # P12: shared API season line -> stat columns mapping (season stats + splits)
   pull_player_splits.py        # P12: full-MLB lines per club + season total for a roster (web_player_team_season_stats)
+  pull_position_splits.py      # post-P13: each Jay's batting line by position (statSplits sitCodes, 1 call/season; reconciles vs season PA)
   season_report.py             # P12: SELECT-only article data pack -> reports/season-review-<year>/ (git-ignored); P13 adds team_trends.md/.csv from the 022 views
   pull_savant_leaderboards.py  # P12 M6: Savant percentiles / xStats + barrels / pitch run value (league-wide, filtered to the roster)
   pull_league_averages.py      # P12 M6: MLB / AL / NL averages from summed team counting stats
@@ -152,6 +154,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   020_team_season_stats.sql    # web_team_season_stats (all 30 clubs, counts + wRC+/WAR aggregates, P13)
   021_team_statcast_season.sql # web_team_statcast_season (Savant team leaderboards, all 30 clubs, P13)
   022_team_metric_views.sql    # web_v_team_counts / _rates / web_v_mlb_season / web_v_team_season: team rates, MLB averages, 30-club ranks (P13)
+  023_player_position_splits.sql # web_player_position_splits (Jays batting line by position; per-season position + value by position)
 /.github/workflows/etl.yml     # daily cron (rolling 7-day window for current season)
 /ETL_update_flow.md            # backfill + manual re-run steps
 /web/                          # Next.js app
@@ -166,7 +169,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       fielding/page.tsx        # FRV table + multi-position diagram (season cell carries the club label)
       compare/page.tsx         # P12: season vs season incl. other clubs; URL state ?season=&vs=&scope=mlb|jays; What changed + season line + by-club + arc + Statcast
     standings/page.tsx         # P11: three views (AL / NL / Wild Card) + clinch legend
-    season/[year]/page.tsx     # P12 M5: team season vs prior (record strip, games above .500 + run diff by game number, months, splits, leaders, WAR by position); generateStaticParams = seasons with R finals; player modules hide when a season has no player rows (< 2024). Post-P13: TeamNav tabs; MLB rank chips on PCT / RS / RA / run diff + "Where {season} ranked" (StrengthsWeaknesses single) from the 022 views, hidden without a Jays row; leaders WAR/OPS/HR/SB + ERA/WHIP/SO/SV, each card "All →" (#stats-<tab>-<column>) into the player stats table (last panel), preceded by "team stats vs MLB" (TeamSeasonStats); getTeamTrend loads season + prior
+    season/[year]/page.tsx     # P12 M5: team season vs prior (record strip, games above .500 + run diff by game number, months, splits, leaders, value by position); generateStaticParams = seasons with R finals; player modules hide when a season has no player rows (< 2024). Post-P13: TeamNav tabs; MLB rank chips on PCT / RS / RA / run diff + "Where {season} ranked" (StrengthsWeaknesses single) from the 022 views, hidden without a Jays row; leaders WAR/OPS/HR/SB + ERA/WHIP/SO/SV, each card "All →" (#stats-<tab>-<column>) into the player stats table (last panel), preceded by "team stats vs MLB" (TeamSeasonStats); getTeamTrend loads season + prior
     team/page.tsx              # P13: Blue Jays over the latest 5 seasons vs the MLB average + 30-club ranks — season strip, ① record & run differential, ② offense, ③ run prevention, ④ trajectory + splits, ⑤ strengths & weaknesses, ⑥ glossary & method; TeamNav tabs on top; SSG, revalidate 3600
     about/page.tsx
   components/
@@ -222,7 +225,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       TeamGlossary.tsx         # method notes + every metric's hint grouped like the grids, in a <details> (works without JS)
     season/                    # P12 M5 charts
       SeasonTrendChart.tsx     # games above .500 / cumulative run diff by game number, prior season dashed
-      WarByPositionChart.tsx   # team WAR by position group, season vs prior bars
+      PositionValueChart.tsx   # client: value by position group — WAR / Off / HR / OPS switch, season vs prior bars | change (grass up / brick down); PNG caption follows the switch (replaced WarByPositionChart)
       TeamSeasonStats.tsx      # server: the team's season line vs the MLB average + 30-club rank + prior season — offense (run scoring / contact) | run prevention (incl. contact allowed / OAA); P13 buildGrid over the 022 views, nothing computed
       PlayerStatsTable.tsx     # client: every Jay's season line, sortable — position players (Offense: slash/HR/RBI/SB/wRC+/Off | Defense: Def/OAA | WAR) and pitchers tabs; All | Regulars (100+ PA / 20+ IP); copy table; leader-card hash jumps (rate stats -> Regulars); "MLB average" row pinned in <tfoot> (rate columns, same 022 MLB row)
     standings-chrome.ts        # P11 shared table chrome (navy header bar / ledger stripes / rowBg); P13 stripeBg(i, highlight) for any table
@@ -264,8 +267,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     compare.ts                 # P12 web_player_team_season_stats readers + clubsBySeason / getSeasonClubLabels ("2026 · TOR/HOU")
     pitch-colors.ts            # P10: shared PITCH_COLOR map (was in PitchDistribution)
     standings.ts               # P11 web_standings + byDivision / wildCardRace / playoffPicture / clinchMarker
-    team-season.ts             # P12 M5 PURE (P13 reuses): gamesAboveSeries / runDiffSeries / monthlyRecords / seasonSplits / longestStreak / teamLeaders (WAR/OPS/HR/SB/ERA/WHIP/SO/SV) / positionGroup / warByPosition; P13 postseasonResult
-    team-season-data.ts        # P12 M5 DB readers: getTeamSeasons (cached; season-page resolver) / getTeamGames / getTeamPlayerSeasons; getSeasonPlayerStats (season line + box-score G/SO + summed Savant OAA)
+    team-season.ts             # P12 M5 PURE (P13 reuses): gamesAboveSeries / runDiffSeries / monthlyRecords / seasonSplits / longestStreak / teamLeaders (WAR/OPS/HR/SB/ERA/WHIP/SO/SV) / positionGroup / offRuns (Off = Bat + BsR) / valueByPosition (PA-share WAR/Off, exact HR/OPS from position splits; PH + P -> DH); P13 postseasonResult
+    team-season-data.ts        # P12 M5 DB readers: getTeamSeasons (cached; season-page resolver) / getTeamGames / getTeamPlayerSeasons; getSeasonPlayerStats (season line + box-score G/SO + summed Savant OAA); getTeamPositionSplits; both player readers resolve that season's position via seasonPosition (not web_players.position)
     season-player-stats.ts     # PURE: splitPlayerStats (isBatter / isPitcher split, Off = Bat+BsR, Def = Fld+Pos, SP/RP role) + column registry + sortRows + leader anchors
     team-trends.ts             # P13 DB readers over the 022 views: getTrendSeasons (latest 5 with 30 clubs) / getTeamTrend (30 clubs + MLB row) / getPostseasonGames
     team-metrics.ts            # P13 display registry (label / format / group / direction / vsMlb) — directions mirror the 022 view ranks; formatMetric / vsMlb / tiedRank

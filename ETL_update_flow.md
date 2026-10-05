@@ -19,7 +19,7 @@ python etl/pull_team_players.py --season 2026
 ```powershell
 python etl/backfill.py --season 2026
 ```
-`backfill.py` 會依序跑下面 7 步（每步都 idempotent，可安全重跑）：
+`backfill.py` 會依序跑下面 8 步（每步都 idempotent，可安全重跑）：
 
 | # | Script | 寫入 |
 |---|---|---|
@@ -29,10 +29,11 @@ python etl/backfill.py --season 2026
 | 4 | `pull_pitcher --all-pitchers` | 投手 Statcast → `web_statcast_events` |
 | 5 | `pull_fielding` | OAA / FRV → `web_fielding_frv` |
 | 6 | `pull_season_stats` | OPS / wRC+ / ERA / FIP / WAR **+ Value 細項**（`war_*` / `rar`）+ 打者 basic line + 投手 line → `web_player_season_stats`（MLB Stats API，全自動） |
-| 7 | `pull_boxscore --season` | 每場 final 的 box score → `web_player_game_stats` |
+| 7 | `pull_position_splits` | 每位藍鳥**依守位**的打擊 line（PA / HR / … 計數）→ `web_player_position_splits`（MLB Stats API，每季 1 個 request；會跟第 6 步的 PA 對帳） |
+| 8 | `pull_boxscore --season` | 每場 final 的 box score → `web_player_game_stats` |
 
 > 順序由 `backfill.py` 內部保證：`pull_schedule`（第 2 步）一定在 `pull_boxscore`
-> （第 7 步）之前，因為 boxscore 用 `web_games.is_final` 當 final-game guard。
+> （第 8 步）之前，因為 boxscore 用 `web_games.is_final` 當 final-game guard。
 
 **Step 3：單獨補寫 season stats（選用）**
 ```powershell
@@ -52,6 +53,21 @@ python etl/pull_season_stats.py --season 2026
 > - 2026-09-29 起 team leaderboard 只拿來「列出有哪些球員」，每個人的數字改抓
 >   他自己的 `/people/{id}/stats` 藍鳥 split（季末 leaderboard 的 sabermetrics
 >   會延遲，Scherzer FIP 5.43 vs 正確的 5.11）。所以這步會多打 ~100 個 request，約 30 秒。
+
+**Step 3b：單獨補寫依守位的打擊 split（選用）**
+```powershell
+python etl/pull_position_splits.py --season 2024 --season 2025 --season 2026
+```
+> `web_players.position` 是 MLB **現在**的主守位（每人只有一個值，每次 ETL 覆寫），
+> 所以不能拿來標過去球季——Bichette 去大都會改守 3B 後，他 2025 年就被標成 3B。
+> 每季守位（season 頁 Pos 欄）和「各守位貢獻」圖改從這張表推：該季打席最多的守位
+> （PH / P 不算）。來源是 `/stats?stats=statSplits&sitCodes=p1..p9,pD,pH&teamId=141`，
+> 每季一個 request，只算藍鳥時期（季中被交易的球員也只算在藍鳥的部分）。
+>
+> - 每次跑會**整季刪掉重寫**（MLB 改判時舊守位列不會殘留）。
+> - 跑完會 log 每位球員「各守位 PA 加總 vs `web_player_season_stats.pa`」的對帳；
+>   有不符會出 WARNING（2024–2026 都是 0 筆）。所以要在 `pull_season_stats` **之後**跑。
+> - 當季已排進 09:00 ET cron。
 
 **Step 4（P12）：球員「在其他隊」的歷史（一次性）**
 
@@ -167,6 +183,7 @@ P7 起 GitHub Actions 有**兩個**排程（都 idempotent、都會 upsert）：
   `web_standings` 排名 refresh、近 ~3 天 box score 補抓（West-Coast / 晚場 final
   在這裡補完）、season stats（WAR / OPS / ERA …，MLB Stats API）、當季名單的每隊
   season line（`pull_player_splits`，被交易走的球員在新球隊的成績也會每天更新）、
+  依守位的打擊 split（`pull_position_splits`）、
   30 隊球隊成績 + Savant 球隊排行榜（`pull_team_stats` / `pull_team_statcast`，P13）。
 - **~23:30 ET**：今天的賽程 refresh + 排名 refresh + 今天 final 場次的 box score。
 
@@ -182,6 +199,13 @@ P7 起 GitHub Actions 有**兩個**排程（都 idempotent、都會 upsert）：
 ```sql
 -- 確認 2026 球員有進來
 SELECT COUNT(*) FROM web_player_seasons WHERE season = 2026;
+
+-- 依守位 split：每位球員各守位 PA 加總 = 球季 PA（bad 應為 0）
+SELECT s.season, COUNT(*) FILTER (WHERE s.pa <> coalesce(x.pa, 0)) AS bad
+FROM web_player_season_stats s
+LEFT JOIN (SELECT mlbam_id, season, SUM(pa) AS pa FROM web_player_position_splits GROUP BY 1, 2) x
+  USING (mlbam_id, season)
+WHERE s.pa > 0 GROUP BY s.season ORDER BY s.season;
 
 -- P11 排名：每季應該剛好 30 列、6 個分區
 SELECT season, COUNT(*), COUNT(DISTINCT division_id) FROM web_standings GROUP BY season;

@@ -7,7 +7,7 @@
 // includes catcher framing). OAA is Savant's season total across all MLB clubs.
 
 import { formatMetric } from "./team-metrics";
-import { isBatter, isPitcher, positionGroup } from "./team-season";
+import { isBatter, isPitcher, offRuns, positionGroup } from "./team-season";
 import type { SeasonPlayerStat } from "./team-season-data";
 
 /** "Regulars" filter: below these a rate stat is a small sample (rows are muted). */
@@ -55,7 +55,7 @@ export type PitcherRow = {
 
 const add = (a: number | null, b: number | null) => (a == null || b == null ? null : a + b);
 
-/** Same split as the leaders and WAR by position: any PA = position player. */
+/** Same split as the leaders and value by position: any PA = position player. */
 export function splitPlayerStats(rows: SeasonPlayerStat[]): { hitters: HitterRow[]; pitchers: PitcherRow[] } {
   const hitters: HitterRow[] = rows.filter(isBatter).map((r) => ({
     mlbam_id: r.mlbam_id,
@@ -71,7 +71,7 @@ export function splitPlayerStats(rows: SeasonPlayerStat[]): { hitters: HitterRow
     rbi: r.rbi,
     sb: r.sb,
     wrc_plus: r.wrc_plus,
-    off: add(r.war_batting, r.war_baserunning),
+    off: offRuns(r),
     def: add(r.war_fielding, r.war_positional),
     oaa: r.oaa,
     war: r.war,

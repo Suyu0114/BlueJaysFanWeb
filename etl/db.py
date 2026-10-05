@@ -408,3 +408,34 @@ def upsert_team_statcast_season(conn, rows: Iterable[dict]) -> int:
     return _upsert_team_season(
         conn, "web_team_statcast_season", TEAM_STATCAST_COLUMNS, rows
     )
+
+
+# --- Post-P13: batting line by position (Jays-only) ---
+
+POSITION_SPLIT_COLUMNS = [
+    "mlbam_id", "season", "position",
+    "g", "pa", "ab", "h", "doubles", "triples", "hr", "rbi", "bb", "so",
+    "hbp", "sf", "tb",
+]
+
+
+def replace_position_splits(conn, season: int, rows: Iterable[dict]) -> int:
+    """Replace one season of web_player_position_splits
+    (db/migrations/023_player_position_splits.sql).
+
+    Delete + insert in the caller's transaction rather than upsert: when MLB
+    re-scores a game, a (player, position) row can disappear and must not
+    linger. Missing keys are written as NULL.
+    """
+    rows = [{c: r.get(c) for c in POSITION_SPLIT_COLUMNS} for r in rows]
+    cols = ", ".join(POSITION_SPLIT_COLUMNS)
+    placeholders = ", ".join(f"%({c})s" for c in POSITION_SPLIT_COLUMNS)
+    with conn.cursor() as cur:
+        cur.execute("delete from web_player_position_splits where season = %s", (season,))
+        if not rows:
+            return 0
+        cur.executemany(
+            f"insert into web_player_position_splits ({cols}) values ({placeholders})",
+            rows,
+        )
+        return cur.rowcount

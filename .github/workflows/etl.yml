@@ -99,6 +99,12 @@ jobs:
       - name: Pull season stats (MLB Stats API -- OPS / wRC+ / ERA / FIP / WAR + Value components)
         run: python etl/pull_season_stats.py --season "$SEASON"
 
+      # Batting line by position (Jays-only): the season page's per-season
+      # position + "value by position" chart. Reconciles against the season
+      # stats above, so it runs after them.
+      - name: Pull batting by position (web_player_position_splits)
+        run: python etl/pull_position_splits.py --season "$SEASON"
+
       # P12: full-MLB lines per club (+ season total) for this season's roster,
       # so a traded-away Jay's line with his new club stays current. Must run
       # after pull_team_players (it reads web_player_seasons for the cohort).

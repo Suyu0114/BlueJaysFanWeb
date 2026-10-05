@@ -32,6 +32,18 @@ export async function getTeamGames(season: number): Promise<TeamGame[]> {
   `;
 }
 
+// A player's position in a season = the position he batted at most for the Jays
+// (PH / P excluded; ties -> more games). web_players.position is his CURRENT
+// MLB primary position — one value per player (Bichette 2025 read 3B after he
+// moved to the Mets) — so it is only the fallback, for pitchers and anyone
+// without a split row. Both season-page readers join this one definition.
+const seasonPosition = (seasons: number[]) => sql`
+  select distinct on (mlbam_id, season) mlbam_id, season, position
+  from web_player_position_splits
+  where season = any(${seasons}) and position not in ('PH', 'P')
+  order by mlbam_id, season, pa desc, g desc, position
+`;
+
 // One row per Blue Jay per season: the season line plus the two numbers the
 // page needs from box scores — pitcher strikeouts (not a web_player_season_stats
 // column) and pitching appearances (the SP / RP split).
@@ -39,12 +51,14 @@ export type TeamPlayerSeason = {
   mlbam_id: number;
   season: number;
   name: string;
-  position: string | null;
+  position: string | null; // that season's position (seasonPosition), else web_players.position
   pa: number | null;
   ops: number | null;
   hr: number | null;
   sb: number | null;
   war: number | null;
+  war_batting: number | null;
+  war_baserunning: number | null;
   ip: number | null; // baseball notation — display / threshold only
   era: number | null;
   whip: number | null;
@@ -63,21 +77,50 @@ export async function getTeamPlayerSeasons(seasons: number[]): Promise<TeamPlaye
       where s.stat_group = 'pitching' and g.game_type = 'R' and g.season = any(${seasons})
       group by 1, 2
     )
-    select s.mlbam_id::int as mlbam_id, s.season, p.name, p.position,
+    select s.mlbam_id::int as mlbam_id, s.season, p.name, coalesce(pp.position, p.position) as position,
       s.pa::int as pa, s.ops::float8 as ops, s.hr::int as hr, s.sb::int as sb, s.war::float8 as war,
+      s.war_batting::float8 as war_batting, s.war_baserunning::float8 as war_baserunning,
       s.ip::float8 as ip, s.era::float8 as era, s.whip::float8 as whip, s.sv::int as sv, s.gs::int as gs,
       pi.so, pi.apps
     from web_player_season_stats s
     join web_players p on p.mlbam_id = s.mlbam_id
     left join pitching pi on pi.mlbam_id = s.mlbam_id and pi.season = s.season
+    left join (${seasonPosition(seasons)}) pp on pp.mlbam_id = s.mlbam_id and pp.season = s.season
     where s.season = any(${seasons})
   `;
 }
 
+// Every Blue Jay's batting line by the position he was playing (Jays-scoped,
+// counts only), for the season page's "value by position" chart.
+export type PositionSplit = {
+  mlbam_id: number;
+  season: number;
+  position: string; // C / 1B / … / RF / DH, PH = pinch-hitter, P = batting while on the mound
+  pa: number;
+  ab: number;
+  h: number;
+  bb: number;
+  hbp: number;
+  sf: number;
+  tb: number;
+  hr: number;
+};
+
+export async function getTeamPositionSplits(seasons: number[]): Promise<PositionSplit[]> {
+  return sql<PositionSplit[]>`
+    select mlbam_id::int as mlbam_id, season, position,
+      coalesce(pa, 0) as pa, coalesce(ab, 0) as ab, coalesce(h, 0) as h, coalesce(bb, 0) as bb,
+      coalesce(hbp, 0) as hbp, coalesce(sf, 0) as sf, coalesce(tb, 0) as tb, coalesce(hr, 0) as hr
+    from web_player_position_splits
+    where season = any(${seasons})
+  `;
+}
+
 // The season page's player-stats table: every Blue Jay's full season line
-// (Jays-scoped), plus regular-season games from his box scores, pitcher
-// strikeouts, and Savant OAA summed over positions (Savant's season total, all
-// MLB clubs; no row for catchers / DHs). Off / Def are derived in the pure
+// (Jays-scoped) with that season's position (seasonPosition), plus
+// regular-season games from his box scores, pitcher strikeouts, and Savant OAA
+// summed over positions (Savant's season total, all MLB clubs; no row for
+// catchers / DHs). Off / Def are derived in the pure
 // lib/season-player-stats.ts from the WAR components.
 export type SeasonPlayerStat = {
   mlbam_id: number;
@@ -130,7 +173,7 @@ export async function getSeasonPlayerStats(season: number): Promise<SeasonPlayer
       where season = ${season}
       group by 1
     )
-    select s.mlbam_id::int as mlbam_id, p.name, p.position,
+    select s.mlbam_id::int as mlbam_id, p.name, coalesce(pp.position, p.position) as position,
       s.pa::int as pa, s.avg::float8 as avg, s.obp::float8 as obp, s.slg::float8 as slg,
       s.ops::float8 as ops, s.hr::int as hr, s.rbi::int as rbi, s.sb::int as sb,
       s.wrc_plus::float8 as wrc_plus, s.war::float8 as war,
@@ -144,6 +187,7 @@ export async function getSeasonPlayerStats(season: number): Promise<SeasonPlayer
     join web_players p on p.mlbam_id = s.mlbam_id
     left join games gm on gm.mlbam_id = s.mlbam_id
     left join fielding f on f.mlbam_id = s.mlbam_id
+    left join (${seasonPosition([season])}) pp on pp.mlbam_id = s.mlbam_id
     where s.season = ${season}
   `;
 }

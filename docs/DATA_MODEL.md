@@ -11,7 +11,7 @@ the columns that **don't** exist so nobody assumes them.
 > table below and diff — the verification recipe is at the bottom.
 >
 > **Verified against live DB: 2026-09-30** (migrations `001`–`019` applied, plus
-> P13's `020`–`022`;
+> P13's `020`–`022`; `023` applied 2026-10-04 — `web_player_position_splits` at 17;
 > `web_player_season_stats` at 32 columns, `web_statcast_events` at 29,
 > `web_standings` at 38, `web_games` at 17, `web_player_team_season_stats` at 37,
 > `web_team_season_stats` at 69, `web_team_statcast_season` at 36).
@@ -30,6 +30,7 @@ the columns that **don't** exist so nobody assumes them.
 | [`web_statcast_events`](#web_statcast_events) | 235,474 | one row per pitch | Baseball Savant (Statcast) |
 | [`web_player_season_stats`](#web_player_season_stats) | 178 | one row per (player, season) — **Jays only** | MLB Stats API `season` + `sabermetrics` (FanGraphs-licensed); nightly |
 | [`web_player_team_season_stats`](#web_player_team_season_stats) | 324 | one row per (player, season, club) + season total (`team_id = 0`) — **every club** | MLB Stats API `/people/{id}/stats`; history one-shot + nightly (P12) |
+| [`web_player_position_splits`](#web_player_position_splits) | 253 | one row per (player, season, position batted at) — **Jays only** | MLB Stats API `statSplits` by position (`sitCodes`); nightly (post-P13, @ 2026-10-04) |
 | [`web_player_seasons`](#web_player_seasons) | 178 | one row per (player, season, team) | derived during ETL |
 | [`web_fielding_frv`](#web_fielding_frv) | 1,808 | one row per (player, season, position) | Baseball Savant OAA leaderboard |
 | [`web_id_map`](#web_id_map) | 0 | one row per MLBAM id | Chadwick register (lazy cache) |
@@ -54,6 +55,7 @@ and is genuinely absent:
 |---|---|---|
 | `bb_type` | `web_statcast_events` | **Absent.** `docs/P7_spec.md:360` backlog assumed GB/FB/LD can be derived from it. They cannot — it was never pulled into the schema. To add GB/FB/LD you must extend the ETL (`STATCAST_COLUMNS` + a migration) or approximate from `launch_angle`. |
 | `launch_speed_angle` / barrel flag | `web_statcast_events` | **Absent.** Statcast's per-event barrel classification is not stored. The P8 EV/LA "barrel zone" is a *visual reference rectangle only*, not per-point truth. |
+| `position` as a **per-season** position | `web_players` | **It is the player's CURRENT MLB primary position** (bio), one value per player, overwritten by every ETL run — Bichette's 2025 row read `3B` once the Mets moved him there. A season's position = his most-PA position in [`web_player_position_splits`](#web_player_position_splits) (PH / P excluded), which the season-page readers resolve (`lib/team-season-data.ts` `seasonPosition`). |
 | `name_tc` (Chinese name) | `web_players` | **Intentionally absent.** Single English `name` field by design — see CLAUDE.md → "What stays English even in zh-TW". Do not add it. |
 | `woba` / `babip` / per-event run value | `web_statcast_events` | **Absent.** Only the raw Statcast fields below are stored; sabermetric aggregates live in `web_player_season_stats` (season grain), not per pitch. |
 | `games_back` as a **number** | `web_standings` | **It is `text`, not numeric** — and deliberately so. MLB sends display strings with sentinels: `'-'` (this team *is* the reference), `'+9.5'` (ahead of the wild card cut line), `'E'` (eliminated, on `elimination_number`). Same for `wc_games_back`, `elimination_number`, `wc_elimination_number`, `magic_number`. Never cast or arithmetic them; **order by the `*_rank` columns instead.** |
@@ -75,7 +77,7 @@ into this table, so **every opponent batter/pitcher a Jay has faced is also here
 |---|---|---|---|
 | `mlbam_id` | bigint | NO | **PK.** MLBAM player id. |
 | `name` | text | NO | English display name (e.g. `Vladimir Guerrero Jr.`). |
-| `position` | text | yes | Primary position. |
+| `position` | text | yes | **Current** MLB primary position (`/people` `primaryPosition`; `P` for pitchers), overwritten on every run — a bio field, **not** the position he played in a past season (see the anti-index + [`web_player_position_splits`](#web_player_position_splits)). |
 | `bats` | char(1) | yes | `L` / `R` / `S`. |
 | `throws` | char(1) | yes | `L` / `R`. |
 | `is_active_26` | boolean | yes | On the 26-man active roster (set by `roster.py`). |
@@ -227,6 +229,41 @@ history is a one-shot (`ETL_update_flow.md`).
 | `updated_at` | timestamptz | NO | default `now()`. |
 
 Index: `idx_web_player_team_season_stats_season (season, team_id)`.
+
+---
+
+## `web_player_position_splits`
+*Migration: `023` (post-P13, 2026-10-04). Writer: [`etl/pull_position_splits.py`](../etl/pull_position_splits.py)
+(`db.replace_position_splits`: delete + insert per season). Key: `(mlbam_id, season, position)`.*
+
+Each Blue Jay's regular-season **batting line split by the position he was playing
+when he batted**. **Jays-only**, like `web_player_season_stats`. Source: one call per
+season — `/stats?stats=statSplits&group=hitting&teamId=141&gameType=R&playerPool=ALL&sitCodes=p1,p2,…,p9,pD,pH`
+(team-scoped: a traded player's rows cover only his Toronto games). Nightly for the
+current season; 2024–2026 backfilled. **Counts only** — no rates, no WAR (the API has
+no by-position WAR / Off / wRC+).
+
+- **Σ `pa` per (player, season) = `web_player_season_stats.pa`** (the writer logs any
+  mismatch; 0 for 2024–2026). Σ per (season, position) = MLB's team split
+  (`/teams/141/stats?stats=statSplits`, e.g. 2025 SS = 722 PA / 16 HR).
+- **Season position** = the most-PA row excluding `PH` / `P` (ties → more `g`) —
+  `seasonPosition` in [`web/lib/team-season-data.ts`](../web/lib/team-season-data.ts);
+  falls back to `web_players.position` for pitchers / no rows.
+- **Value by position** (season page) — [`valueByPosition`](../web/lib/team-season.ts):
+  HR / PA / OPS summed from these counts (exact; OPS = OBP + SLG from summed counts,
+  so it can differ by .001 from MLB's display OPS, which adds the rounded OBP and SLG);
+  WAR / Off shared out by each player's PA share. LF/CF/RF → OF; `PH` and `P` → DH.
+
+| Column | Type | Null | Meaning |
+|---|---|---|---|
+| `mlbam_id` | bigint | NO | **PK** part. FK → `web_players`. |
+| `season` | int | NO | **PK** part. |
+| `position` | text | NO | **PK** part. `C` `1B` `2B` `3B` `SS` `LF` `CF` `RF` `DH`, `PH` = pinch-hitter, `P` = a position player batting while on the mound (1–2 PA a season). |
+| `g` | int | yes | Games with a PA at that position. |
+| `pa` `ab` `h` `doubles` `triples` `hr` `rbi` `bb` `so` `hbp` `sf` `tb` | int | yes | Counting line at that position (`tb` = total bases). |
+| `updated_at` | timestamptz | NO | default `now()`. |
+
+Index: `idx_web_player_position_splits_season (season)`.
 
 ---
 
@@ -618,6 +655,10 @@ fractions; IP = outs / 3. Ranks and raw counts (`games pa bf hr sb rs ra`) are c
    existing Batting / Pitching pages show **all** rows (club-labelled seasons, P12 D16).
 8. **`web_player_seasons` and `web_player_season_stats` are Jays-only;**
    `web_player_team_season_stats` is the all-clubs table (P12 D14/D15).
+9. **`web_players.position` is the current bio position, never per season.**
+   Anything that labels a past season (season page Pos column, value by position)
+   reads [`web_player_position_splits`](#web_player_position_splits), whose Σ `pa`
+   per player-season equals `web_player_season_stats.pa`.
 
 ---
 
@@ -691,7 +732,7 @@ for line in Path(".env").read_text().splitlines():
 tables = ["web_players","web_statcast_events","web_player_season_stats",
           "web_player_seasons","web_fielding_frv","web_id_map",
           "web_games","web_player_game_stats","web_standings",
-          "web_player_team_season_stats"]
+          "web_player_team_season_stats","web_player_position_splits"]
 with psycopg.connect(os.environ["DATABASE_URL"], prepare_threshold=None) as c:
     for t in tables:
         cols = c.execute("""select column_name, data_type, is_nullable
@@ -701,5 +742,5 @@ with psycopg.connect(os.environ["DATABASE_URL"], prepare_threshold=None) as c:
 ```
 
 Run: `conda run -n MLBxBaZi python <script>.py`. Expect the column counts in the
-table index above (11 / 29 / 32 / 7 / 12 / 6 / 17 / 27 / 38 / 37). Re-confirm the anti-index
+table index above (11 / 29 / 32 / 7 / 12 / 6 / 17 / 27 / 38 / 37 / 17). Re-confirm the anti-index
 holds (`bb_type`, `launch_speed_angle` still absent).

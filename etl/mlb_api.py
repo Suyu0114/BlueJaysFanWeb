@@ -483,6 +483,66 @@ def _fetch_player_team_split(
     return splits.get(team_id, {}).get(group, {})
 
 
+# MLB situation codes for "batting while playing position X" -> our label.
+# p1 = a position player batting while he was the pitcher (mop-up duty).
+POSITION_SIT_CODES = {
+    "p1": "P", "p2": "C", "p3": "1B", "p4": "2B", "p5": "3B", "p6": "SS",
+    "p7": "LF", "p8": "CF", "p9": "RF", "pD": "DH", "pH": "PH",
+}
+
+# API stat key -> web_player_position_splits column.
+_POSITION_SPLIT_STATS = {
+    "gamesPlayed": "g", "plateAppearances": "pa", "atBats": "ab", "hits": "h",
+    "doubles": "doubles", "triples": "triples", "homeRuns": "hr", "rbi": "rbi",
+    "baseOnBalls": "bb", "strikeOuts": "so", "hitByPitch": "hbp",
+    "sacFlies": "sf", "totalBases": "tb",
+}
+
+
+def fetch_team_position_splits(
+    season: int, team_id: int = BLUE_JAYS_TEAM_ID
+) -> list[dict]:
+    """Regular-season batting line per (player, position) for `team_id`.
+
+    One call per season: the team-scoped statSplits leaderboard with one
+    situation code per position. A traded player's rows cover only his games
+    for `team_id`, and each player's PA summed over positions equals his
+    season PA (verified 2024-2026). Counts only -- no rates, no WAR.
+
+    One record per (player, position): {mlbam_id, season, position, <counts>}.
+    """
+    data = _get_json(
+        STATS_URL,
+        {
+            "stats": "statSplits",
+            "group": "hitting",
+            "season": season,
+            "teamId": team_id,
+            "sportId": 1,
+            "gameType": "R",
+            "sitCodes": ",".join(POSITION_SIT_CODES),
+            "playerPool": "ALL",
+            "limit": 2000,
+        },
+    )
+    rows: list[dict] = []
+    for block in data.get("stats", []):
+        for s in block.get("splits", []):
+            position = POSITION_SIT_CODES.get(s.get("split", {}).get("code"))
+            if position is None:
+                continue
+            stat = s.get("stat", {})
+            rows.append(
+                {
+                    "mlbam_id": s["player"]["id"],
+                    "season": season,
+                    "position": position,
+                    **{col: stat.get(key) for key, col in _POSITION_SPLIT_STATS.items()},
+                }
+            )
+    return rows
+
+
 # ---------------------------------------------------------------------------
 # P12: full-MLB season lines per club (other-club history for the roster)
 # ---------------------------------------------------------------------------
