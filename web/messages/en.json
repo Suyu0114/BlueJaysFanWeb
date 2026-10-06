@@ -11,7 +11,9 @@
     "seasonLink": "{season} Season",
     "pastSeasons": "Earlier seasons",
     "trends": "Five-season trends",
-    "trendsHint": "{from}–{to} vs the MLB average"
+    "trendsHint": "{from}–{to} vs the MLB average",
+    "menu": "Menu",
+    "language": "Language"
   },
   "Home": {
     "title": "Toronto Blue Jays — Suyu's Jays Notes",

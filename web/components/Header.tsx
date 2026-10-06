@@ -1,9 +1,11 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { NAV_ITEMS } from "@/lib/nav";
 import { getTeamSeasons } from "@/lib/team-season-data";
 import { getTrendSeasons } from "@/lib/team-trends";
 import { SITE } from "@/lib/site";
 import { LocaleSwitcher } from "./LocaleSwitcher";
+import MobileMenu from "./MobileMenu";
 import TeamMenu from "./TeamMenu";
 
 // Nav links: a steel rule draws in from the left on hover (scale-x on ::after),
@@ -23,34 +25,31 @@ export async function Header() {
 
   return (
     <header className="relative z-40 border-b-2 border-brick bg-navy text-papaya">
-      {/* Wraps to two rows at phone width (brand, then the links) instead of
-          overflowing; labels never break mid-word (zh-TW would stack them). */}
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
+      {/* md+: brand + inline links + language pill (wraps under the brand if
+          it runs out of room). Below md: one row — brand, pill, ☰ — and the
+          links move into MobileMenu. Labels never break mid-word. */}
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 md:gap-x-4">
         <Link
           href="/"
           className="whitespace-nowrap font-display text-lg uppercase tracking-wide"
         >
           {SITE.name}
         </Link>
-        <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-          <Link href="/" className={NAV_LINK}>
-            {t("home")}
-          </Link>
-          <Link href="/players" className={NAV_LINK}>
-            {t("players")}
-          </Link>
-          <Link href="/standings" className={NAV_LINK}>
-            {t("standings")}
-          </Link>
-          <TeamMenu seasons={seasons} trendSpan={trendSpan} linkClass={NAV_LINK} />
-          <Link href="/articles" className={NAV_LINK}>
-            {t("articles")}
-          </Link>
-          <Link href="/about" className={NAV_LINK}>
-            {t("about")}
-          </Link>
+        <div className="flex items-center gap-x-2 md:gap-x-4">
+          <nav className="hidden flex-wrap items-center gap-x-4 gap-y-1 text-sm md:flex">
+            {NAV_ITEMS.map((item) =>
+              item.href == null ? (
+                <TeamMenu key={item.key} seasons={seasons} trendSpan={trendSpan} linkClass={NAV_LINK} />
+              ) : (
+                <Link key={item.key} href={item.href} className={NAV_LINK}>
+                  {t(item.key)}
+                </Link>
+              ),
+            )}
+          </nav>
           <LocaleSwitcher />
-        </nav>
+          <MobileMenu seasons={seasons} trendSpan={trendSpan} className="md:hidden" />
+        </div>
       </div>
     </header>
   );

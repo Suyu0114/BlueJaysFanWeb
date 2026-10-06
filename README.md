@@ -119,6 +119,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   ├── components/
 │   │   ├── PlayerNav.tsx
 │   │   ├── Header.tsx / TeamMenu.tsx  # nav; "Team ▾" menu (season review / five-season trends)
+│   │   ├── MobileMenu.tsx / LocaleSwitcher.tsx  # phone ☰ menu (below md); EN | 中文 pill
 │   │   ├── TeamNav.tsx           # team section tabs (season review | five-season trends)
 │   │   ├── SeasonProgressBar.tsx
 │   │   ├── ScheduleCalendar.tsx  # rough.js hand-drawn parchment scorecard
@@ -149,7 +150,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   │                             # recent-game, field-geometry, games, team-abbr,
 │   │                             # batter-game-log, batting-form, exit-velo-stats,
 │   │                             # pitcher-game-log, pitching-form, pitch-arsenal, pitch-colors,
-│   │                             # motion (timing tokens), ink-draw, use-lingering-hover,
+│   │                             # motion (timing tokens), ink-draw, use-lingering-hover, use-details-menu, nav,
 │   │                             # P12: compare, discipline, season-deltas, savant,
 │   │                             # team-season (pure) + team-season-data, export-svg, copy-table,
 │   │                             # site (brand + contacts), export-png, export-table,

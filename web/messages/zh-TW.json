@@ -11,7 +11,9 @@
     "seasonLink": "{season} 球季",
     "pastSeasons": "往年球季",
     "trends": "五季趨勢",
-    "trendsHint": "{from}–{to} 對照大聯盟平均"
+    "trendsHint": "{from}–{to} 對照大聯盟平均",
+    "menu": "選單",
+    "language": "語言"
   },
   "Home": {
     "title": "Toronto Blue Jays — Suyu's Jays Notes",

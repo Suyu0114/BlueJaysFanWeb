@@ -102,13 +102,21 @@ path.ink-fill {
 @keyframes fade-in {
   from { opacity: 0; }
 }
+/* Phone menu panel: drops a few px from under the header as it fades in. */
+.drop-in {
+  animation: drop-in 350ms var(--ease-soft) backwards;
+}
+@keyframes drop-in {
+  from { opacity: 0; transform: translateY(-4px); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   path.ink-stroke,
   path.ink-fill,
   .dot-pop,
   .ball-fly,
-  .fade-in {
+  .fade-in,
+  .drop-in {
     animation: none;
   }
   .ink-pending path {

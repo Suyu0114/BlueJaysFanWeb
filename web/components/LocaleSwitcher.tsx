@@ -1,39 +1,48 @@
 "use client";
 
-import { useLocale } from "next-intl";
-import { useTransition } from "react";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { Link, usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 
-const LABELS: Record<string, string> = {
-  en: "English",
-  "zh-TW": "繁體中文",
+// EN | 中文 pill: the current locale filled, the other a plain link to the same
+// page — one tap, and it works without JS. Short label in the pill, the full
+// name in the tooltip. (The query string is dropped, as before.)
+const LABELS: Record<string, { short: string; full: string }> = {
+  en: { short: "EN", full: "English" },
+  "zh-TW": { short: "中文", full: "繁體中文" },
 };
 
 export function LocaleSwitcher() {
+  const t = useTranslations("Nav");
   const locale = useLocale();
-  const router = useRouter();
   const pathname = usePathname();
-  const [isPending, startTransition] = useTransition();
 
   return (
-    <select
-      value={locale}
-      disabled={isPending}
-      onChange={(e) => {
-        const next = e.target.value;
-        startTransition(() => {
-          router.replace(pathname, { locale: next });
-        });
-      }}
-      className="rounded-md border border-steel bg-papaya px-2 py-1 text-sm text-navy"
-      aria-label="Language"
+    <div
+      role="group"
+      aria-label={t("language")}
+      className="inline-flex shrink-0 overflow-hidden rounded-md border border-steel text-xs"
     >
-      {routing.locales.map((l) => (
-        <option key={l} value={l}>
-          {LABELS[l] ?? l}
-        </option>
-      ))}
-    </select>
+      {routing.locales.map((l) => {
+        const label = LABELS[l] ?? { short: l, full: l };
+        const cls = "px-2 py-1.5 leading-none";
+        return l === locale ? (
+          <span key={l} lang={l} title={label.full} aria-current="true" className={`${cls} bg-papaya text-navy`}>
+            {label.short}
+          </span>
+        ) : (
+          <Link
+            key={l}
+            href={pathname}
+            locale={l}
+            lang={l}
+            title={label.full}
+            className={`${cls} transition-colors hover:bg-steel/30`}
+          >
+            {label.short}
+          </Link>
+        );
+      })}
+    </div>
   );
 }

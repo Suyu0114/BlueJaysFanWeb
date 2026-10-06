@@ -222,8 +222,10 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     WildCardTable.tsx          # P11 wild card race + cut line (division leaders excluded)
     PlayoffRace.tsx            # P11 AL seeds 1-6 + cut line + chasers
     HomeStandings.tsx          # P11 home module: AL East table + PlayoffRace in ScorecardFrames
-    Header.tsx                 # brand = SITE.name; "Team ▾" (Nav.team, after Standings) = TeamMenu, fed getTeamSeasons + getTrendSeasons (P12 linked /season/<latest>, P13 /team); then Nav.articles -> /articles; wraps to 2 rows on phones
-    TeamMenu.tsx               # client <details> menu (works without JS): newest season review + earlier-season chips + five-season trends; closes on Escape / outside click / navigation; phones: panel spans the header
+    Header.tsx                 # brand = SITE.name; link order from lib/nav.ts NAV_ITEMS; "Team ▾" (Nav.team, after Standings) = TeamMenu, fed getTeamSeasons + getTrendSeasons (P12 linked /season/<latest>, P13 /team); then Nav.articles -> /articles. md+: inline links + LocaleSwitcher; below md: one row = brand · LocaleSwitcher · ☰ (MobileMenu)
+    TeamMenu.tsx               # client <details> menu (works without JS, md+ only): TeamLinks = newest season review + earlier-season chips + five-season trends (exported; MobileMenu reuses it with `touch` chips); closes on Escape / outside click / navigation (lib/use-details-menu)
+    MobileMenu.tsx             # client: phone ☰ <details> (works without JS) -> full-width papaya panel under the header, every NAV_ITEMS link (44px rows, current section in brick) + TeamLinks inline; navy/30 backdrop closes it; .drop-in entrance
+    LocaleSwitcher.tsx         # EN | 中文 pill: current locale filled, the other a plain Link to the same path (one tap, works without JS; query string dropped)
     team/                      # P13 team page modules
       TeamPanel.tsx            # panel ScorecardFrame + heading + plain-English question; PanelBlock (sub-heading + PNG/copy action + note)
       SeasonStrip.tsx          # one card per season (record, finish, postseason result, run diff + rank chip) -> /season/[year]
@@ -318,6 +320,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     motion.ts                  # motion timing tokens (EASE_SOFT / DUR / STAGGER / SPRING_*)
     ink-draw.ts                # inkify(): split rough.js strokes + stagger a pen draw-in
     use-lingering-hover.ts     # chart hover state that lingers 120ms so tooltips glide, not blink
+    use-details-menu.ts        # header <details> menus (TeamMenu / MobileMenu): open per pathname (navigating closes), Escape (focus back to summary) / outside click close
+    nav.ts                     # NAV_ITEMS: header link order shared by Header (md+) and MobileMenu (phones)
   messages/
     en.json                    # source of truth
     zh-TW.json                 # translation
