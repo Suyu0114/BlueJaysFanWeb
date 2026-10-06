@@ -13,6 +13,7 @@ the columns that **don't** exist so nobody assumes them.
 > **Verified against live DB: 2026-09-30** (migrations `001`–`019` applied, plus
 > P13's `020`–`022`; `023` applied 2026-10-04 — `web_player_position_splits` at 17;
 > `024` + `025` applied 2026-10-05 — `web_team_position_splits` at 17, `web_v_team_position` at 13;
+> `026` applied 2026-10-06 — `web_article_views` at 3, RLS enabled;
 > `web_player_season_stats` at 32 columns, `web_statcast_events` at 29,
 > `web_standings` at 38, `web_games` at 17, `web_player_team_season_stats` at 37,
 > `web_team_season_stats` at 69, `web_team_statcast_season` at 36).
@@ -45,6 +46,7 @@ the columns that **don't** exist so nobody assumes them.
 | [`web_team_season_stats`](#web_team_season_stats) | 150 | one row per (season, club) — **all 30 clubs**, counts | MLB Stats API team stats + per-club player leaderboard (P13) |
 | [`web_team_statcast_season`](#web_team_statcast_season) | 150 | one row per (season, club) — **all 30 clubs** | Baseball Savant team leaderboards (P13) |
 | [`web_team_position_splits`](#web_team_position_splits) | 1,606 | one row per (season, club, position batted at) — **all 30 clubs**, counts | MLB Stats API team `statSplits` by position; refresh cron (post-P13, @ 2026-10-05) |
+| [`web_article_views`](#web_article_views) | 0 | one row per article slug | the site itself: `POST /api/views/[slug]` (post-P13, @ 2026-10-06) |
 
 ---
 
@@ -597,6 +599,35 @@ OPS, the MLB row and ranks live in [`web_v_team_position`](#team-position-view-m
 | `g` | int | yes | Games with a PA at that position. |
 | `pa` `ab` `h` `doubles` `triples` `hr` `rbi` `bb` `so` `hbp` `sf` `tb` | int | yes | Counting line at that position. |
 | `updated_at` | timestamptz | NO | default `now()`. |
+
+---
+
+## `web_article_views`
+*Migration: `026` (post-P13, 2026-10-06). Writer: [`web/app/api/views/[slug]/route.ts`](../web/app/api/views/[slug]/route.ts)
+(not the ETL). Key: `slug`.*
+
+The public view count shown on each article (once it reaches `MIN_PUBLIC_VIEWS` in
+`web/lib/article-views.ts`). The **only table written by visitor activity**:
+`web/components/article/ViewPing.tsx` POSTs once per browser per 24 h, and the route
+upserts `views = views + 1`.
+
+- **Only registry slugs** (`web/content/articles/index.ts`) are accepted, so no one can create
+  rows; a slug with no row has 0 views.
+- **Production only** (`VERCEL_ENV = 'production'`): dev and preview deployments share this
+  database and get the current count back without incrementing.
+- **Nothing about the reader is stored** — no IP, user agent or id. A scripted client could still
+  inflate a number; nothing can be read or damaged through it.
+- **RLS enabled, no policies**: blocks Supabase's REST API (this project is shared and exposes
+  `public`); the site connects as `postgres` (owner, BYPASSRLS), unaffected. The only `web_` table
+  with RLS on.
+- Not the traffic source of truth: Vercel Web Analytics (the author's dashboard) counts every
+  page view; this is a deduplicated, article-only number for display.
+
+| Column | Type | Null | Meaning |
+|---|---|---|---|
+| `slug` | text | NO | **PK**. The article's registry slug (= its URL segment). |
+| `views` | bigint | NO | default `0`. Deduplicated views (one per browser per 24 h), production only. |
+| `updated_at` | timestamptz | NO | default `now()`; set on every increment. |
 
 ---
 

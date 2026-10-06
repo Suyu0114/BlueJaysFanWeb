@@ -12,6 +12,9 @@ export type Article = {
   locales: Locale[]; // the .mdx files that exist; a missing locale falls back to the first
   title: Partial<Record<Locale, string>>;
   summary: Partial<Record<Locale, string>>;
+  // The post announcing this article, where readers discuss it (the site has no
+  // comments). Fill in after posting; without one the article links the profile.
+  discuss?: { x?: string; instagram?: string };
 };
 
 export const ARTICLES: Article[] = [

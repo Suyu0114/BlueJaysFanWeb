@@ -148,7 +148,11 @@ no imports:
 - `dataAsOf`: the day you ran the fact pack.
 - `locales`: `["en", "zh-TW"]`.
 - `title` / `summary`: both languages. The summary is one or two sentences for the list card and
-  link previews.
+  link previews. The title also goes on the article's share image (`opengraph-image.tsx`, built
+  automatically), so keep it to a line or two.
+- `discuss`: leave it out at first. The site has no comments; readers discuss each article on its
+  X / Instagram post. Until the author posts and sends the URL, the article links the profile
+  instead. When they send it, add `discuss: { x: "https://x.com/suyujaysnotes/status/…" }`.
 
 **MDX bodies:**
 
@@ -197,3 +201,5 @@ concrete:
 6. **Figures:** screenshot → tag mapping, plus anything that needs a new component or the author's
    decision.
 7. **Needs your eyes:** the English translation, and the client-side charts in a browser.
+8. **After you publish:** post the link on X (the share image shows automatically), then send back
+   the post's URL so the article's "Join the discussion" links straight to it.

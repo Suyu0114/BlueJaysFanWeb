@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Gabriela, Graduate } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
@@ -8,7 +9,7 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { SketchDefs } from "@/components/SketchDefs";
 import MotionProvider from "@/components/motion/MotionProvider";
-import { SITE } from "@/lib/site";
+import { SITE, xHandle } from "@/lib/site";
 import "../globals.css";
 
 // Body / UI / data face (Gabriela has a single 400 style — no Sans/Mono variants).
@@ -36,6 +37,11 @@ export const metadata: Metadata = {
   authors: [{ name: SITE.author, url: SITE.links.linkedin }],
   creator: SITE.author,
   openGraph: { type: "website", siteName: SITE.name, title: SITE.name, description: DESCRIPTION },
+  // Large preview card on X; the image is ./opengraph-image.tsx (articles have their own).
+  twitter: {
+    card: "summary_large_image",
+    ...(xHandle() ? { site: `@${xHandle()}`, creator: `@${xHandle()}` } : {}),
+  },
   // Tab icon: the recoloured Jays cap mark from etl/fetch_team_logos.py (navy
   // ink on papaya paper), reusing the same asset the standings tables render.
   // The stock create-next-app app/favicon.ico was removed — left in place it
@@ -81,6 +87,8 @@ export default async function LocaleLayout({
             <Footer />
           </MotionProvider>
         </NextIntlClientProvider>
+        {/* Vercel Web Analytics: cookieless page views for the author (Vercel dashboard), no DB writes. */}
+        <Analytics />
       </body>
     </html>
   );

@@ -49,6 +49,8 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 9. **Article tooling**
    - "PNG ↓" on every chart and every stat table (brand colours; footer = caption, the site wordmark, address, data sources and date) and "Copy table" on the stat tables (TSV that pastes into a spreadsheet as a real table, ending with a source line)
 10. **Articles** (`/articles`, nav "Articles") — long-form season write-ups in English and Chinese; their charts are the season page's own modules, embedded by season and drawn from live data, not screenshots. A draft becomes a page with the Claude Code project skill `/publish-article`, which fact-checks every number against the database (the database wins)
+   - Each article has its own share card (link previews on X / IG / LINE), share buttons, a public view count (shown from 50 views) and a "Join the discussion" link to its X post: the site has no comments on purpose
+   - Discoverability: `sitemap.xml` + `robots.txt`, canonical + hreflang links, and Vercel Web Analytics for the author
 11. **About & credit**: `/about` (bio, contact card, how the data works, sharing credit) and a footer on every page with the author and contact links
    - `etl/season_report.py` writes a season-review data pack (team / batters / pitchers / movers / roster moves with every club / league context / five-season team trends vs MLB + definitions and caveats) to `reports/` (git-ignored)
 
@@ -63,6 +65,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 - **Charts:** D3.js (spray / pitch zone / pitch movement / fielding) + Recharts (WAR breakdown diverging stacked bar, rolling OPS / ERA sparklines, velocity trend, team run sources / trend small multiples / five-season trajectory) + rough.js (hand-drawn schedule calendar)
 - **Motion:** `motion` (framer-motion) — scroll reveals, card hover springs, sliding toggle highlights, tab/panel crossfades, chart tooltips that glide between marks; CSS keyframes for the rough.js "ink" draw-in and chart mark entrances. Honours `prefers-reduced-motion`.
 - **Articles:** MDX (`@next/mdx`) — one `.mdx` per article per locale under `web/content/articles/`, with the live figure components registered in `web/mdx-components.tsx`
+- **Analytics:** Vercel Web Analytics (`@vercel/analytics`, cookieless) for traffic; article view counts in `web_article_views`
 - **Database:** Supabase Postgres
 - **ETL:** Python + pybaseball, scheduled via GitHub Actions (daily)
 - **Deploy:** Vercel
@@ -99,7 +102,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   ├── pull_team_position_splits.py # all 30 clubs' batting by position (MLB-average reference)
 │   ├── fetch_team_logos.py       # ONE-SHOT: cap logos → web/public/team-logos (recoloured)
 │   └── backfill.py               # one-shot orchestrator
-├── db/migrations/                # plain SQL: 001 → 025
+├── db/migrations/                # plain SQL: 001 → 026
 ├── web/                          # Next.js app
 │   ├── app/[locale]/
 │   │   ├── page.tsx              # Home: standings + schedule calendar + "Today's Blue Jays"
@@ -107,7 +110,8 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   │   ├── standings/            # Divisions + wild card + clinch legend
 │   │   ├── team/                 # Team trends: five seasons vs MLB (P13)
 │   │   ├── season/[year]/        # Team season review vs the prior season + MLB ranks (P12)
-│   │   ├── articles/             # article list + [slug] (MDX body, live figures)
+│   │   ├── articles/             # article list + [slug] (MDX body, live figures, share card, view count)
+│   │   ├── opengraph-image.tsx   # site default share card (articles have their own)
 │   │   ├── games/[gamePk]/       # Per-game box score detail
 │   │   └── players/
 │   │       ├── page.tsx          # Roster (Current 26-man / All 2024-2026)
@@ -129,7 +133,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   │   ├── compare/              # P12 Compare tab: controls, club splits, arc, arsenal compare, velo, zone grid
 │   │   ├── season/               # season page modules: panel, record strip, month by month (+ runs-per-game chart), splits,
 │   │   │                         # trend by game number, team stats vs MLB, value by position (+ vs MLB table), player stats table
-│   │   ├── article/figures.tsx   # MDX figures: the season modules keyed by season (live data)
+│   │   ├── article/              # figures (season modules for MDX), ArticleEnd / ArticleShare, ViewPing
 │   │   ├── team/                 # P13 team page: season strip, run sources, rank grid, trends,
 │   │   │                         # rotation/bullpen, ERA vs FIP, trajectory, splits, callouts, glossary
 │   │   ├── Exportable / TableExport  # "PNG ↓" on charts; "PNG ↓" + "Copy table" on tables (generic)
@@ -322,6 +326,7 @@ What stays English in zh-TW (do **not** translate):
 | P13 | Team trends: `/team` (nav "Team"), five seasons vs the MLB average and 30-club ranks — record & run sources, offense / run-prevention rank grids, trends, rotation vs bullpen, ERA vs FIP, five-season trajectory + splits, strengths & weaknesses, glossary; all 30 clubs' team data 2022–2026; migrations `020`–`022`; `team_trends` in the article pack | done |
 | post-P13 | Season page by position: per-season positions + value by position (`023`), each position vs the MLB average + rank among 30 (`024`–`025`); departed players' last Jays position | done |
 | post-P13 | Articles: `/articles` (MDX, en + zh-TW) with live season figures; season modules extracted into components; runs-per-game-by-month chart on the season page | done |
+| post-P13 | Article reach: Vercel Web Analytics, public view counts (`026`), share cards, sitemap / robots / hreflang, share buttons + X discussion links (no comments) | done |
 
 ---
 

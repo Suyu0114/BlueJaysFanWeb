@@ -753,7 +753,21 @@
       "en": "English",
       "zh-TW": "Chinese (Traditional)"
     },
-    "figureMissing": "This chart has no data for {season}."
+    "figureMissing": "This chart has no data for {season}.",
+    "views": "{count, plural, one {# view} other {# views}}",
+    "shareTitle": "Share this article",
+    "shareX": "Share on X",
+    "copyLink": "Copy link",
+    "copied": "Link copied ✓",
+    "copyFailed": "Couldn't copy",
+    "shareNative": "Share…",
+    "discussTitle": "Join the discussion",
+    "discussBodyPost": "There are no comments here; the conversation about this article happens on its post.",
+    "discussBodyProfile": "There are no comments here; new articles and charts go up on social media first, so reply or tag me there.",
+    "discussX": "Discuss it on X →",
+    "discussInstagram": "Discuss it on Instagram →",
+    "followX": "Follow on X →",
+    "followInstagram": "Follow on Instagram →"
   },
   "About": {
     "title": "About",
@@ -767,6 +781,7 @@
     "portfolioNote": "My other projects",
     "emailNote": "Email",
     "xNote": "Charts and notes as I post them",
+    "instagramNote": "Charts and season notes",
     "dataTitle": "How the data works",
     "data1": "Pitch-by-pitch Statcast data comes from Baseball Savant (via pybaseball). Season lines, WAR, standings and box scores come from the MLB Stats API; its WAR is FanGraphs data licensed to MLB.",
     "data2": "A scheduled pipeline refreshes everything every morning around 9:00 ET, and re-pulls the last 7 days because Statcast corrects pitch classifications after the fact.",
@@ -780,6 +795,7 @@
     "linkedin": "LinkedIn",
     "portfolio": "Portfolio",
     "x": "X",
+    "instagram": "Instagram",
     "contact": "Contact",
     "disclaimer": "A fan project, not affiliated with the Toronto Blue Jays or MLB. Data: Baseball Savant and MLB Stats API, updated every morning."
   },

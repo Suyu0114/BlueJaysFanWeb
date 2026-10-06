@@ -10,8 +10,9 @@ export const SITE = {
   links: {
     linkedin: "https://www.linkedin.com/in/suyu-cheng",
     portfolio: "https://suyu-portfolio.vercel.app",
-    // e.g. "https://x.com/<handle>" once the account exists; null hides it everywhere.
-    x: null as string | null,
+    // null hides a profile everywhere (footer, About, JSON-LD, article discussion links).
+    x: "https://x.com/suyujaysnotes" as string | null,
+    instagram: null as string | null, // e.g. "https://www.instagram.com/<handle>" once it exists
   },
   // Assembled on the client (ContactEmail) so the address never appears as
   // plain "user@domain" text in the server HTML that scrapers read.
@@ -22,6 +23,11 @@ export const DATA_SOURCES = "Baseball Savant / MLB Stats API";
 
 export function siteHost(): string {
   return new URL(SITE.url).host;
+}
+
+/** "suyujaysnotes" from SITE.links.x (no "@"), or null without an X account. */
+export function xHandle(): string | null {
+  return SITE.links.x ? new URL(SITE.links.x).pathname.replace(/^\/+|\/+$/g, "") : null;
 }
 
 /** Credit line on every exported PNG and copied table. */

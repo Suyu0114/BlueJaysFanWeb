@@ -16,6 +16,7 @@ export async function Footer() {
     { href: SITE.links.linkedin, label: t("linkedin") },
     { href: SITE.links.portfolio, label: t("portfolio") },
     ...(SITE.links.x ? [{ href: SITE.links.x, label: t("x") }] : []),
+    ...(SITE.links.instagram ? [{ href: SITE.links.instagram, label: t("instagram") }] : []),
   ];
 
   return (

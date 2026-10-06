@@ -5,7 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import ContactEmail from "@/components/ContactEmail";
 import ScorecardFrame from "@/components/ScorecardFrame";
 import { Reveal } from "@/components/motion/Reveal";
-import { SITE } from "@/lib/site";
+import { SITE, xHandle } from "@/lib/site";
 
 // Who made the site and how to reach them: the bio, a contact card (#contact,
 // linked from the footer on every page), how the data is built, and the credit
@@ -43,7 +43,7 @@ export default function AboutPage({
     "@type": "Person",
     name: SITE.author,
     url: `${SITE.url}/${locale}/about`,
-    sameAs: [SITE.links.linkedin, SITE.links.portfolio, SITE.links.x].filter(Boolean),
+    sameAs: [SITE.links.linkedin, SITE.links.portfolio, SITE.links.x, SITE.links.instagram].filter(Boolean),
   };
   const host = (url: string) => new URL(url).host;
 
@@ -102,9 +102,17 @@ export default function AboutPage({
                   {SITE.links.x && (
                     <li>
                       <a href={SITE.links.x} target="_blank" rel="me noopener noreferrer" className={LINK}>
-                        @{new URL(SITE.links.x).pathname.replace(/^\/+/, "")} ↗
+                        @{xHandle()} ↗
                       </a>
                       <p className={NOTE}>{t("xNote")}</p>
+                    </li>
+                  )}
+                  {SITE.links.instagram && (
+                    <li>
+                      <a href={SITE.links.instagram} target="_blank" rel="me noopener noreferrer" className={LINK}>
+                        Instagram ↗
+                      </a>
+                      <p className={NOTE}>{t("instagramNote")}</p>
                     </li>
                   )}
                 </ul>
