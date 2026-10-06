@@ -5,17 +5,18 @@ import ScorecardFrame from "@/components/ScorecardFrame";
 import TeamNav from "@/components/TeamNav";
 import SlidingPill from "@/components/motion/SlidingPill";
 import { Reveal } from "@/components/motion/Reveal";
-import { HEAD_ROW, stripeBg, TD, TD_FIRST, TD_LAST, TH, TH_FIRST, TH_LAST } from "@/components/standings-chrome";
 import PlayerStatsTable, { type MlbReference } from "@/components/season/PlayerStatsTable";
 import TeamSeasonStats from "@/components/season/TeamSeasonStats";
 import SeasonTrendChart from "@/components/season/SeasonTrendChart";
 import PositionValueChart from "@/components/season/PositionValueChart";
 import PositionVsMlbTable from "@/components/season/PositionVsMlbTable";
-import TableExport from "@/components/TableExport";
+import SeasonPanel from "@/components/season/SeasonPanel";
+import SeasonRecordStrip from "@/components/season/SeasonRecordStrip";
+import MonthlyRecordPanel from "@/components/season/MonthlyRecordPanel";
+import SeasonSplitsPanel from "@/components/season/SeasonSplitsPanel";
 import Exportable from "@/components/Exportable";
-import RankChip from "@/components/team/RankChip";
 import StrengthsWeaknesses from "@/components/team/StrengthsWeaknesses";
-import { DIVISION_KEY, getStandings, TORONTO_TEAM_ID } from "@/lib/standings";
+import { getStandings, TORONTO_TEAM_ID } from "@/lib/standings";
 import {
   getSeasonPlayerStats,
   getTeamGames,
@@ -28,25 +29,15 @@ import {
   gamesAboveSeries,
   LEADER_MIN_IP,
   LEADER_MIN_PA,
-  longestStreak,
-  monthlyRecords,
   POSITION_GROUPS,
   runDiffSeries,
-  runs,
-  seasonSplits,
   teamLeaders,
   valueByPosition,
-  winLoss,
-  winPct,
   type LeaderCategory,
-  type SplitKey,
-  type Streak,
-  type WinLoss,
 } from "@/lib/team-season";
-import { deltaTone, overlayByGame, type Direction } from "@/lib/season-deltas";
+import { overlayByGame } from "@/lib/season-deltas";
 import { getLeagueSeason } from "@/lib/savant";
-import { ordinal } from "@/lib/ordinal";
-import { rankKey, tiedRank, type MetricKey } from "@/lib/team-metrics";
+import { r3 } from "@/lib/season-format";
 import { getTeamTrend } from "@/lib/team-trends";
 import { getTeamPositionVsMlb } from "@/lib/team-position";
 
@@ -67,29 +58,6 @@ export async function generateStaticParams() {
   return seasons.map((s) => ({ year: String(s) }));
 }
 
-const r3 = (v: number | null) => {
-  if (v == null) return "—";
-  const s = v.toFixed(3);
-  return s.startsWith("0.") ? s.slice(1) : s;
-};
-const signed = (v: number, d = 0) => (v > 0 ? `+${v.toFixed(d)}` : v < 0 ? `−${Math.abs(v).toFixed(d)}` : `±${(0).toFixed(d)}`);
-const wl = (r: WinLoss) => `${r.w}-${r.l}`;
-
-const TONE = {
-  better: "bg-grass/25 text-navy",
-  worse: "bg-brick/15 text-lava",
-  flat: "bg-navy/5 text-navy/60",
-} as const;
-
-function Chip({ d, direction, digits = 0, fmt }: { d: number | null; direction: Direction; digits?: number; fmt?: (d: number) => string }) {
-  if (d == null) return null;
-  return (
-    <span className={`ml-2 inline-block rounded-full px-1.5 text-xs tabular-nums ${TONE[deltaTone(d, direction)]}`}>
-      {fmt ? fmt(d) : signed(d, digits)}
-    </span>
-  );
-}
-
 export default async function SeasonPage({
   params,
 }: {
@@ -103,8 +71,6 @@ export default async function SeasonPage({
   const prior = seasons.includes(season - 1) ? season - 1 : null;
 
   const t = await getTranslations("Season");
-  const ts = await getTranslations("Standings");
-  const te = await getTranslations("Export");
 
   const [games, priorGames, standings, priorStandings, players, league, trend, seasonStats, positionSplits, positionVsMlb] = await Promise.all([
     getTeamGames(season),
@@ -120,14 +86,6 @@ export default async function SeasonPage({
     getTeamPositionSplits(prior ? [season, prior] : [season]), // value by position
     getTeamPositionVsMlb(season), // each position vs the MLB average + rank among 30 (025 view)
   ]);
-
-  const me = standings.find((r) => r.team_id === TORONTO_TEAM_ID);
-  const pme = priorStandings.find((r) => r.team_id === TORONTO_TEAM_ID);
-  const ctxFor = (rows: typeof standings) => ({
-    ownDivision: rows.find((r) => r.team_id === TORONTO_TEAM_ID)?.division_id ?? 201,
-    divisionOf: new Map(rows.map((r) => [r.team_id, r.division_id])),
-    pctOf: new Map(rows.filter((r) => r.pct != null).map((r) => [r.team_id, r.pct as number])),
-  });
 
   // MLB ranks among 30 clubs. No Jays row in the 022 views (e.g. a new season
   // before the team pulls ran) hides the chips and the "where it ranked" panel.
@@ -150,82 +108,10 @@ export default async function SeasonPage({
         },
       }
     : null;
-  const rankOf = (key: MetricKey, hint: string) => {
-    const rank = jaysRow?.[rankKey(key)];
-    return rank == null ? null : { rank, tied: tiedRank(clubs, season, key, rank), hint };
-  };
-
-  // ---- record strip ---------------------------------------------------------
-  const rec = winLoss(games);
-  const prec = prior ? winLoss(priorGames) : null;
-  const run = runs(games);
-  const prun = prior ? runs(priorGames) : null;
-  const pct = winPct(rec);
-  const ppct = prec ? winPct(prec) : null;
-
-  const statCard = (
-    label: string,
-    value: string,
-    chip: React.ReactNode,
-    priorText?: string | null,
-    hint?: string,
-    rank?: { rank: number; tied: boolean; hint: string } | null,
-  ) => (
-    <div className="rounded-md border border-steel/25 bg-papaya/60 px-3 py-2">
-      <div className="font-display text-[11px] uppercase tracking-wider text-navy/55">{label}</div>
-      <div className="mt-0.5 text-lg font-semibold tabular-nums text-navy">
-        {value}
-        {chip}
-      </div>
-      {rank && (
-        <div className="mb-0.5 flex items-center gap-1.5 text-[11px] text-navy/55" title={rank.hint}>
-          {t("rankLabel")}
-          <RankChip rank={rank.rank} tied={rank.tied} locale={locale} small />
-        </div>
-      )}
-      {priorText && <div className="text-[11px] text-navy/50">{priorText}</div>}
-      {hint && <div className="text-[10px] leading-tight text-navy/45">{hint}</div>}
-    </div>
-  );
-  const priorLine = (v: string | null) => (prior && v != null ? t("priorValue", { season: prior, value: v }) : null);
-  const divisionText = (row: typeof me) =>
-    row && row.division_rank != null
-      ? t("divisionValue", { rank: ordinal(row.division_rank, locale), division: ts(DIVISION_KEY[row.division_id] ?? "alEast") })
-      : "—";
 
   // ---- series ----------------------------------------------------------------
   const above = overlayByGame(gamesAboveSeries(games), prior ? gamesAboveSeries(priorGames) : undefined, (p) => p.value);
   const rdiff = overlayByGame(runDiffSeries(games), prior ? runDiffSeries(priorGames) : undefined, (p) => p.value);
-
-  // ---- months / splits ---------------------------------------------------------
-  const months = monthlyRecords(games);
-  const pmonths = monthlyRecords(priorGames);
-  const monthKeys = [...new Set([...months, ...pmonths].map((m) => m.month))].sort((a, b) => a - b);
-  const monthFmt = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" });
-  const monthLabel = (m: number) =>
-    m === 4 ? t("monthMarApr") : m === 9 ? t("monthSepOct") : monthFmt.format(new Date(Date.UTC(2000, m - 1, 1)));
-
-  const splits = seasonSplits(games, ctxFor(standings));
-  const psplits = prior ? seasonSplits(priorGames, ctxFor(priorStandings)) : null;
-  const ownDivisionName = ts(DIVISION_KEY[ctxFor(standings).ownDivision] ?? "alEast");
-  const splitRows: { key: SplitKey; label: string }[] = [
-    { key: "home", label: t("splitHome") },
-    { key: "away", label: t("splitAway") },
-    { key: "oneRun", label: t("splitOneRun") },
-    { key: "blowouts", label: t("splitBlowouts") },
-    { key: "vsDivision", label: t("splitVsDivision", { division: ownDivisionName }) },
-    { key: "vsWinning", label: t("splitVsWinning") },
-    { key: "vsLosing", label: t("splitVsLosing") },
-  ];
-  const dayFmt = new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", timeZone: "UTC" });
-  const streakText = (s: Streak) =>
-    s
-      ? t("streakValue", {
-          n: s.length,
-          from: dayFmt.format(new Date(`${s.start}T00:00:00Z`)),
-          to: dayFmt.format(new Date(`${s.end}T00:00:00Z`)),
-        })
-      : "—";
 
   // ---- leaders / WAR ------------------------------------------------------------
   // Player numbers (web_player_season_stats) start in 2024, while schedules and
@@ -250,33 +136,12 @@ export default async function SeasonPage({
   const positionData = POSITION_GROUPS.map((g) => ({ group: g, a: byPos[g], b: pbyPos ? pbyPos[g] : null }));
   const { hitters, pitchers } = splitPlayerStats(seasonStats);
 
-  // M7: `copy` adds a "Copy table" button (plain headers + rows) to the panel header.
-  const panel = (
-    seedKey: string,
-    title: string,
-    children: React.ReactNode,
-    note?: React.ReactNode,
-    copy?: { headers: (string | number)[]; rows: (string | number)[][] },
-  ) => (
-    <Reveal>
-      <ScorecardFrame seedKey={seedKey} variant="panel">
-        <div className="relative z-10 p-4">
-          <div className="flex items-start justify-between gap-2">
-            <h2 className="font-display text-base uppercase tracking-wide text-navy">{title}</h2>
-            {copy && (
-              <TableExport
-                headers={copy.headers}
-                rows={copy.rows}
-                name={`${te("jaysSeason", { season })} ${title}`}
-                caption={`${te("jaysSeason", { season })} · ${title}`}
-              />
-            )}
-          </div>
-          <div className="mt-2">{children}</div>
-          {note && <p className="mt-2 text-[11px] leading-snug text-navy/55">{note}</p>}
-        </div>
-      </ScorecardFrame>
-    </Reveal>
+  // The record strip, month-by-month and splits modules are components of their
+  // own (components/season/) so articles can embed them; the rest stay inline.
+  const panel = (seedKey: string, title: string, children: React.ReactNode, note?: React.ReactNode) => (
+    <SeasonPanel seedKey={seedKey} season={season} title={title} note={note}>
+      {children}
+    </SeasonPanel>
   );
 
   const legend = prior != null && (
@@ -325,28 +190,16 @@ export default async function SeasonPage({
       ) : (
         <div className="mt-6 space-y-6">
           {/* 1. Record strip */}
-          <Reveal className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-            {statCard(t("statRecord"), wl(rec), prec && <Chip d={rec.w - prec.w} direction="higher" fmt={(d) => `${signed(d)} W`} />, priorLine(prec && wl(prec)))}
-            {statCard("PCT", r3(pct), ppct != null && pct != null && <Chip d={pct - ppct} direction="higher" fmt={(d) => (d >= 0 ? "+" : "−") + r3(Math.abs(d))} />, priorLine(ppct != null ? r3(ppct) : null), undefined, rankOf("pct", t("rankHint")))}
-            {statCard(t("statRs"), String(run.rs), prun && <Chip d={run.rs - prun.rs} direction="higher" />, priorLine(prun && String(prun.rs)), undefined, rankOf("r_per_g", t("rankHintRs")))}
-            {statCard(t("statRa"), String(run.ra), prun && <Chip d={run.ra - prun.ra} direction="lower" />, priorLine(prun && String(prun.ra)), undefined, rankOf("ra_per_g", t("rankHintRa")))}
-            {statCard(t("statDiff"), signed(run.diff), prun && <Chip d={run.diff - prun.diff} direction="higher" />, priorLine(prun && signed(prun.diff)), undefined, rankOf("run_diff", t("rankHint")))}
-            {statCard(
-              t("statXwl"),
-              me?.x_w != null ? `${me.x_w}-${me.x_l}` : "—",
-              pme?.x_w != null && me?.x_w != null && <Chip d={me.x_w - pme.x_w} direction="higher" fmt={(d) => `${signed(d)} W`} />,
-              priorLine(pme?.x_w != null ? `${pme.x_w}-${pme.x_l}` : null),
-              t("statXwlHint"),
-            )}
-            {statCard(
-              t("statDivision"),
-              divisionText(me),
-              null,
-              priorLine(pme ? divisionText(pme) : null),
-              me?.games_back && me.games_back !== "-" ? t("gb", { gb: me.games_back }) : undefined,
-            )}
-            {statCard(t("streakW"), streakText(longestStreak(games, "W")), null, priorLine(prior ? streakText(longestStreak(priorGames, "W")) : null))}
-          </Reveal>
+          <SeasonRecordStrip
+            season={season}
+            prior={prior}
+            games={games}
+            priorGames={priorGames}
+            standings={standings}
+            priorStandings={priorStandings}
+            clubs={clubs}
+            locale={locale}
+          />
 
           {/* 2–3. Games above .500 and run differential by game number */}
           <div className="grid gap-6 lg:grid-cols-2">
@@ -385,101 +238,26 @@ export default async function SeasonPage({
           )}
 
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* 4. Monthly record */}
-            {panel(
-              "season-months",
-              t("monthlyTitle"),
-              <div className="overflow-x-auto">
-                <table className="w-full border-separate border-spacing-0 text-right text-sm tabular-nums">
-                  <thead>
-                    <tr className={HEAD_ROW}>
-                      <th className={TH_FIRST}>{t("colMonth")}</th>
-                      <th className={TH}>{season}</th>
-                      <th className={TH}>RS-RA</th>
-                      {prior && <th className={TH}>{prior}</th>}
-                      {prior && <th className={TH_LAST}>RS-RA</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {monthKeys.map((m, i) => {
-                      const a = months.find((x) => x.month === m);
-                      const b = pmonths.find((x) => x.month === m);
-                      return (
-                        <tr key={m} className={stripeBg(i)}>
-                          <td className={TD_FIRST}>{monthLabel(m)}</td>
-                          <td className={`${TD} font-semibold`}>{a ? wl(a) : "—"}</td>
-                          <td className={`${TD} text-navy/60`}>{a ? `${a.rs}-${a.ra}` : "—"}</td>
-                          {prior && <td className={TD}>{b ? wl(b) : "—"}</td>}
-                          {prior && <td className={`${TD_LAST} text-navy/60`}>{b ? `${b.rs}-${b.ra}` : "—"}</td>}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>,
-              t("monthlyNote"),
-              {
-                headers: [t("colMonth"), season, "RS-RA", ...(prior ? [prior, "RS-RA"] : [])],
-                rows: monthKeys.map((m) => {
-                  const a = months.find((x) => x.month === m);
-                  const b = pmonths.find((x) => x.month === m);
-                  return [
-                    monthLabel(m),
-                    a ? wl(a) : "",
-                    a ? `${a.rs}-${a.ra}` : "",
-                    ...(prior ? [b ? wl(b) : "", b ? `${b.rs}-${b.ra}` : ""] : []),
-                  ];
-                }),
-              },
-            )}
+            {/* 4. Month by month: runs per game (chart) + record (table) */}
+            <MonthlyRecordPanel
+              season={season}
+              prior={prior}
+              games={games}
+              priorGames={priorGames}
+              mlbRunsPerGame={mlbRow?.r_per_g ?? null}
+              locale={locale}
+            />
 
             {/* 5. Splits */}
-            {panel(
-              "season-splits",
-              t("splitsTitle"),
-              <div className="overflow-x-auto">
-                <table className="w-full border-separate border-spacing-0 text-right text-sm tabular-nums">
-                  <thead>
-                    <tr className={HEAD_ROW}>
-                      <th className={TH_FIRST}>{t("colSplit")}</th>
-                      <th className={TH}>{season}</th>
-                      <th className={prior ? TH : TH_LAST}>PCT</th>
-                      {prior && <th className={TH}>{prior}</th>}
-                      {prior && <th className={TH_LAST}>PCT</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {splitRows.map((r, i) => {
-                      const a = splits[r.key];
-                      const b = psplits?.[r.key];
-                      return (
-                        <tr key={r.key} className={stripeBg(i)}>
-                          <td className={TD_FIRST}>{r.label}</td>
-                          <td className={`${TD} font-semibold`}>{wl(a)}</td>
-                          <td className={`${prior ? TD : TD_LAST} text-navy/60`}>{r3(winPct(a))}</td>
-                          {prior && <td className={TD}>{b ? wl(b) : "—"}</td>}
-                          {prior && <td className={`${TD_LAST} text-navy/60`}>{b ? r3(winPct(b)) : "—"}</td>}
-                        </tr>
-                      );
-                    })}
-                    <tr className={stripeBg(splitRows.length)}>
-                      <td className={TD_FIRST}>{t("streakL")}</td>
-                      <td className={`${TD} font-semibold`} colSpan={2}>{streakText(longestStreak(games, "L"))}</td>
-                      {prior && <td className={TD_LAST} colSpan={2}>{streakText(longestStreak(priorGames, "L"))}</td>}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>,
-              t("splitsNote"),
-              {
-                headers: [t("colSplit"), season, "PCT", ...(prior ? [prior, "PCT"] : [])],
-                rows: splitRows.map((r) => {
-                  const a = splits[r.key];
-                  const b = psplits?.[r.key];
-                  return [r.label, wl(a), r3(winPct(a)), ...(prior ? [b ? wl(b) : "", b ? r3(winPct(b)) : ""] : [])];
-                }),
-              },
-            )}
+            <SeasonSplitsPanel
+              season={season}
+              prior={prior}
+              games={games}
+              priorGames={priorGames}
+              standings={standings}
+              priorStandings={priorStandings}
+              locale={locale}
+            />
           </div>
 
           {/* 6. The team's season line vs the MLB average + 30-club ranks (022 views) */}

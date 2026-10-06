@@ -4,6 +4,7 @@
     "players": "Players",
     "standings": "Standings",
     "team": "Team",
+    "articles": "Articles",
     "about": "About",
     "teamMenuLabel": "Team pages",
     "seasonReview": "Season review",
@@ -98,6 +99,10 @@
     "monthMarApr": "Mar/Apr",
     "monthSepOct": "Sep/Oct",
     "monthlyNote": "March games count toward April and October games toward September, as in MLB's own splits.",
+    "monthlyRunsTitle": "Runs per game by month, {season}",
+    "monthlyRunsRs": "Runs scored per game",
+    "monthlyRunsRa": "Runs allowed per game",
+    "monthlyRunsMlb": "MLB average R/G ({value})",
     "splitsTitle": "Splits",
     "colSplit": "Games",
     "splitHome": "Home",
@@ -734,6 +739,21 @@
     "diagramCaptionGeneric": "Field layout",
     "runsSavedPlain": "{name} saved Toronto {n} runs this season with his glove.",
     "runsCostPlain": "{name} cost Toronto {n} runs this season with his glove."
+  },
+  "Articles": {
+    "title": "Articles",
+    "lede": "Longer reads on the Blue Jays by {author}. Every chart in them is drawn live from the same data as the rest of the site.",
+    "empty": "No articles yet.",
+    "read": "Read →",
+    "back": "← All articles",
+    "byline": "By {author}",
+    "dataAsOf": "Numbers in the text as of {date}. The charts read the site's live data, so a figure can shift slightly if a source revises it.",
+    "otherLocale": "This article isn't available in English yet — here is the {language} version.",
+    "languageNames": {
+      "en": "English",
+      "zh-TW": "Chinese (Traditional)"
+    },
+    "figureMissing": "This chart has no data for {season}."
   },
   "About": {
     "title": "About",

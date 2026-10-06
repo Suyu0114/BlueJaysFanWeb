@@ -101,7 +101,10 @@ python etl/season_report.py --season 2026 --vs 2025
 注意事項）、`team.md`、`batters.*`、`pitchers.*`、`pitchers_arsenal.csv`、`movers.md`、
 `roster_moves.md`（新加入 / 季中交易進出，含在其他隊的成績）、`league_context.md`、
 `team_trends.md` / `.csv`（P13：最近五季的球隊數據，每項附 MLB 平均與 30 隊排名，
-讀的是 `022` view——和 `/team` 頁同一份數字；需要先跑過 Step 7）。
+讀的是 `022` view——和 `/team` 頁同一份數字；需要先跑過 Step 7）、`positions.md`
+（各守位 HR / OPS / Off / WAR，和賽季頁「Value by position」同一套分法 + 各守位 vs MLB）。
+`team.md` 的月份表含 RS-RA 與每場得失分；`batters.csv` 含 Off / Def / OAA。
+> - 這也是 `/publish-article`（Claude Code skill）對文章數字做事實查核的來源：文章數字以資料庫為準。
 > - 要在 season stats / splits 都刷新過之後再跑（季末：兩班 cron 都跑過最後一場之後）。
 > - Chase% / Zone% 這類「看好壞球帶」的數字，2026 跟之前的季**不能直接比**（Savant
 >   2026 的 zone 定義變了，全體樣本 Chase% 自己就 +2.8）。報告裡有「扣掉整體位移」

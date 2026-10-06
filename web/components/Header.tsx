@@ -43,6 +43,9 @@ export async function Header() {
             {t("standings")}
           </Link>
           <TeamMenu seasons={seasons} trendSpan={trendSpan} linkClass={NAV_LINK} />
+          <Link href="/articles" className={NAV_LINK}>
+            {t("articles")}
+          </Link>
           <Link href="/about" className={NAV_LINK}>
             {t("about")}
           </Link>

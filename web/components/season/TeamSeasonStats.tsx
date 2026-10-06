@@ -32,12 +32,16 @@ export default async function TeamSeasonStats({
   clubs,
   mlb,
   locale,
+  only,
+  highlight = [],
 }: {
   season: number;
   prior: number | null; // shown only when the 022 views hold a Jays row for it
   clubs: TeamSeasonRow[]; // all 30 clubs, `season` (+ `prior`)
   mlb: MlbSeasonRow[];
   locale: string;
+  only?: "offense" | "prevention";
+  highlight?: MetricKey[];
 }) {
   const t = await getTranslations("Team");
   const te = await getTranslations("Export");
@@ -99,9 +103,13 @@ export default async function TeamSeasonStats({
                       </td>
                     </tr>
                   ),
-                  <tr key={r.key} className={`text-navy ${stripeBg(i)}`}>
-                    {/* Sticky (opaque papaya) so the metric stays visible while the table scrolls on phones. */}
-                    <td className={`${TD_FIRST} sticky left-0 z-[1] bg-papaya`} title={hint(r.key)}>
+                  <tr key={r.key} className={`text-navy ${stripeBg(i, highlight.includes(r.key))}`}>
+                    {/* Sticky (opaque papaya) so the metric stays visible while the table scrolls on
+                        phones; a highlighted row lays the same brick wash over it. */}
+                    <td
+                      className={`${TD_FIRST} sticky left-0 z-[1] bg-papaya ${highlight.includes(r.key) ? "bg-linear-to-r from-brick/20 to-brick/20" : ""}`}
+                      title={hint(r.key)}
+                    >
                       {label(r.key)}
                     </td>
                     <td className={`${TD} font-semibold`}>{fmt(r, c.value)}</td>
@@ -120,6 +128,8 @@ export default async function TeamSeasonStats({
     );
   };
 
+  if (only === "offense") return block(t("offenseTitle"), OFFENSE);
+  if (only === "prevention") return block(t("preventionTitle"), PREVENTION);
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {block(t("offenseTitle"), OFFENSE)}

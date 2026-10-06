@@ -12,7 +12,7 @@
 // Higher is better for all four metrics. The allocation rules (PA share, PH ->
 // DH, …) live in lib/team-season.ts (valueByPosition); this only draws.
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useReducedMotion } from "motion/react";
 import { Bar, BarChart, Cell, LabelList, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -28,6 +28,8 @@ export type PositionBar = { group: PositionGroup; a: PositionValue; b: PositionV
 
 type Metric = "war" | "off" | "hr" | "ops";
 type Mode = "compare" | "change" | "vsMlb";
+export type PositionMetric = Metric;
+export type PositionMode = Mode;
 
 // Jargon: English in both locales.
 const METRICS: { key: Metric; label: string }[] = [
@@ -105,17 +107,23 @@ export default function PositionValueChart({
   season,
   priorSeason,
   vsMlb,
+  initialMetric = "war",
+  initialMode = "compare",
 }: {
   data: PositionBar[];
   season: number;
   priorSeason: number | null; // null = no prior player data: the change view is hidden
   vsMlb: PositionVsMlb[]; // [] = no MLB-by-position rows: the vs MLB view is hidden
+  initialMetric?: PositionMetric; // article figures open on the metric the text discusses
+  initialMode?: PositionMode;
 }) {
   const t = useTranslations("Season");
   const locale = useLocale();
   const reduce = useReducedMotion();
-  const [metric, setMetricState] = useState<Metric>("war");
-  const [modeState, setMode] = useState<Mode>("compare");
+  // An article can show this chart twice: each instance needs its own pill groups.
+  const uid = useId();
+  const [metric, setMetricState] = useState<Metric>(initialMetric);
+  const [modeState, setMode] = useState<Mode>(initialMode);
   const canVsMlb = vsMlb.length > 0 && hasMlbReference(metric);
   const mode: Mode =
     (modeState === "change" && priorSeason == null) || (modeState === "vsMlb" && !canVsMlb) ? "compare" : modeState;
@@ -199,9 +207,9 @@ export default function PositionValueChart({
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
-        <Segmented group="season-pos-metric" label={t("posMetric")} options={METRICS} value={metric} onChange={setMetric} />
+        <Segmented group={`season-pos-metric${uid}`} label={t("posMetric")} options={METRICS} value={metric} onChange={setMetric} />
         {modeOptions.length > 1 && (
-          <Segmented group="season-pos-mode" label={t("posMode")} options={modeOptions} value={mode} onChange={setMode} />
+          <Segmented group={`season-pos-mode${uid}`} label={t("posMode")} options={modeOptions} value={mode} onChange={setMode} />
         )}
       </div>
 

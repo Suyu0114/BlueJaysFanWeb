@@ -14,12 +14,15 @@ Writes reports/season-review-<season>/ (git-ignored):
     league_context.md  reference rates from every pitch on file (true league averages: M6)
     team_trends.md / .csv  P13: latest five seasons, every team stat with the MLB
                        average + 30-club rank, read from the migration-022 views
+    positions.md       value by position (HR / OPS / Off / WAR per group, the season
+                       page's chart) + each position vs MLB (the 025 view) + who made it
 
 Metric definitions are NOT re-implemented here: discipline and batted-ball numbers
 come from the migration-015 views (web_v_*), the same ones the site reads. The
-only local aggregate is the per-pitch arsenal, which mirrors
+only local aggregates are the per-pitch arsenal, which mirrors
 web/lib/pitch-arsenal.ts::buildArsenal (swing/whiff flags from web_v_pitch_scoped,
-xwOBAcon gated on description = 'hit_into_play').
+xwOBAcon gated on description = 'hit_into_play'), and value by position, which
+mirrors web/lib/team-season.ts::valueByPosition (PA-share Off / WAR, exact HR / OPS).
 """
 
 from __future__ import annotations
@@ -30,6 +33,7 @@ import logging
 import sys
 from collections import defaultdict
 from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -160,10 +164,12 @@ def team_section(conn, seasons: list[int]) -> tuple[str, dict]:
                 best = (above, g["game_date"])
             if above < worst[0]:
                 worst = (above, g["game_date"])
+        # March folds into April and October into September, as on the season page
+        # (web/lib/team-season.ts::monthlyRecords) and in MLB's own splits.
         months: dict[str, list] = defaultdict(list)
         for g in gs:
             m = g["game_date"].month
-            key = "Mar/Apr" if m <= 4 else date(2000, m, 1).strftime("%b")
+            key = "Mar/Apr" if m <= 4 else "Sep/Oct" if m >= 9 else date(2000, m, 1).strftime("%b")
             months[key].append(g)
         w, l = rec(gs)
         rs = sum(g["jays_score"] for g in gs)
@@ -189,7 +195,7 @@ def team_section(conn, seasons: list[int]) -> tuple[str, dict]:
                                       if streaks["L"][1] else "–"),
             "Most games above .500": f"{best[0]:+d} ({best[1]:%b %d})" if best[1] else "never above",
             "Most games below .500": f"{worst[0]:+d} ({worst[1]:%b %d})" if worst[1] else "never below",
-            "_months": {k: wl(v) for k, v in months.items()},
+            "_months": dict(months),
             "_check": (w, l, me.get("w"), me.get("l"), me.get("runs_scored"), me.get("runs_allowed"), rs, ra),
         }
 
@@ -204,8 +210,19 @@ def team_section(conn, seasons: list[int]) -> tuple[str, dict]:
         elif k == "W-L":
             d = f"{int(a.split('-')[0]) - int(b.split('-')[0]):+d} W"
         rows.append([k, a, b, d])
-    month_keys = ["Mar/Apr", "May", "Jun", "Jul", "Aug", "Sep"]
-    mrows = [[m, stats[s]["_months"].get(m, "–"), stats[vs]["_months"].get(m, "–")] for m in month_keys]
+    month_keys = ["Mar/Apr", "May", "Jun", "Jul", "Aug", "Sep/Oct"]
+
+    def month_cells(yr: int, m: str) -> list[str]:
+        gs = stats[yr]["_months"].get(m)
+        if not gs:
+            return ["–"] * 4
+        rs = sum(g["jays_score"] for g in gs)
+        ra = sum(g["opp_score"] for g in gs)
+        # Half up, like the site's toFixed (111 / 24 = 4.625 -> 4.63, not banker's 4.62).
+        per_game = lambda runs: str((Decimal(runs) / len(gs)).quantize(Decimal("0.01"), ROUND_HALF_UP))  # noqa: E731
+        return [wl(gs), f"{rs}-{ra}", per_game(rs), per_game(ra)]
+
+    mrows = [[m, *month_cells(s, m), *month_cells(vs, m)] for m in month_keys]
 
     checks = []
     for yr in seasons:
@@ -224,9 +241,10 @@ opponent's final winning percentage.
 
 ## Monthly record
 
-March games are folded into April, as MLB's own splits do.
+March games are folded into April and October games into September, as MLB's own
+splits and the season page do. R/G / RA/G = runs scored / allowed per game that month.
 
-{md_table(["Month", str(s), str(vs)], mrows)}
+{md_table(["Month", str(s), "RS-RA", "R/G", "RA/G", str(vs), "RS-RA", "R/G", "RA/G"], mrows)}
 
 ## Cross-check
 
@@ -244,6 +262,10 @@ BAT_LINE = ["pa", "avg", "obp", "slg", "ops", "wrc_plus", "hr", "sb", "war",
 BAT_DISC = ["chase_pct", "z_swing_pct", "whiff_pct", "contact_pct", "first_swing_pct", "k_pct", "bb_pct"]
 BAT_BIP = ["bip", "avg_ev", "max_ev", "hard_hit_pct", "sweet_spot_pct", "gb_pct", "ld_pct", "fb_pct",
            "pu_pct", "pull_pct", "center_pct", "oppo_pct", "xwoba_con"]
+# Derived like the site's player-stats table (web/lib/season-player-stats.ts): Off = Bat +
+# BsR, Def = Fld + Pos (runs above average); OAA = Savant's season total summed over
+# positions (all MLB clubs; no row for catchers / DHs).
+BAT_DERIVED = ["off", "def", "oaa"]
 PIT_LINE = ["ip", "gs", "w", "l", "sv", "era", "fip", "whip", "k_pct", "bb_pct", "war"]
 PIT_DISC = ["pitches", "csw_pct", "zone_pct", "chase_pct", "whiff_pct", "first_strike_pct", "k_minus_bb_pct"]
 
@@ -269,6 +291,21 @@ def load_players(conn, seasons: list[int], role: str) -> dict[int, dict]:
             season_row = out[r["mlbam_id"]].get(r["season"])
             if season_row is not None:
                 season_row.update({prefix + c: f(r[c]) for c in cols})
+    if role == "batter":
+        add = lambda a, b: None if a is None or b is None else a + b  # noqa: E731
+        for p in out.values():
+            for yr in seasons:
+                row = p.get(yr)
+                if row is not None:
+                    row["off"] = add(row["war_batting"], row["war_baserunning"])
+                    row["def"] = add(row["war_fielding"], row["war_positional"])
+                    row["oaa"] = None
+        for r in q(conn, """select mlbam_id, season, sum(oaa) as oaa from web_fielding_frv
+                            where season = any(%(seasons)s) and mlbam_id = any(%(ids)s)
+                            group by 1, 2""", {"seasons": seasons, "ids": ids}):
+            row = out[r["mlbam_id"]].get(r["season"])
+            if row is not None:
+                row["oaa"] = f(r["oaa"])
     return out
 
 
@@ -623,6 +660,167 @@ Toronto are left out.
 
 
 # ---------------------------------------------------------------------------
+# value by position
+# ---------------------------------------------------------------------------
+
+POSITION_GROUPS = ["C", "1B", "2B", "3B", "SS", "OF", "DH", "SP", "RP"]
+BATTING_GROUPS = POSITION_GROUPS[:7]
+SPLIT_COUNTS = ("hr", "pa", "ab", "h", "bb", "hbp", "sf", "tb")
+
+
+def batter_group(position: str | None) -> str:
+    """= web/lib/team-season.ts::batterGroup and the 025 view's pos_group: PH / P count as DH."""
+    p = (position or "").upper()
+    if p in ("LF", "CF", "RF", "OF"):
+        return "OF"
+    return p if p in ("C", "1B", "2B", "3B", "SS") else "DH"
+
+
+def value_by_position(conn, seasons: list[int]) -> dict[int, tuple[dict, dict]]:
+    """{season: (group -> totals, group -> {player: share})}.
+
+    Mirrors web/lib/team-season.ts::valueByPosition, the season page's "value by
+    position" chart: a position player is split across the positions he batted at
+    by PA — HR / PA / OPS summed from MLB's by-position splits (exact), Off and WAR
+    shared out by his PA at each position. A batter without split rows goes whole
+    to his season position; pitchers' WAR goes to SP / RP by share of starts.
+    """
+    players = q(conn, """
+        with pitching as (
+          select s.mlbam_id, g.season, count(*)::int as apps
+          from web_player_game_stats s join web_games g on g.game_pk = s.game_pk
+          where s.stat_group = 'pitching' and g.game_type = 'R' and g.season = any(%(s)s)
+          group by 1, 2
+        ), pos as (
+          select distinct on (mlbam_id, season) mlbam_id, season, position
+          from web_player_position_splits
+          where season = any(%(s)s) and position not in ('PH', 'P')
+          order by mlbam_id, season, pa desc, g desc, position
+        )
+        select s.mlbam_id, s.season, p.name, coalesce(pos.position, p.position) as position,
+          s.pa::int as pa, s.hr::int as hr, s.gs::int as gs, s.war::float8 as war,
+          s.war_batting::float8 as bat, s.war_baserunning::float8 as bsr, pi.apps
+        from web_player_season_stats s
+        join web_players p using (mlbam_id)
+        left join pitching pi on pi.mlbam_id = s.mlbam_id and pi.season = s.season
+        left join pos on pos.mlbam_id = s.mlbam_id and pos.season = s.season
+        where s.season = any(%(s)s)""", {"s": seasons})
+    splits = q(conn, f"""
+        select mlbam_id, season, position, {", ".join(f"coalesce({c}, 0)::int as {c}" for c in SPLIT_COUNTS)}
+        from web_player_position_splits where season = any(%(s)s)""", {"s": seasons})
+
+    out = {}
+    for season in seasons:
+        acc = {g: {"war": 0.0, "off": 0.0, **{c: 0 for c in SPLIT_COUNTS}} for g in POSITION_GROUPS}
+        who: dict[str, dict[str, float]] = {g: defaultdict(float) for g in POSITION_GROUPS}
+        own_splits: dict[int, list] = defaultdict(list)
+        for sp in splits:
+            if sp["season"] == season:
+                own_splits[sp["mlbam_id"]].append(sp)
+        for r in players:
+            if r["season"] != season:
+                continue
+            war = r["war"] or 0.0
+            batter = (r["pa"] or 0) > 0
+            off = None if r["bat"] is None or r["bsr"] is None else r["bat"] + r["bsr"]
+            own = own_splits.get(r["mlbam_id"], []) if batter else []
+            total = sum(sp["pa"] for sp in own)
+            if total == 0:
+                if batter:
+                    g = batter_group(r["position"])
+                else:
+                    apps, gs = r["apps"] or 0, r["gs"] or 0
+                    g = "SP" if (gs / apps >= 0.5 if apps > 0 else gs > 0) else "RP"
+                acc[g]["war"] += war
+                if batter:
+                    acc[g]["off"] += off or 0.0
+                    acc[g]["hr"] += r["hr"] or 0
+                who[g][r["name"]] += (off or 0.0) if batter else war
+                continue
+            for sp in own:
+                g = batter_group(sp["position"])
+                share = sp["pa"] / total
+                acc[g]["war"] += war * share
+                acc[g]["off"] += (off or 0.0) * share
+                for c in SPLIT_COUNTS:
+                    acc[g][c] += sp[c]
+                who[g][r["name"]] += (off or 0.0) * share
+        for a in acc.values():
+            den = a["ab"] + a["bb"] + a["hbp"] + a["sf"]
+            a["ops"] = (a["h"] + a["bb"] + a["hbp"]) / den + a["tb"] / a["ab"] if a["ab"] > 0 and den > 0 else None
+        out[season] = (acc, who)
+    return out
+
+
+def positions_md(conn, seasons: list[int]) -> str:
+    s, vs = seasons
+    vbp = value_by_position(conn, seasons)
+    (a, who_a), (b, who_b) = vbp[s], vbp[vs]
+
+    rows = []
+    for g in POSITION_GROUPS:
+        x, y = a[g], b[g]
+        if g in BATTING_GROUPS:
+            rows.append([g, num(x["pa"]), f"{x['hr']} / {y['hr']}", f"{x['hr'] - y['hr']:+d}",
+                         f"{r3(x['ops'])} / {r3(y['ops'])}", f"{signed(x['off'])} / {signed(y['off'])}",
+                         signed(x["off"] - y["off"]), f"{x['war']:.1f} / {y['war']:.1f}", signed(x["war"] - y["war"])])
+        else:
+            rows.append([g, "", "", "", "", "", "", f"{x['war']:.1f} / {y['war']:.1f}", signed(x["war"] - y["war"])])
+    tot = lambda acc, k, groups=BATTING_GROUPS: sum(acc[g][k] for g in groups)  # noqa: E731
+    totals = (f"Team totals (position players): HR {tot(a, 'hr')} / {tot(b, 'hr')}, "
+              f"Off {signed(tot(a, 'off'))} / {signed(tot(b, 'off'))}; "
+              f"WAR, everyone {tot(a, 'war', POSITION_GROUPS):.1f} / {tot(b, 'war', POSITION_GROUPS):.1f}.")
+
+    vs_mlb = q(conn, """
+        select team_id, pos_group, hr::float8 as hr, ops::float8 as ops, hr_rank, hr_tied, ops_rank, ops_tied
+        from web_v_team_position where season = %(s)s and team_id in (%(j)s, 0)""", {"s": s, "j": JAYS})
+    rank = lambda n, tied: "–" if n is None else ("T-" if tied else "") + ordinal(n)  # noqa: E731
+    mrows = []
+    for g in BATTING_GROUPS:
+        j = next((r for r in vs_mlb if r["team_id"] == JAYS and r["pos_group"] == g), None)
+        m = next((r for r in vs_mlb if r["team_id"] == 0 and r["pos_group"] == g), None)
+        if j and m:
+            mrows.append([g, num(j["hr"]), num(m["hr"], 1), rank(j["hr_rank"], j["hr_tied"]),
+                          r3(j["ops"]), r3(m["ops"]), rank(j["ops_rank"], j["ops_tied"])])
+
+    def top(who: dict, g: str) -> str:
+        best = sorted(who[g].items(), key=lambda kv: -abs(kv[1]))[:3]
+        return ", ".join(f"{n} {signed(v)}" for n, v in best if round(v, 1) != 0) or "–"
+
+    contrib = [[g, top(who_a, g), top(who_b, g)] for g in POSITION_GROUPS]
+    mlb_part = (md_table(["Group", "Jays HR", "MLB HR (per club)", "HR rank", "Jays OPS", "MLB OPS", "OPS rank"], mrows)
+                if mrows else f"_No rows for {s} in `web_v_team_position` yet._")
+    return f"""# Value by position — {s} vs {vs} (as a Blue Jay)
+
+The season page's **Value by position** chart, as numbers. A position player is split
+across the positions he batted at by plate appearances: **HR / PA / OPS are exact**
+(MLB's by-position splits); **Off (Bat + BsR) and WAR are his season values shared out by
+his PA at each position**. OF = LF + CF + RF; DH includes pinch-hitters (PH) and batting
+while on the mound (P). Pitchers: SP vs RP by share of appearances that were starts.
+Mirrors `web/lib/team-season.ts::valueByPosition` — quote these, not a regrouping by
+each player's primary position (that gives different totals per group).
+
+Cells are `{s} / {vs}`; Δ = {s} − {vs}.
+
+{md_table(["Group", f"PA {s}", "HR", "ΔHR", "OPS", "Off", "ΔOff", "WAR", "ΔWAR"], rows)}
+
+{totals}
+
+## Each position vs MLB, {s}
+
+From the `025` view (`web_v_team_position`) — the season page's "each position vs MLB"
+table. MLB HR = an average club's total at that position; MLB OPS = all 30 clubs' summed
+counts. Rank 1st = best among 30.
+
+{mlb_part}
+
+## Who made up each group (Off; WAR for SP / RP), biggest three by size
+
+{md_table(["Group", str(s), str(vs)], contrib)}
+"""
+
+
+# ---------------------------------------------------------------------------
 # league context + README
 # ---------------------------------------------------------------------------
 
@@ -879,8 +1077,9 @@ Numbers and definitions only — the prose is yours.
 
 | File | What |
 |---|---|
-| `team.md` | Team season, regular season only: record, runs, splits, streaks, months |
-| `batters.md` / `.csv` | Every Blue Jays batter in {s} or {vs}, as a Jay; Δ for the both-seasons cohort |
+| `team.md` | Team season, regular season only: record, runs, splits, streaks, months (W-L, RS-RA, R/G, RA/G) |
+| `positions.md` | Value by position (HR / OPS / Off / WAR per group, the season page's chart) + each position vs MLB + who made up each group |
+| `batters.md` / `.csv` | Every Blue Jays batter in {s} or {vs}, as a Jay; Δ for the both-seasons cohort (the CSV adds Off / Def / OAA) |
 | `pitchers.md` / `.csv` | Same for pitchers; `pitchers_arsenal.csv` per pitch type |
 | `movers.md` | Biggest risers / fallers in the cohort, velo changes, new pitches |
 | `roster_moves.md` | Newcomers, mid-season arrivals and departures **with every club** |
@@ -971,6 +1170,7 @@ def run(season: int, vs: int, out_dir: Path) -> None:
         files = {
             "team_trends.md": trends_text,
             "team.md": team_text,
+            "positions.md": positions_md(conn, seasons),
             "batters.md": batters_md(bats, seasons, shift),
             "pitchers.md": pitchers_md(pits, ars, seasons),
             "movers.md": movers_md(bats, pits, ars, seasons, shift),
@@ -984,7 +1184,7 @@ def run(season: int, vs: int, out_dir: Path) -> None:
         }
     for name, text in files.items():
         (out_dir / name).write_text(text, encoding="utf-8")
-    write_csv(out_dir / "batters.csv", bats, seasons, BAT_LINE + BAT_DISC + BAT_BIP, "batter")
+    write_csv(out_dir / "batters.csv", bats, seasons, BAT_LINE + BAT_DERIVED + BAT_DISC + BAT_BIP, "batter")
     write_csv(out_dir / "pitchers.csv", pits, seasons, PIT_LINE + ["d_" + c for c in PIT_DISC], "pitcher")
     write_arsenal_csv(out_dir / "pitchers_arsenal.csv", pits, ars, seasons)
     write_team_trends_csv(out_dir / "team_trends.csv", trends_rows)

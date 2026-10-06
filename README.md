@@ -43,12 +43,13 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
    - Offense and run-prevention rank grids (value + rank heat map, Value | vs MLB toggle, hover for the MLB average, the league leader and a plain-English definition), trend small multiples vs the MLB average, contact luck (wOBA vs xwOBA), rotation vs bullpen, ERA vs FIP with team OAA
    - Games above .500 for all five seasons on one chart (pick a season to highlight) + situational splits, strengths & weaknesses in MLB ranks, glossary & method
 8. **Team season review** (`/season/2026`, nav "Team ▾" → Season review, or the team page's season strip; tabs switch between the two team views)
-   - Record strip vs the prior season with MLB ranks among 30 clubs, games above .500 and cumulative run differential by game number (both seasons), where the season ranked (top-10 / bottom-10 skills), month by month, splits (home/road, one-run, blowouts, vs division, vs .500+ teams), team leaders (WAR / OPS / HR / SB / ERA / WHIP / SO / SV) with last year's value, value by position group (WAR / Off / HR / OPS, vs last year, the change, or — for HR / OPS — vs the MLB average at that position with the Jays' rank among 30) plus an "each position vs MLB" table (2022 on)
+   - Record strip vs the prior season with MLB ranks among 30 clubs, games above .500 and cumulative run differential by game number (both seasons), where the season ranked (top-10 / bottom-10 skills), month by month (runs scored / allowed per game vs the MLB average + record), splits (home/road, one-run, blowouts, vs division, vs .500+ teams), team leaders (WAR / OPS / HR / SB / ERA / WHIP / SO / SV) with last year's value, value by position group (WAR / Off / HR / OPS, vs last year, the change, or — for HR / OPS — vs the MLB average at that position with the Jays' rank among 30) plus an "each position vs MLB" table (2022 on)
    - Team stats vs MLB: the club's offense and run-prevention line next to the MLB average, its rank among 30 clubs and the prior season
    - Player stats: every Blue Jay's season line, sortable — position players (offense incl. FanGraphs Off, defense = Def + Savant OAA, WAR) and pitchers; All / Regulars filter, copy table; each leader card's "All →" opens it sorted by that stat; an MLB-average row stays pinned at the bottom
 9. **Article tooling**
    - "PNG ↓" on every chart and every stat table (brand colours; footer = caption, the site wordmark, address, data sources and date) and "Copy table" on the stat tables (TSV that pastes into a spreadsheet as a real table, ending with a source line)
-10. **About & credit**: `/about` (bio, contact card, how the data works, sharing credit) and a footer on every page with the author and contact links
+10. **Articles** (`/articles`, nav "Articles") — long-form season write-ups in English and Chinese; their charts are the season page's own modules, embedded by season and drawn from live data, not screenshots. A draft becomes a page with the Claude Code project skill `/publish-article`, which fact-checks every number against the database (the database wins)
+11. **About & credit**: `/about` (bio, contact card, how the data works, sharing credit) and a footer on every page with the author and contact links
    - `etl/season_report.py` writes a season-review data pack (team / batters / pitchers / movers / roster moves with every club / league context / five-season team trends vs MLB + definitions and caveats) to `reports/` (git-ignored)
 
 **v2 (not in this milestone):** BaZi personality analysis, matchup predictions, injury-risk beta, daily WAR snapshots, player-vs-player `/compare` page (the per-player season Compare tab shipped in P12; the SprayChart `secondaryEvents` prop is still in place for it).
@@ -61,6 +62,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 - **i18n:** `next-intl` — default `en`, optional `zh-TW`
 - **Charts:** D3.js (spray / pitch zone / pitch movement / fielding) + Recharts (WAR breakdown diverging stacked bar, rolling OPS / ERA sparklines, velocity trend, team run sources / trend small multiples / five-season trajectory) + rough.js (hand-drawn schedule calendar)
 - **Motion:** `motion` (framer-motion) — scroll reveals, card hover springs, sliding toggle highlights, tab/panel crossfades, chart tooltips that glide between marks; CSS keyframes for the rough.js "ink" draw-in and chart mark entrances. Honours `prefers-reduced-motion`.
+- **Articles:** MDX (`@next/mdx`) — one `.mdx` per article per locale under `web/content/articles/`, with the live figure components registered in `web/mdx-components.tsx`
 - **Database:** Supabase Postgres
 - **ETL:** Python + pybaseball, scheduled via GitHub Actions (daily)
 - **Deploy:** Vercel
@@ -91,7 +93,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   ├── pull_position_splits.py   # each Jay's batting line by position (per-season position)
 │   ├── pull_savant_leaderboards.py # Savant percentiles / xStats + barrels / pitch run value (P12)
 │   ├── pull_league_averages.py   # MLB / AL / NL averages from summed team stats (P12)
-│   ├── season_report.py          # SELECT-only article data pack -> reports/ (P12; team_trends P13)
+│   ├── season_report.py          # SELECT-only article data pack -> reports/ (P12; team_trends P13; positions + monthly runs + Off/Def/OAA post-P13)
 │   ├── pull_team_stats.py        # all 30 clubs' team lines + SP/RP split + wRC+/WAR (P13)
 │   ├── pull_team_statcast.py     # Savant team leaderboards, all 30 clubs (P13)
 │   ├── pull_team_position_splits.py # all 30 clubs' batting by position (MLB-average reference)
@@ -105,6 +107,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   │   ├── standings/            # Divisions + wild card + clinch legend
 │   │   ├── team/                 # Team trends: five seasons vs MLB (P13)
 │   │   ├── season/[year]/        # Team season review vs the prior season + MLB ranks (P12)
+│   │   ├── articles/             # article list + [slug] (MDX body, live figures)
 │   │   ├── games/[gamePk]/       # Per-game box score detail
 │   │   └── players/
 │   │       ├── page.tsx          # Roster (Current 26-man / All 2024-2026)
@@ -124,7 +127,9 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   │   ├── StandingsTabs.tsx    # AL / NL / Wild Card view switcher (client)
 │   │   ├── SeasonCompareCard / DisciplineCards / PercentileBars  # P12 season-vs-season + Savant cards
 │   │   ├── compare/              # P12 Compare tab: controls, club splits, arc, arsenal compare, velo, zone grid
-│   │   ├── season/               # season page: trend by game number, value by position (+ vs MLB table), player stats table
+│   │   ├── season/               # season page modules: panel, record strip, month by month (+ runs-per-game chart), splits,
+│   │   │                         # trend by game number, team stats vs MLB, value by position (+ vs MLB table), player stats table
+│   │   ├── article/figures.tsx   # MDX figures: the season modules keyed by season (live data)
 │   │   ├── team/                 # P13 team page: season strip, run sources, rank grid, trends,
 │   │   │                         # rotation/bullpen, ERA vs FIP, trajectory, splits, callouts, glossary
 │   │   ├── Exportable / TableExport  # "PNG ↓" on charts; "PNG ↓" + "Copy table" on tables (generic)
@@ -146,8 +151,12 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   │                             # site (brand + contacts), export-png, export-table,
 │   │                             # P13: team-trends, team-metrics, team-grid, team-callouts,
 │   │                             # percentile-color, ordinal, team-ids,
-│   │                             # season-position (per-season / last-Jays position), team-position
+│   │                             # season-position (per-season / last-Jays position), team-position,
+│   │                             # season-format (season-module display helpers)
+│   ├── content/articles/         # index.ts (registry) + <slug>/{en,zh-TW}.mdx
+│   ├── mdx-components.tsx        # article typography + figure components for MDX
 │   └── messages/{en,zh-TW}.json
+├── .claude/skills/publish-article/  # Claude Code skill: article draft -> MDX + live figures + DB fact check
 ├── .github/workflows/etl.yml     # two-job cron: ~09:00 ET full refresh + ~11:30 PM ET finals
 ├── ETL_update_flow.md            # backfill + manual re-run steps
 ├── CLAUDE.md                     # guidance for AI coding agents
@@ -312,6 +321,7 @@ What stays English in zh-TW (do **not** translate):
 | P12 | Season review & year-over-year: full-MLB 2024–2026 history for the 2026 roster (every club), Compare tab, discipline + batted-ball cards, prior-season sparkline overlays, team season page + nav "Team", Savant percentiles + league averages, PNG export + copy-table, article data pack; migrations `013`–`019` | done |
 | P13 | Team trends: `/team` (nav "Team"), five seasons vs the MLB average and 30-club ranks — record & run sources, offense / run-prevention rank grids, trends, rotation vs bullpen, ERA vs FIP, five-season trajectory + splits, strengths & weaknesses, glossary; all 30 clubs' team data 2022–2026; migrations `020`–`022`; `team_trends` in the article pack | done |
 | post-P13 | Season page by position: per-season positions + value by position (`023`), each position vs the MLB average + rank among 30 (`024`–`025`); departed players' last Jays position | done |
+| post-P13 | Articles: `/articles` (MDX, en + zh-TW) with live season figures; season modules extracted into components; runs-per-game-by-month chart on the season page | done |
 
 ---
 

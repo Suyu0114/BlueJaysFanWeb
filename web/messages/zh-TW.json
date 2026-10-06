@@ -4,6 +4,7 @@
     "players": "球員",
     "standings": "戰績排名",
     "team": "球隊",
+    "articles": "文章",
     "about": "關於",
     "teamMenuLabel": "球隊頁面",
     "seasonReview": "球季回顧",
@@ -98,6 +99,10 @@
     "monthMarApr": "3–4 月",
     "monthSepOct": "9–10 月",
     "monthlyNote": "3 月的比賽算進 4 月、10 月的比賽算進 9 月，與 MLB 官方分項一致。",
+    "monthlyRunsTitle": "{season} 每月平均每場得失分",
+    "monthlyRunsRs": "每場得分",
+    "monthlyRunsRa": "每場失分",
+    "monthlyRunsMlb": "MLB 平均 R/G（{value}）",
     "splitsTitle": "分項戰績",
     "colSplit": "比賽",
     "splitHome": "主場",
@@ -734,6 +739,21 @@
     "diagramCaptionGeneric": "球場示意",
     "runsSavedPlain": "{name} 今年靠守備幫多倫多守下 {n} 分。",
     "runsCostPlain": "{name} 今年守備讓多倫多多丟了 {n} 分。"
+  },
+  "Articles": {
+    "title": "文章",
+    "lede": "{author} 寫的藍鳥長篇分析。文中的每張圖都即時讀取網站其他頁面用的同一份數據。",
+    "empty": "還沒有文章。",
+    "read": "閱讀 →",
+    "back": "← 所有文章",
+    "byline": "作者：{author}",
+    "dataAsOf": "內文數字截至 {date}。圖表讀的是網站的即時數據，資料來源修正時，圖上的數字可能會有些微變動。",
+    "otherLocale": "這篇文章還沒有中文版，以下是{language}版。",
+    "languageNames": {
+      "en": "英文",
+      "zh-TW": "中文"
+    },
+    "figureMissing": "這張圖沒有 {season} 年的數據。"
   },
   "About": {
     "title": "關於",
