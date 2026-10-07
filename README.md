@@ -102,7 +102,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   ├── pull_team_position_splits.py # all 30 clubs' batting by position (MLB-average reference)
 │   ├── fetch_team_logos.py       # ONE-SHOT: cap logos → web/public/team-logos (recoloured)
 │   └── backfill.py               # one-shot orchestrator
-├── db/migrations/                # plain SQL: 001 → 026
+├── db/migrations/                # plain SQL: 001 → 027
 ├── web/                          # Next.js app
 │   ├── app/[locale]/
 │   │   ├── page.tsx              # Home: standings + schedule calendar + "Today's Blue Jays"

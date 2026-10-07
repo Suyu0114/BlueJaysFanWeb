@@ -14,6 +14,8 @@ the columns that **don't** exist so nobody assumes them.
 > P13's `020`–`022`; `023` applied 2026-10-04 — `web_player_position_splits` at 17;
 > `024` + `025` applied 2026-10-05 — `web_team_position_splits` at 17, `web_v_team_position` at 13;
 > `026` applied 2026-10-06 — `web_article_views` at 3, RLS enabled;
+> `027` applied 2026-10-06 — REST API lockdown: RLS on all 19 tables, the 9 views
+> `security_invoker`, no `anon` / `authenticated` grants (invariant 11);
 > `web_player_season_stats` at 32 columns, `web_statcast_events` at 29,
 > `web_standings` at 38, `web_games` at 17, `web_player_team_season_stats` at 37,
 > `web_team_season_stats` at 69, `web_team_statcast_season` at 36).
@@ -618,8 +620,8 @@ upserts `views = views + 1`.
 - **Nothing about the reader is stored** — no IP, user agent or id. A scripted client could still
   inflate a number; nothing can be read or damaged through it.
 - **RLS enabled, no policies**: blocks Supabase's REST API (this project is shared and exposes
-  `public`); the site connects as `postgres` (owner, BYPASSRLS), unaffected. The only `web_` table
-  with RLS on.
+  `public`); the site connects as `postgres` (owner, BYPASSRLS), unaffected. The first `web_` table
+  with RLS on; `027` extended it to every `web_` object (invariant 11).
 - Not the traffic source of truth: Vercel Web Analytics (the author's dashboard) counts every
   page view; this is a deduplicated, article-only number for display.
 
@@ -766,6 +768,15 @@ position and the club's rank among 30 are defined — read by the season page
    (per position, every count but `g`); each club's Σ `pa` is within 3 of
    `web_team_season_stats.bat_pa` (an upstream gap, not an ETL bug). Position
    groups in `web_v_team_position` mirror `batterGroup` in `web/lib/team-season.ts`.
+11. **No `web_` object is reachable through Supabase's REST API** (`027`, 2026-10-06).
+   Every table has RLS on with no policies, every view is `security_invoker = on`, and
+   `anon` / `authenticated` hold no grants. The site and the ETL connect as `postgres`
+   (owner, BYPASSRLS) and never use the anon key, so they are unaffected. Supabase's
+   default privileges re-grant `anon` ALL on **every new** table / view / sequence, and
+   `create or replace view` resets `security_invoker` — so after any migration that
+   creates or replaces a `web_` object, **re-run `027`** (idempotent). Without it a view
+   runs as its owner and skips RLS; `web_v_pitch_scoped` is auto-updatable, so a REST
+   `DELETE` on it would reach `web_statcast_events`.
 
 ---
 
@@ -852,3 +863,16 @@ with psycopg.connect(os.environ["DATABASE_URL"], prepare_threshold=None) as c:
 Run: `conda run -n MLBxBaZi python <script>.py`. Expect the column counts in the
 table index above (11 / 29 / 32 / 7 / 12 / 6 / 17 / 27 / 38 / 37 / 17 / 17). Re-confirm the anti-index
 holds (`bb_type`, `launch_speed_angle` still absent).
+
+Lockdown (invariant 11) — expect `r` 19/19 with RLS, `v` 9/9 `security_invoker`, and 0 grants:
+
+```sql
+select c.relkind, count(*), count(*) filter (where c.relrowsecurity) as rls,
+       count(*) filter (where c.reloptions @> array['security_invoker=on']) as invoker
+from pg_class c join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and c.relname like 'web\_%' and c.relkind in ('r', 'v')
+group by 1;
+select count(*) from information_schema.role_table_grants
+where table_schema = 'public' and table_name like 'web\_%'
+  and grantee in ('anon', 'authenticated');
+```
