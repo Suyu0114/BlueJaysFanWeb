@@ -110,6 +110,19 @@ python etl/season_report.py --season 2026 --vs 2025
 >   2026 的 zone 定義變了，全體樣本 Chase% 自己就 +2.8）。報告裡有「扣掉整體位移」
 >   的欄位，寫文章時請用那個。
 
+**Step 5b（休賽季，一次性）：即將成為自由球員的外野手名單（不碰 DB）**
+```powershell
+python etl/fa_outfield_candidates.py
+```
+輸出到 `reports/free-agents-2026/`（已 git-ignore）：`outfield.csv`（UTF-8 BOM，Excel 直接開）
++ `README.md`（來源、欄位定義、注意事項）。名單來自 MLB Trade Rumors 的 2026-27 中外野 /
+邊角外野預覽（官方沒有「即將 FA」名單），成績是 MLB Stats API 2026 + 2025 全隊合計，
+Statcast 是 Savant 排行榜。
+> - **沒有合約金額**：沒有免費來源（Spotrac 對程式回 402）。要的話手動補，每列標來源。
+> - `official_status` 讀 `/people/freeAgents?season=2026`，世界大賽結束、球員申請 FA 之後
+>   才有資料——那時再跑一次。
+> - NPB 球員（例：Teruaki Sato）在 MLB API 沒有紀錄，成績欄空白。
+
 **Step 6（P12 M6）：聯盟脈絡（Savant 排行榜 + 聯盟平均）**
 ```powershell
 python etl/pull_savant_leaderboards.py --season 2024 --season 2025 --season 2026

@@ -130,6 +130,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   pull_player_splits.py        # P12: full-MLB lines per club + season total for a roster (web_player_team_season_stats)
   pull_position_splits.py      # post-P13: each Jay's batting line by position (statSplits sitCodes, 1 call/season; reconciles vs season PA)
   season_report.py             # P12: SELECT-only article data pack -> reports/season-review-<year>/ (git-ignored); P13 adds team_trends.md/.csv from the 022 views; post-P13 adds positions.md (mirrors valueByPosition + the 025 view), monthly RS-RA / R/G / RA/G, batter Off / Def / OAA — the fact source for /publish-article
+  fa_outfield_candidates.py    # ONE-SHOT, no DB: pending FA outfielders from MLBTR class previews (no official pending list; /people/freeAgents fills after the World Series -> official_status) + full-MLB 2026/2025 lines (season_line mapping) + Savant -> reports/free-agents-2026/outfield.csv; no contract dollars (no free source)
   pull_savant_leaderboards.py  # P12 M6: Savant percentiles / xStats + barrels / pitch run value (league-wide, filtered to the roster)
   pull_league_averages.py      # P12 M6: MLB / AL / NL averages from summed team counting stats
   pull_team_stats.py           # P13: all 30 clubs' team lines + SP/RP split + wRC+/WAR aggregates (web_team_season_stats)
