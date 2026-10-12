@@ -771,6 +771,11 @@
     "followX": "Follow on X →",
     "followInstagram": "Follow on Instagram →"
   },
+  "ShareCard": {
+    "source": "Source: {source}",
+    "number": "No. {n}",
+    "example": "Blue Jays example"
+  },
   "About": {
     "title": "About",
     "lede": "{site} is a Toronto Blue Jays data site, built and written by {author}.",

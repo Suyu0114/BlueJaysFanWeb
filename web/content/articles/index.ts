@@ -1,4 +1,5 @@
 import type { Locale } from "@/i18n/routing";
+import type { CardStatKey } from "@/lib/share-card/stats";
 
 // The article registry: one entry per article, newest first. The body lives in
 // content/articles/<slug>/<locale>.mdx. Titles and summaries are here (not in
@@ -15,6 +16,9 @@ export type Article = {
   // The post announcing this article, where readers discuss it (the site has no
   // comments). Fill in after posting; without one the article links the profile.
   discuss?: { x?: string; instagram?: string };
+  // The share card's stat cards (lib/share-card): which season, and 2–3 keys —
+  // "record" or a team metric from the 022 views. Values are read from the DB.
+  card?: { season: number; stats: CardStatKey[] };
 };
 
 export const ARTICLES: Article[] = [
@@ -23,6 +27,7 @@ export const ARTICLES: Article[] = [
     date: "2026-10-05",
     dataAsOf: "2026-10-05",
     locales: ["en", "zh-TW"],
+    card: { season: 2026, stats: ["record", "r_per_g", "ra_per_g"] },
     title: {
       en: "The 2026 Blue Jays: the pitching held up, the bats stopped carrying",
       "zh-TW": "2026 藍鳥賽季分析：投手撐住了，打線卻打不遠了",
