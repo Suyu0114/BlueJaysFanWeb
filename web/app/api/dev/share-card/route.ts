@@ -17,11 +17,10 @@ export async function GET(req: NextRequest) {
   const slug = p.get("slug") ?? "";
   const size = (p.get("size") ?? "og") as CardSize;
   const locale = p.get("locale") ?? "en";
-  const style = p.get("style") === "navy" ? "navy" : "lava";
   if (!kind || !CARD_KINDS.includes(kind) || !(size in CARD_SIZES) || !(routing.locales as readonly string[]).includes(locale)) {
     return new Response("Bad request: kind, size (og | x | ig) and locale (en | zh-TW) are required", { status: 400 });
   }
   const spec = await loadCardSpec(kind, slug);
   if (!spec) return new Response(`No ${kind} card spec for "${slug}"`, { status: 404 });
-  return renderShareCard(spec, { size, locale, newsStyle: style });
+  return renderShareCard(spec, { size, locale });
 }

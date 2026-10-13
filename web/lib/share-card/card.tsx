@@ -1,19 +1,20 @@
 import type { ReactNode } from "react";
 import { ImageResponse } from "next/og";
 import { getTranslations } from "next-intl/server";
-import { capLogo, loadGoogleFont } from "@/lib/og";
 import { SITE, siteHost } from "@/lib/site";
+import { capLogo, cardFonts } from "./fonts";
 import { Ink, roughLine, roughRect, scorecardFrame, seedFrom } from "./rough";
 import { pick, type ArticleCard, type CardSpec, type GlossaryCard, type NewsCard } from "./spec";
 import { resolveCardStats, resolvePlayerExample, type CardStat, type ResolvedExample } from "./stats";
-import { C, CARD_BG, CARD_BORDER, KIND, NEWS_NAVY, PARCHMENT, SHADOW, TONE, navyA, rankTintHex, type KindStyle } from "./tokens";
+import { C, KIND, PAPERS, SHADOW, TONE, navyA, rankTintHex, softInk, type KindStyle } from "./tokens";
 
 // The share-card renderer: the site's hand-drawn scorecard (parchment, rough.js
 // double frame, offset print shadow, papaya stat cards) as a PNG for link
 // previews and social posts. One skeleton for every kind — kind tag, wordmark +
-// cap, an accent rule, content, footer — and one accent colour per kind
-// (tokens.ts KIND). Landscape (og / x) and portrait (ig) layouts. Every number
-// comes from the DB at render time (stats.ts).
+// cap, a hand-drawn rule, content, footer — and one paper per kind (tokens.ts
+// KIND). Landscape (og / x) and portrait (ig) layouts. Every number comes
+// from the DB at render time (stats.ts). renderSiteCard is the site's default
+// link preview on the same paper and frame.
 
 export const CARD_SIZES = {
   og: { width: 1200, height: 630 }, // link previews (X / LINE / Facebook): the site's opengraph-image
@@ -22,7 +23,7 @@ export const CARD_SIZES = {
 } as const;
 export type CardSize = keyof typeof CARD_SIZES;
 
-export type CardOptions = { size: CardSize; locale: string; newsStyle?: "lava" | "navy" };
+export type CardOptions = { size: CardSize; locale: string };
 
 // ---- layout scale ------------------------------------------------------------------
 
@@ -73,7 +74,7 @@ function fit(text: string, width: number, lines: number, sizes: number[]): numbe
 
 const prose = (zh: boolean) => (zh ? "Noto Serif TC" : "Gabriela");
 
-function Tag({ text, kind, zh, L, seed }: { text: string; kind: KindStyle; zh: boolean; L: Layout; seed: number }) {
+function Tag({ text, S, zh, L, seed }: { text: string; S: KindStyle; zh: boolean; L: Layout; seed: number }) {
   const fs = L.tag;
   const tw = zh ? text.length * fs + (text.length - 1) * 4 : text.length * (fs * 0.78 + 2);
   const w = Math.round(tw + fs * 1.5);
@@ -83,7 +84,7 @@ function Tag({ text, kind, zh, L, seed }: { text: string; kind: KindStyle; zh: b
       <Ink
         width={w}
         height={h}
-        paths={roughRect(3, 3, w - 6, h - 6, { stroke: kind.accent, strokeWidth: 1.6 * L.k, roughness: 1.5, seed, fill: kind.tagFill })}
+        paths={roughRect(3, 3, w - 6, h - 6, { stroke: S.accent, strokeWidth: 1.6 * L.k, roughness: 1.5, seed, fill: S.tagFill })}
       />
       <div
         style={{
@@ -91,7 +92,7 @@ function Tag({ text, kind, zh, L, seed }: { text: string; kind: KindStyle; zh: b
           fontWeight: zh ? 700 : 400,
           fontSize: fs,
           letterSpacing: zh ? 4 : 2,
-          color: kind.tagInk,
+          color: S.tagInk,
           textTransform: "uppercase",
         }}
       >
@@ -118,20 +119,14 @@ function Chip({ text, bg, ink, size, k }: { text: string; bg: string; ink: strin
   );
 }
 
-/** The season page's stat card: label, value + Δ chip, MLB rank chip, prior season. */
-function StatCard({ stat, rankLabel, zh, L, grow }: { stat: CardStat; rankLabel: string; zh: boolean; L: Layout; grow: boolean }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        ...(grow ? { flex: 1 } : {}),
-        background: CARD_BG,
-        border: `${1.5 * L.k}px solid ${CARD_BORDER}`,
-        borderRadius: 8 * L.k,
-        padding: `${(L.portrait ? 8 : 10) * L.k}px ${14 * L.k}px`,
-      }}
-    >
+/**
+ * The season page's stat card: label, value + Δ chip, MLB rank chip, prior
+ * season. Portrait cards are full-width rows, so rank + prior sit on the right
+ * instead of under the value (three stacked cards otherwise crowd the footer).
+ */
+function StatCard({ stat, rankLabel, S, zh, L, grow }: { stat: CardStat; rankLabel: string; S: KindStyle; zh: boolean; L: Layout; grow: boolean }) {
+  const main = (
+    <div style={{ display: "flex", flexDirection: "column" }}>
       <div
         style={{
           fontFamily: hasCjk(stat.label) ? "Noto Serif TC" : "Graduate",
@@ -147,29 +142,50 @@ function StatCard({ stat, rankLabel, zh, L, grow }: { stat: CardStat; rankLabel:
         <div style={{ fontFamily: "Gabriela", fontSize: L.value, color: C.navy, lineHeight: 1.1 }}>{stat.value}</div>
         {stat.delta && <Chip text={stat.delta.text} bg={TONE[stat.delta.tone].bg} ink={TONE[stat.delta.tone].ink} size={L.sub} k={L.k} />}
       </div>
+    </div>
+  );
+  const side = (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: L.portrait ? "flex-end" : "flex-start", gap: 4 * L.k, marginTop: L.portrait ? 0 : 4 * L.k }}>
       {stat.rank && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8 * L.k, marginTop: 4 * L.k, fontFamily: prose(zh), fontSize: L.sub, color: navyA(0.55) }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 * L.k, fontFamily: prose(zh), fontSize: L.sub, color: navyA(0.55) }}>
           <div>{rankLabel}</div>
           <div style={{ display: "flex", background: rankTintHex(stat.rank.rank), color: C.navy, borderRadius: 4 * L.k, padding: `${1 * L.k}px ${6 * L.k}px` }}>
             {stat.rank.text}
           </div>
         </div>
       )}
-      {stat.prior && <div style={{ marginTop: 3 * L.k, fontFamily: prose(zh), fontSize: L.sub, color: navyA(0.5) }}>{stat.prior}</div>}
+      {stat.prior && <div style={{ fontFamily: prose(zh), fontSize: L.sub, color: navyA(0.5) }}>{stat.prior}</div>}
+    </div>
+  );
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: L.portrait ? "row" : "column",
+        ...(L.portrait ? { alignItems: "flex-end", justifyContent: "space-between" } : {}),
+        ...(grow ? { flex: 1 } : {}),
+        background: S.card,
+        border: `${1.5 * L.k}px solid ${S.cardBorder}`,
+        borderRadius: 8 * L.k,
+        padding: `${10 * L.k}px ${14 * L.k}px`,
+      }}
+    >
+      {main}
+      {side}
     </div>
   );
 }
 
 /** A small papaya card: value over label (Baseball 101 scale, News facts). */
-function NoteCard({ value, label, zh, L, flex = true }: { value: string; label: string; zh: boolean; L: Layout; flex?: boolean }) {
+function NoteCard({ value, label, S, zh, L, flex = true }: { value: string; label: string; S: KindStyle; zh: boolean; L: Layout; flex?: boolean }) {
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
         ...(flex ? { flex: 1 } : {}),
-        background: CARD_BG,
-        border: `${1.5 * L.k}px solid ${CARD_BORDER}`,
+        background: S.card,
+        border: `${1.5 * L.k}px solid ${S.cardBorder}`,
         borderRadius: 8 * L.k,
         padding: `${8 * L.k}px ${14 * L.k}px`,
       }}
@@ -219,7 +235,7 @@ function Stamp({ big, small, color, zh, L, seed }: { big: string; small: string;
 type Shell = {
   L: Layout;
   seed: number;
-  kind: KindStyle;
+  S: KindStyle;
   tag: string;
   zh: boolean;
   logo: string;
@@ -228,7 +244,8 @@ type Shell = {
   children: ReactNode;
 };
 
-function Card({ L, seed, kind, tag, zh, logo, headerExtra, footerLeft, children }: Shell) {
+/** The paper on the papaya page: offset print shadow + the hand-drawn double frame. Children stack in a column. */
+function Sheet({ L, S, seed, children }: { L: Layout; S: Pick<KindStyle, "paper" | "ink">; seed: number; children: ReactNode }) {
   const off = Math.round(6 * L.k);
   const cw = L.W - 2 * L.m - off;
   const ch = L.H - 2 * L.m - off;
@@ -241,20 +258,29 @@ function Card({ L, seed, kind, tag, zh, logo, headerExtra, footerLeft, children 
           flexDirection: "column",
           width: cw,
           height: ch,
-          background: PARCHMENT,
+          background: S.paper,
           borderRadius: 12 * L.k,
           boxShadow: `${off}px ${off}px 0 0 ${SHADOW}`,
           padding: `${L.pad[0]}px ${L.pad[1]}px ${L.pad[2]}px`,
         }}
       >
-        <Ink width={cw} height={ch} paths={scorecardFrame(cw, ch, seed, L.k)} />
+        <Ink width={cw} height={ch} paths={scorecardFrame(cw, ch, seed, L.k, S.ink)} />
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Card({ L, seed, S, tag, zh, logo, headerExtra, footerLeft, children }: Shell) {
+  return (
+    <Sheet L={L} S={S} seed={seed}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 * L.k }}>
-            <Tag text={tag} kind={kind} zh={zh} L={L} seed={seed + 11} />
+            <Tag text={tag} S={S} zh={zh} L={L} seed={seed + 11} />
             {headerExtra}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 * L.k }}>
-            <div style={{ fontFamily: "Graduate", fontSize: L.wordmark, letterSpacing: 2, color: C.navy }}>
+            <div style={{ fontFamily: "Graduate", fontSize: L.wordmark, letterSpacing: 2, color: S.ink }}>
               {SITE.name.toUpperCase()}
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element -- Satori renders plain <img> */}
@@ -263,11 +289,10 @@ function Card({ L, seed, kind, tag, zh, logo, headerExtra, footerLeft, children 
         </div>
         <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center" }}>{children}</div>
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", columnGap: 24 * L.k, fontSize: L.footer }}>
-          <div style={{ fontFamily: prose(zh), color: navyA(0.7) }}>{footerLeft}</div>
-          <div style={{ fontFamily: "Gabriela", color: navyA(0.55), marginLeft: "auto" }}>{siteHost()}</div>
+          <div style={{ fontFamily: prose(zh), color: softInk(S, 0.7) }}>{footerLeft}</div>
+          <div style={{ fontFamily: "Gabriela", color: softInk(S, 0.55), marginLeft: "auto" }}>{siteHost()}</div>
         </div>
-      </div>
-    </div>
+    </Sheet>
   );
 }
 
@@ -276,40 +301,43 @@ function Card({ L, seed, kind, tag, zh, logo, headerExtra, footerLeft, children 
 const dateFmt = (locale: string, ymd: string, opts: Intl.DateTimeFormatOptions = { dateStyle: "long" }) =>
   new Intl.DateTimeFormat(locale, { ...opts, timeZone: "UTC" }).format(new Date(`${ymd}T00:00:00Z`));
 
-type Ctx = { L: Layout; zh: boolean; locale: string; logo: string; seed: number; byline: string; rankLabel: string };
+type Ctx = { L: Layout; S: KindStyle; zh: boolean; locale: string; logo: string; seed: number; byline: string; rankLabel: string };
 
 function ArticleBody({ spec, stats, c }: { spec: ArticleCard; stats: CardStat[]; c: Ctx }) {
-  const { L, zh } = c;
+  const { L, S, zh } = c;
   const title = pick(spec.title, c.locale);
   const inner = L.W - 2 * L.m - 2 * L.pad[1];
   const size = L.portrait ? fit(title, inner, 4, [80, 72, 64, 56]) : fit(title, inner, 2, [56, 50, 44, 40]);
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: size, lineHeight: 1.2, color: C.navy, marginTop: L.gap * (L.portrait ? 1.6 : 1) }}>
+      <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: size, lineHeight: 1.2, color: S.ink, marginTop: L.gap * (L.portrait ? 1.6 : 1) }}>
         {title}
       </div>
       <div style={{ display: "flex", marginTop: L.gap * 0.8 }}>
-        <Rule color={KIND.article.accent} width={L.portrait ? 260 : 190} L={L} seed={c.seed + 21} />
+        <Rule color={S.rule} width={L.portrait ? 260 : 190} L={L} seed={c.seed + 21} />
       </div>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: L.portrait ? "column" : "row",
-          gap: L.gap,
-          marginTop: L.gap * (L.portrait ? 1.4 : 1.1),
-        }}
-      >
-        {stats.map((s) => (
-          <StatCard key={s.label} stat={s} rankLabel={c.rankLabel} zh={zh} L={L} grow={!L.portrait} />
-        ))}
-      </div>
+      {stats.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: L.portrait ? "column" : "row",
+            gap: L.gap,
+            marginTop: L.gap * (L.portrait ? 1.4 : 1.1),
+          }}
+        >
+          {stats.map((s) => (
+            <StatCard key={s.label} stat={s} rankLabel={c.rankLabel} S={S} zh={zh} L={L} grow={!L.portrait} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function GlossaryBody({ spec, example, c, exampleTitle }: { spec: GlossaryCard; example: ResolvedExample | null; c: Ctx; exampleTitle: string }) {
   const number = `NO. ${String(spec.number).padStart(3, "0")}`;
-  const { L, zh } = c;
+  const { L, S, zh } = c;
+  const ink = (a: number) => softInk(S, a);
   const definition = pick(spec.definition, c.locale);
   const inner = L.W - 2 * L.m - 2 * L.pad[1];
   const termSize = L.portrait ? fit(spec.term, inner, 1, [190, 160, 130]) : fit(spec.term, inner * 0.58, 1, [118, 100, 84]);
@@ -322,8 +350,8 @@ function GlossaryBody({ spec, example, c, exampleTitle }: { spec: GlossaryCard; 
       style={{
         display: "flex",
         flexDirection: "column",
-        background: CARD_BG,
-        border: `${1.5 * L.k}px solid ${CARD_BORDER}`,
+        background: S.card,
+        border: `${1.5 * L.k}px solid ${S.cardBorder}`,
         borderRadius: 8 * L.k,
         padding: `${10 * L.k}px ${14 * L.k}px`,
       }}
@@ -347,14 +375,14 @@ function GlossaryBody({ spec, example, c, exampleTitle }: { spec: GlossaryCard; 
   const left = (
     <div style={{ display: "flex", flexDirection: "column", ...(L.portrait ? {} : { width: inner * 0.6 }) }}>
       {L.portrait && (
-        <div style={{ fontFamily: "Graduate", fontSize: L.tag * 0.9, letterSpacing: 2, color: navyA(0.55), marginBottom: 8 * L.k }}>{number}</div>
+        <div style={{ fontFamily: "Graduate", fontSize: L.tag * 0.9, letterSpacing: 2, color: ink(0.6), marginBottom: 8 * L.k }}>{number}</div>
       )}
-      <div style={{ fontFamily: "Gabriela", fontSize: termSize, lineHeight: 1, color: C.navy }}>{spec.term}</div>
-      {spec.aka && <div style={{ fontFamily: "Gabriela", fontSize: L.sub * 1.3, color: navyA(0.6), marginTop: 6 * L.k }}>{spec.aka}</div>}
+      <div style={{ fontFamily: "Gabriela", fontSize: termSize, lineHeight: 1, color: S.ink }}>{spec.term}</div>
+      {spec.aka && <div style={{ fontFamily: "Gabriela", fontSize: L.sub * 1.3, color: ink(0.65), marginTop: 6 * L.k }}>{spec.aka}</div>}
       <div style={{ display: "flex", marginTop: L.gap * 0.9 }}>
-        <Rule color={KIND.glossary.accent} width={L.portrait ? 260 : 170} L={L} seed={c.seed + 21} />
+        <Rule color={S.rule} width={L.portrait ? 260 : 170} L={L} seed={c.seed + 21} />
       </div>
-      <div style={{ display: "flex", fontFamily: prose(zh), fontSize: defSize, lineHeight: 1.45, color: C.navy, marginTop: L.gap * 0.9 }}>
+      <div style={{ display: "flex", fontFamily: prose(zh), fontSize: defSize, lineHeight: 1.45, color: S.ink, marginTop: L.gap * 0.9 }}>
         {definition}
       </div>
     </div>
@@ -367,7 +395,7 @@ function GlossaryBody({ spec, example, c, exampleTitle }: { spec: GlossaryCard; 
         {scale.length > 0 && (
           <div style={{ display: "flex", gap: L.gap * 0.7, marginTop: L.gap * 1.4 }}>
             {scale.map((s) => (
-              <NoteCard key={s.value} value={s.value} label={pick(s.label, c.locale)} zh={zh} L={L} />
+              <NoteCard key={s.value} value={s.value} label={pick(s.label, c.locale)} S={S} zh={zh} L={L} />
             ))}
           </div>
         )}
@@ -386,8 +414,8 @@ function GlossaryBody({ spec, example, c, exampleTitle }: { spec: GlossaryCard; 
               display: "flex",
               alignItems: "baseline",
               gap: 12 * L.k,
-              background: CARD_BG,
-              border: `${1.5 * L.k}px solid ${CARD_BORDER}`,
+              background: S.card,
+              border: `${1.5 * L.k}px solid ${S.cardBorder}`,
               borderRadius: 8 * L.k,
               padding: `${5 * L.k}px ${12 * L.k}px`,
             }}
@@ -402,8 +430,8 @@ function GlossaryBody({ spec, example, c, exampleTitle }: { spec: GlossaryCard; 
   );
 }
 
-function NewsBody({ spec, kind, c }: { spec: NewsCard; kind: KindStyle; c: Ctx }) {
-  const { L, zh } = c;
+function NewsBody({ spec, c }: { spec: NewsCard; c: Ctx }) {
+  const { L, S, zh } = c;
   const headline = pick(spec.headline, c.locale);
   const deck = spec.deck ? pick(spec.deck, c.locale) : null;
   const inner = L.W - 2 * L.m - 2 * L.pad[1];
@@ -417,23 +445,23 @@ function NewsBody({ spec, kind, c }: { spec: NewsCard; kind: KindStyle; c: Ctx }
 
   const text = (
     <div style={{ display: "flex", flexDirection: "column", ...(L.portrait ? {} : { width: textW }) }}>
-      <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: hSize, lineHeight: 1.2, color: C.navy }}>{headline}</div>
+      <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: hSize, lineHeight: 1.2, color: S.ink }}>{headline}</div>
       <div style={{ display: "flex", marginTop: L.gap * 0.8 }}>
-        <Rule color={kind === NEWS_NAVY ? C.brick : kind.accent} width={L.portrait ? 260 : 170} L={L} seed={c.seed + 21} />
+        <Rule color={S.rule} width={L.portrait ? 260 : 170} L={L} seed={c.seed + 21} />
       </div>
       {deck && (
-        <div style={{ display: "flex", fontFamily: prose(zh), fontSize: dSize, lineHeight: 1.45, color: navyA(0.85), marginTop: L.gap * 0.8 }}>{deck}</div>
+        <div style={{ display: "flex", fontFamily: prose(zh), fontSize: dSize, lineHeight: 1.45, color: softInk(S, 0.85), marginTop: L.gap * 0.8 }}>{deck}</div>
       )}
     </div>
   );
   const factRow = facts.length > 0 && (
     <div style={{ display: "flex", flexDirection: "row", gap: L.gap, marginTop: L.gap * (L.portrait ? 1.6 : 1.1) }}>
       {facts.map((f) => (
-        <NoteCard key={f.value + pick(f.label, "en")} value={f.value} label={pick(f.label, c.locale)} zh={zh} L={L} />
+        <NoteCard key={f.value + pick(f.label, "en")} value={f.value} label={pick(f.label, c.locale)} S={S} zh={zh} L={L} />
       ))}
     </div>
   );
-  const stampEl = <Stamp big={stamp.big} small={stamp.small} color={kind === NEWS_NAVY ? C.navy : kind.accent} zh={zh} L={L} seed={c.seed + 31} />;
+  const stampEl = <Stamp big={stamp.big} small={stamp.small} color={S.stamp} zh={zh} L={L} seed={c.seed + 31} />;
 
   if (L.portrait) {
     return (
@@ -466,23 +494,25 @@ export async function renderShareCard(spec: CardSpec, opts: CardOptions): Promis
   const L = layout(opts.size);
   const locale = opts.locale === "zh-TW" ? "zh-TW" : "en";
   const zh = locale === "zh-TW";
-  const kind = spec.kind === "news" && opts.newsStyle === "navy" ? NEWS_NAVY : KIND[spec.kind];
+  const S = KIND[spec.kind];
   const seed = seedFrom(`${spec.kind}:${spec.slug}`);
 
   const [tA, tS, tC, logo] = await Promise.all([
     getTranslations({ locale, namespace: "Articles" }),
     getTranslations({ locale, namespace: "Season" }),
     getTranslations({ locale, namespace: "ShareCard" }),
-    capLogo(),
+    capLogo(S),
   ]);
   const [stats, example] = await Promise.all([
-    spec.kind === "article" ? resolveCardStats(spec.season, spec.stats, locale) : Promise.resolve([] as CardStat[]),
+    spec.kind === "article" && spec.season && spec.stats.length > 0
+      ? resolveCardStats(spec.season, spec.stats, locale)
+      : Promise.resolve([] as CardStat[]),
     spec.kind === "glossary" && spec.example ? resolvePlayerExample(spec.example) : Promise.resolve(null),
   ]);
 
   const byline = tA("byline", { author: SITE.author });
   const date = dateFmt(locale, spec.date, { dateStyle: "medium" });
-  const tag = kind.tag[locale];
+  const tag = S.tag[locale];
   const numberText = spec.kind === "glossary" ? tC("number", { n: String(spec.number).padStart(3, "0") }) : "";
   const footerLeft =
     spec.kind === "news"
@@ -492,7 +522,7 @@ export async function renderShareCard(spec: CardSpec, opts: CardOptions): Promis
     byline,
     date,
     tag,
-    kind.tag.en.toUpperCase(),
+    S.tag.en.toUpperCase(),
     numberText,
     footerLeft,
     tS("rankLabel"),
@@ -502,44 +532,69 @@ export async function renderShareCard(spec: CardSpec, opts: CardOptions): Promis
   ];
   const text = allText(spec, strings);
 
-  const [graduate, gabriela, notoBold, noto] = await Promise.all([
-    loadGoogleFont("Graduate", 400, text.toUpperCase() + text),
-    loadGoogleFont("Gabriela", 400, text),
-    zh ? loadGoogleFont("Noto Serif TC", 700, text) : Promise.resolve(null),
-    zh ? loadGoogleFont("Noto Serif TC", 400, text) : Promise.resolve(null),
-  ]);
+  const fonts = await cardFonts(text, zh);
   // No Chinese face, no Chinese card: the English one beats boxes for glyphs.
-  if (zh && (!notoBold || !noto)) return renderShareCard(spec, { ...opts, locale: "en" });
+  if (!fonts) return renderShareCard(spec, { ...opts, locale: "en" });
 
-  const c: Ctx = { L, zh, locale, logo, seed, byline, rankLabel: tS("rankLabel") };
+  const c: Ctx = { L, S, zh, locale, logo, seed, byline, rankLabel: tS("rankLabel") };
   const body =
     spec.kind === "article" ? (
       <ArticleBody spec={spec} stats={stats} c={c} />
     ) : spec.kind === "glossary" ? (
       <GlossaryBody spec={spec} example={example} c={c} exampleTitle={tC("example")} />
     ) : (
-      <NewsBody spec={spec} kind={kind} c={c} />
+      <NewsBody spec={spec} c={c} />
     );
 
   const headerExtra =
     spec.kind === "glossary" && !L.portrait ? (
-      <div style={{ display: "flex", fontFamily: "Graduate", fontSize: L.tag * 0.9, letterSpacing: 2, color: navyA(0.55) }}>
+      <div style={{ display: "flex", fontFamily: "Graduate", fontSize: L.tag * 0.9, letterSpacing: 2, color: softInk(S, 0.6) }}>
         {`NO. ${String(spec.number).padStart(3, "0")}`}
       </div>
     ) : undefined;
 
-  const fonts = [
-    { name: "Graduate", data: graduate, weight: 400 as const },
-    { name: "Gabriela", data: gabriela, weight: 400 as const },
-    { name: "Noto Serif TC", data: noto, weight: 400 as const },
-    { name: "Noto Serif TC", data: notoBold, weight: 700 as const },
-  ].flatMap((f) => (f.data ? [{ ...f, data: f.data, style: "normal" as const }] : []));
+  return new ImageResponse(
+    (
+      <Card L={L} seed={seed} S={S} tag={tag} zh={zh} logo={logo} headerExtra={headerExtra} footerLeft={footerLeft}>
+        {body}
+      </Card>
+    ),
+    { width: L.W, height: L.H, fonts },
+  );
+}
+
+/**
+ * The site's default link preview (every page without its own image): the
+ * wordmark, the site's one-line description in the reader's language and the
+ * cap, on the article cards' parchment and frame.
+ */
+export async function renderSiteCard(locale: string): Promise<ImageResponse> {
+  const L = layout("og");
+  const zh = locale === "zh-TW";
+  const S = PAPERS.parchment;
+  const seed = seedFrom("site");
+  const tagline = (await getTranslations({ locale: zh ? "zh-TW" : "en", namespace: "Home" }))("subtitle");
+  const [logo, fonts] = await Promise.all([capLogo(S), cardFonts(`${SITE.name}${tagline}${siteHost()}`, zh)]);
+  if (!fonts) return renderSiteCard("en");
 
   return new ImageResponse(
     (
-      <Card L={L} seed={seed} kind={kind} tag={tag} zh={zh} logo={logo} headerExtra={headerExtra} footerLeft={footerLeft}>
-        {body}
-      </Card>
+      <Sheet L={L} S={S} seed={seed}>
+        <div style={{ display: "flex", flex: 1, alignItems: "center", gap: 40, padding: "0 8px" }}>
+          <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+            <div style={{ fontFamily: "Graduate", fontSize: 76, lineHeight: 1.05, letterSpacing: 2, color: S.ink }}>
+              {SITE.name.toUpperCase()}
+            </div>
+            <div style={{ display: "flex", marginTop: 22 }}>
+              <Rule color={S.rule} width={220} L={L} seed={seed + 21} />
+            </div>
+            <div style={{ display: "flex", fontFamily: prose(zh), fontSize: 32, lineHeight: 1.35, color: S.ink, marginTop: 22 }}>{tagline}</div>
+            <div style={{ fontFamily: "Gabriela", fontSize: 24, color: softInk(S, 0.55), marginTop: 28 }}>{siteHost()}</div>
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- Satori renders plain <img> */}
+          <img src={logo} width={250} height={250} alt="" />
+        </div>
+      </Sheet>
     ),
     { width: L.W, height: L.H, fonts },
   );

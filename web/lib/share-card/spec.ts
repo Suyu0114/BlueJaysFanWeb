@@ -20,8 +20,8 @@ export type ArticleCard = {
   slug: string;
   date: string; // YYYY-MM-DD
   title: Localized;
-  season: number;
-  stats: CardStatKey[]; // 2–3: "record" or any team metric key (022 views)
+  season?: number; // the stat cards' season (registry `card`); none = title only
+  stats: CardStatKey[]; // 0 or 2–3: "record" or any team metric key (022 views)
 };
 
 export type GlossaryCard = {
@@ -50,19 +50,19 @@ export type CardSpec = ArticleCard | GlossaryCard | NewsCard;
 
 export const CARD_KINDS: CardKind[] = ["article", "glossary", "news"];
 
-/** The spec for `kind` / `slug`, or null (unknown slug, no `card` config, bad file). */
+/** The spec for `kind` / `slug`, or null (unknown slug, bad file). An article without `card` gets a title-only card. */
 export async function loadCardSpec(kind: CardKind, slug: string): Promise<CardSpec | null> {
   if (!/^[a-z0-9-]+$/.test(slug)) return null;
   if (kind === "article") {
     const a = getArticle(slug);
-    if (!a?.card) return null;
+    if (!a) return null;
     return {
       kind,
       slug,
       date: a.date,
-      title: { en: a.title.en ?? slug, "zh-TW": a.title["zh-TW"] },
-      season: a.card.season,
-      stats: a.card.stats,
+      title: { en: a.title.en ?? a.title["zh-TW"] ?? slug, "zh-TW": a.title["zh-TW"] },
+      season: a.card?.season,
+      stats: a.card?.stats ?? [],
     };
   }
   try {

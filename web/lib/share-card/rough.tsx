@@ -1,5 +1,5 @@
 import rough from "roughjs";
-import { C, INK_FAINT } from "./tokens";
+import { C, INK_FAINT, alpha } from "./tokens";
 
 // Hand-drawn ink for the share cards, from the same rough.js the site draws its
 // ScorecardFrame with. rough.generator() needs no DOM: it returns path data that
@@ -38,15 +38,16 @@ export function seedFrom(s: string): number {
 /**
  * ScorecardFrame's double-line frame (navy outer + faint inner rule, same
  * roughness), with strokes scaled by `k`: a share image is shown at ~40% size
- * in a phone feed, where the site's 2.5px line would vanish.
+ * in a phone feed, where the site's 2.5px line would vanish. A dark paper
+ * passes papaya ink.
  */
-export function scorecardFrame(w: number, h: number, seed: number, k: number): InkPath[] {
+export function scorecardFrame(w: number, h: number, seed: number, k: number, ink: string = C.navy): InkPath[] {
   const inset = 5 * k;
   const inset2 = inset + 4 * k;
   return [
-    ...roughRect(inset, inset, w - 2 * inset, h - 2 * inset, { stroke: C.navy, strokeWidth: 2.5 * k, roughness: 1.4, seed }),
+    ...roughRect(inset, inset, w - 2 * inset, h - 2 * inset, { stroke: ink, strokeWidth: 2.5 * k, roughness: 1.4, seed }),
     ...roughRect(inset2, inset2, w - 2 * inset2, h - 2 * inset2, {
-      stroke: INK_FAINT,
+      stroke: ink === C.navy ? INK_FAINT : alpha(ink, 0.28),
       strokeWidth: 1 * k,
       roughness: 2,
       seed: seed + 1,

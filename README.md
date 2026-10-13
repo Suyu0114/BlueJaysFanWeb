@@ -49,7 +49,8 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 9. **Article tooling**
    - "PNG ↓" on every chart and every stat table (brand colours; footer = caption, the site wordmark, address, data sources and date) and "Copy table" on the stat tables (TSV that pastes into a spreadsheet as a real table, ending with a source line)
 10. **Articles** (`/articles`, nav "Articles") — long-form season write-ups in English and Chinese; their charts are the season page's own modules, embedded by season and drawn from live data, not screenshots. A draft becomes a page with the Claude Code project skill `/publish-article`, which fact-checks every number against the database (the database wins)
-   - Each article has its own share card (link previews on X / IG / LINE), share buttons, a public view count (shown from 50 views) and a "Join the discussion" link to its X post: the site has no comments on purpose
+   - Each article has its own share card (link previews on X / LINE / Facebook): the site's hand-drawn scorecard with 2–3 stat cards read live from the database. Plus share buttons, a public view count (shown from 50 views) and a "Join the discussion" link to its X post: the site has no comments on purpose
+   - Social cards for X and Instagram in both languages — article, "Baseball 101" (a numbered series explaining one stat with a Blue Jays example) and news — drawn by the same renderer, each kind on its own paper. The Claude Code project skill `/share-card` writes the spec, checks the numbers against the database, renders every size and drafts the captions
    - Discoverability: `sitemap.xml` + `robots.txt`, canonical + hreflang links, and Vercel Web Analytics for the author
 11. **About & credit**: `/about` (bio, contact card, how the data works, sharing credit) and a footer on every page with the author and contact links
    - `etl/season_report.py` writes a season-review data pack (team / batters / pitchers / movers / roster moves with every club / league context / five-season team trends vs MLB + definitions and caveats) to `reports/` (git-ignored)
@@ -154,14 +155,18 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   │                             # P12: compare, discipline, season-deltas, savant,
 │   │                             # team-season (pure) + team-season-data, export-svg, copy-table,
 │   │                             # site (brand + contacts), export-png, export-table,
+│   │                             # share-card/ (link previews + social cards: layouts, papers, rough.js frame, fonts, DB stats),
 │   │                             # P13: team-trends, team-metrics, team-grid, team-callouts,
 │   │                             # percentile-color, ordinal, team-ids,
 │   │                             # season-position (per-season / last-Jays position), team-position,
 │   │                             # season-format (season-module display helpers)
 │   ├── content/articles/         # index.ts (registry) + <slug>/{en,zh-TW}.mdx
+│   ├── content/cards/            # share card specs: glossary/<slug>.json, news/<slug>.json
+│   ├── app/api/dev/share-card/   # DEV ONLY share card PNG route (404 in production)
 │   ├── mdx-components.tsx        # article typography + figure components for MDX
 │   └── messages/{en,zh-TW}.json
 ├── .claude/skills/publish-article/  # Claude Code skill: article draft -> MDX + live figures + DB fact check
+├── .claude/skills/share-card/   # Claude Code skill: X / IG share cards (article, Baseball 101, news) + captions
 ├── .github/workflows/etl.yml     # two-job cron: ~09:00 ET full refresh + ~11:30 PM ET finals
 ├── ETL_update_flow.md            # backfill + manual re-run steps
 ├── CLAUDE.md                     # guidance for AI coding agents
@@ -328,6 +333,7 @@ What stays English in zh-TW (do **not** translate):
 | post-P13 | Season page by position: per-season positions + value by position (`023`), each position vs the MLB average + rank among 30 (`024`–`025`); departed players' last Jays position | done |
 | post-P13 | Articles: `/articles` (MDX, en + zh-TW) with live season figures; season modules extracted into components; runs-per-game-by-month chart on the season page | done |
 | post-P13 | Article reach: Vercel Web Analytics, public view counts (`026`), share cards, sitemap / robots / hreflang, share buttons + X discussion links (no comments) | done |
+| post-P13 | Share cards: hand-drawn link previews with live stat cards; X / Instagram cards for articles, Baseball 101 and news in en + zh-TW (`/share-card`) | done |
 
 ---
 
