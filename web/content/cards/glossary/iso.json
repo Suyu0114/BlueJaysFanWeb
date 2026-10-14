@@ -1,0 +1,18 @@
+{
+  "kind": "glossary",
+  "slug": "iso",
+  "date": "2026-10-14",
+  "number": 2,
+  "term": "ISO",
+  "aka": "Isolated Power",
+  "definition": {
+    "en": "A hitter's raw power: SLG minus AVG, so only extra bases count. A single adds nothing, a double 1, a triple 2, a home run 3.",
+    "zh-TW": "衡量打者的長打能力：SLG 減去 AVG，只算額外的壘數。一壘安打不加分，二壘安打 +1、三壘安打 +2、全壘打 +3。"
+  },
+  "scale": [
+    { "value": ".120", "label": { "en": "Light power", "zh-TW": "長打偏弱" } },
+    { "value": ".156", "label": { "en": "MLB average, 2026", "zh-TW": "2026 大聯盟平均" } },
+    { "value": ".200", "label": { "en": "Real power", "zh-TW": "長打很強" } }
+  ],
+  "example": { "team": true, "stat": "iso", "seasons": [2025, 2026] }
+}

@@ -5,7 +5,8 @@ import { CARD_KINDS, loadCardSpec } from "@/lib/share-card/spec";
 import type { CardKind } from "@/lib/share-card/tokens";
 
 // DEV ONLY: renders a share card PNG for a committed spec, for the /share-card
-// skill to save and post. GET ?kind=glossary&slug=wrc-plus&size=ig&locale=zh-TW.
+// skill to save and post. GET ?kind=glossary&slug=wrc-plus&size=ig&locale=zh-TW
+// (+ &part=N for kind=part: the article's Nth series part).
 // 404 outside `next dev`: on the live site this would let anyone mint images in
 // the site's branding. Specs are read only from content/ (article registry or
 // content/cards/<kind>/<slug>.json), never from the request.
@@ -17,10 +18,11 @@ export async function GET(req: NextRequest) {
   const slug = p.get("slug") ?? "";
   const size = (p.get("size") ?? "og") as CardSize;
   const locale = p.get("locale") ?? "en";
-  if (!kind || !CARD_KINDS.includes(kind) || !(size in CARD_SIZES) || !(routing.locales as readonly string[]).includes(locale)) {
-    return new Response("Bad request: kind, size (og | x | ig) and locale (en | zh-TW) are required", { status: 400 });
+  const part = Number(p.get("part") ?? 0);
+  if (!kind || !CARD_KINDS.includes(kind) || !(size in CARD_SIZES) || !(routing.locales as readonly string[]).includes(locale) || (kind === "part" && !(Number.isInteger(part) && part >= 1))) {
+    return new Response("Bad request: kind, size (og | x | ig) and locale (en | zh-TW) are required; kind=part also needs part=N", { status: 400 });
   }
-  const spec = await loadCardSpec(kind, slug);
-  if (!spec) return new Response(`No ${kind} card spec for "${slug}"`, { status: 404 });
+  const spec = await loadCardSpec(kind, slug, part || undefined);
+  if (!spec) return new Response(`No ${kind} card spec for "${slug}"${kind === "part" ? ` part ${part}` : ""}`, { status: 404 });
   return renderShareCard(spec, { size, locale });
 }

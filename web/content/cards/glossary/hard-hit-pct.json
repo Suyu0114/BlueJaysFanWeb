@@ -1,0 +1,18 @@
+{
+  "kind": "glossary",
+  "slug": "hard-hit-pct",
+  "date": "2026-10-14",
+  "number": 3,
+  "term": "Hard-hit%",
+  "aka": "Hard-hit rate (Statcast)",
+  "definition": {
+    "en": "The share of a hitter's batted balls that leave the bat at 95 mph or faster. Hard contact turns into hits, and extra bases, far more often.",
+    "zh-TW": "擊球初速達到 95 英里（約 153 公里）以上的擊球比例。打得越強，越容易變成安打和長打。"
+  },
+  "scale": [
+    { "value": "35%", "label": { "en": "Below average", "zh-TW": "低於平均" } },
+    { "value": "38.6%", "label": { "en": "MLB average, 2026", "zh-TW": "2026 大聯盟平均" } },
+    { "value": "50%", "label": { "en": "Elite", "zh-TW": "頂尖" } }
+  ],
+  "example": { "team": true, "stat": "hard_hit_pct", "seasons": [2025, 2026] }
+}

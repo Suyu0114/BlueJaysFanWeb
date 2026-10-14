@@ -107,7 +107,34 @@ const PLAYER_STAT = {
 
 export type PlayerStatKey = keyof typeof PLAYER_STAT;
 export type PlayerExample = { player: number; stat: PlayerStatKey; seasons: number[] };
-export type ResolvedExample = { name: string; label: string; points: { season: number; value: string }[] };
+/** The Jays as a team: a 022-view metric per season, with its MLB rank among 30. */
+export type TeamExample = { team: true; stat: MetricKey; seasons: number[] };
+export type ResolvedExample = {
+  name: string | null; // the player; null = the team (the card says so in its own words)
+  label: string;
+  points: { season: number; value: string; rank?: { text: string; rank: number } }[];
+};
+
+/** The team's value and MLB rank in each listed season (the 022 views, as the season page shows them). */
+export async function resolveTeamExample(ex: TeamExample, locale: string): Promise<ResolvedExample | null> {
+  const def = METRIC[ex.stat];
+  if (!def) return null;
+  const [tT, trend] = await Promise.all([getTranslations({ locale, namespace: "Team" }), getTeamTrend(ex.seasons)]);
+  const points = ex.seasons.flatMap((season) => {
+    const row = trend.clubs.find((r) => r.team_id === TORONTO_TEAM_ID && r.season === season);
+    const v = row?.[ex.stat] ?? null;
+    if (v == null) return [];
+    const rank = row?.[rankKey(ex.stat)];
+    return [
+      {
+        season,
+        value: formatMetric(v, def.format),
+        rank: rank == null ? undefined : { rank, text: ordinal(rank, locale, tiedRank(trend.clubs, season, ex.stat, rank)) },
+      },
+    ];
+  });
+  return points.length > 0 ? { name: null, label: metricLabel(def, tT), points } : null;
+}
 
 /** The player's value in each listed season, as a Blue Jay (web_player_season_stats). */
 export async function resolvePlayerExample(ex: PlayerExample): Promise<ResolvedExample | null> {

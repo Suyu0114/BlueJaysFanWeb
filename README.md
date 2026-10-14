@@ -161,7 +161,8 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   │                             # season-position (per-season / last-Jays position), team-position,
 │   │                             # season-format (season-module display helpers)
 │   ├── content/articles/         # index.ts (registry) + <slug>/{en,zh-TW}.mdx
-│   ├── content/cards/            # share card specs: glossary/<slug>.json, news/<slug>.json
+│   ├── content/cards/            # share card specs: part/<article>.json (an article's post series), glossary/<slug>.json, news/<slug>.json
+│   ├── content/social/queue.md   # social posting plan + status (X / Instagram)
 │   ├── app/api/dev/share-card/   # DEV ONLY share card PNG route (404 in production)
 │   ├── mdx-components.tsx        # article typography + figure components for MDX
 │   └── messages/{en,zh-TW}.json

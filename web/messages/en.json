@@ -774,7 +774,8 @@
   "ShareCard": {
     "source": "Source: {source}",
     "number": "No. {n}",
-    "example": "Blue Jays example"
+    "example": "Blue Jays example",
+    "teamExample": "The team"
   },
   "About": {
     "title": "About",

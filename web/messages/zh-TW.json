@@ -774,7 +774,8 @@
   "ShareCard": {
     "source": "資料來源：{source}",
     "number": "第 {n} 號",
-    "example": "藍鳥實例"
+    "example": "藍鳥實例",
+    "teamExample": "全隊"
   },
   "About": {
     "title": "關於",

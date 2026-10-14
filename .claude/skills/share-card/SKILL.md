@@ -1,17 +1,18 @@
 ---
 name: share-card
-description: Make social share cards (PNG) for Suyu's Jays Notes — an article's card, a "Baseball 101" glossary card that explains a stat, or a Blue Jays news card — in X (1200×675) and Instagram (1080×1440) sizes, in English and zh-TW, with every number read from the database, plus ready-to-paste X and Instagram captions. Use whenever the user wants a share image, 圖卡, 分享圖, IG 圖, X 圖 or a post for an article, a baseball term (名詞, 棒球 101, "explain wRC+") or a piece of Jays news (時事), or types /share-card, even if they never say PNG or card.
+description: Make social share cards (PNG) for Suyu's Jays Notes — an article's card and its series of takeaway posts, a "Baseball 101" glossary card that explains a stat, or a Blue Jays news card — in X (1200×675) and Instagram (1080×1440) sizes, with every number read from or checked against the database, plus ready-to-paste X and Instagram captions and the social queue updated. Use whenever the user wants a share image, 圖卡, 分享圖, IG 圖, X 圖, 貼文 or a post for an article (or to split one into posts), a baseball term (名詞, 棒球 101, "explain wRC+") or a piece of Jays news (時事), asks what to post next, or types /share-card, even if they never say PNG or card.
 ---
 
 # Share cards
 
 The site's hand-drawn scorecard (rough.js double frame, offset print shadow, papaya stat cards)
-as PNGs for social posts. One renderer draws every kind; a normal run only adds a spec and
-renders it.
+as PNGs for social posts. One renderer draws every kind; a normal run only adds a spec, renders
+it, writes the captions and updates the queue.
 
 | Kind | Tag | Paper | Spec lives in | Render |
 |---|---|---|---|---|
-| `article` | ARTICLE / 文章 | parchment | the registry entry's `card` field (`web/content/articles/index.ts`) | `og`, `x`, `ig` |
+| `article` | ARTICLE / 文章 | parchment | the registry entry's `card` field (`web/content/articles/index.ts`) | `og` (check), `x`, `ig` |
+| `part` | ARTICLE + `2 / 6` | parchment (it follows the article card in a carousel) | `web/content/cards/part/<article slug>.json`, every part in one file; the route takes `&part=N` | `x`, `ig` |
 | `glossary` | BASEBALL 101 / 棒球名詞 + No. 001 | steel | `web/content/cards/glossary/<slug>.json` | `x`, `ig` |
 | `news` | NEWS / 時事 + date stamp | navy | `web/content/cards/news/<YYYY-MM-DD-slug>.json` | `x`, `ig` |
 
@@ -23,15 +24,23 @@ renders it.
 
 The code: `web/lib/share-card/` (`card.tsx` layouts, `tokens.ts` papers, `rough.tsx` frame, `fonts.ts`,
 `stats.ts` DB readers, `spec.ts` spec types) and the dev route `web/app/api/dev/share-card/route.ts`.
+The plan and its status: **`web/content/social/queue.md`**.
 
 ## Ground rules
 
-- **The database is the source of truth**, as in `/publish-article`. The article and glossary cards
-  store DB *keys* and read the values when rendered. A news card's facts are written values, so
-  check every one against the DB first. A fact the DB doesn't hold (a trade, an injury, a quote)
-  gets its outlet as `source` and is listed in the report as not checkable.
-- **English first, then zh-TW.** Every card ships in both. Player names and baseball jargon (wRC+,
-  OPS, FIP, Statcast…) stay English in zh-TW; team names may be translated.
+- **The queue is the plan.** Read `web/content/social/queue.md` first: what's next, the Baseball 101
+  numbering, the platform rules. Update it at the end of every run.
+- **Per platform:** X is **English only** (the `x` card in English, English text). Instagram is
+  **English first, Chinese second**: a carousel with the English slide(s), then the zh-TW slide(s);
+  the caption in English, a `—` line, then Chinese. Render `ig` in both languages, `x` in English.
+- **The database is the source of truth**, as in `/publish-article`. Article, part `stats` and
+  glossary cards store DB *keys* and read the values when rendered. News and part `facts` are
+  written values: check every one against the DB first. A fact the DB doesn't hold (a trade, an
+  injury, a quote) gets its outlet as `source` and goes in the report as not checkable.
+- **An article's posts follow the article, but the DB wins.** If the DB disagrees with the article
+  text, the card uses the DB value; report the article sentence so the author can fix it.
+- **English first, then zh-TW.** Player names and baseball jargon (wRC+, OPS, FIP, Statcast…) stay
+  English in zh-TW; team and park names may be translated.
 - **The design lives only in `web/lib/share-card/`.** Colours are the `@theme` tokens re-declared as
   hex in `tokens.ts`. Don't hand-tune a single card. If a layout breaks on reasonable copy, fix
   `card.tsx` and re-render every kind (the site's link previews use it too).
@@ -40,11 +49,12 @@ The code: `web/lib/share-card/` (`card.tsx` layouts, `tokens.ts` papers, `rough.
 
 ## Workflow
 
-### 1. Pick the kind and gather the content
+### 1. Pick the work
 
-- `/share-card article <slug>`: the slug must be in the registry. Read the article's MDX to see what
-  its argument rests on.
-- `/share-card glossary <term>`: e.g. `wRC+`, `FIP`, `Barrel%`.
+- `/share-card` alone, or "what's next": the next `idea` / `spec` rows in the queue.
+- `/share-card article <slug>`: the article card. To split an article into posts, also write its
+  `part` file: one part per section, each a takeaway with its own numbers.
+- `/share-card glossary <term>`: the next number in the Baseball 101 plan, or a new term.
 - `/share-card news <what happened>`: the author's summary, a link or a date.
 
 Ask only when the kind or the story is unclear.
@@ -54,11 +64,12 @@ Ask only when the kind or the story is unclear.
 - Season / team numbers: `conda run -n MLBxBaZi python etl/season_report.py --season <S> --vs <S-1>`
   (SELECT-only, writes the git-ignored `reports/season-review-<S>/`; see `/publish-article` step 2
   for which file holds what).
-- Anything else: a read-only query through `etl/db.py`'s `connect()`. Check names in
-  `docs/DATA_MODEL.md` first, and read rates from the `015` / `022` / `025` views. Game results:
-  `web_games` (filter `game_type`). Standings: `web_standings` (GB columns are display text). A
-  Jays box-score line: `web_player_game_stats`.
-- Never create a venv; the project uses the conda env `MLBxBaZi`.
+- Anything else: a read-only query through `etl/db.py`'s `connect()`, from a script file that
+  first loads the repo-root `.env` (`load_dotenv`). Check names in `docs/DATA_MODEL.md` first and
+  read rates from the `015` / `022` / `025` views. Game results: `web_games` (filter `game_type`).
+  Standings: `web_standings` (GB columns are display text). By position: `web_player_position_splits`.
+- Never create a venv; the project uses the conda env `MLBxBaZi`. `conda run` rejects a multi-line
+  `python -c`: write the script to a file.
 
 Keep a claim → DB value → source table for the report.
 
@@ -66,59 +77,55 @@ Keep a claim → DB value → source table for the report.
 
 Types are in `web/lib/share-card/spec.ts`; the existing specs are working examples.
 
-**Article.** Add (or check) `card` on the registry entry:
+**Article.** `card` on the registry entry: 2–3 keys, `"record"` or a team metric key from
+`web/lib/team-metrics.ts` (`r_per_g`, `ops`, `iso`, `k_pct`, `hard_hit_pct`, `ra_per_g`, `era`,
+`fip`, `hr9`, `oaa`…). Each stat card shows the value, the change vs the prior season, the MLB rank
+among 30 and the prior season, all live. Without `card` an article gets a title-only card.
 
-```ts
-card: { season: 2026, stats: ["record", "r_per_g", "ra_per_g"] },
-```
-
-- 2–3 keys: `"record"` or a team metric key from `web/lib/team-metrics.ts` (`r_per_g`, `ops`,
-  `wrc_plus`, `k_pct`, `ra_per_g`, `era`, `fip`, `oaa`…; the same list `/publish-article` uses for
-  `TeamStats` highlights). Pick the numbers the article's argument rests on.
-- Each stat card shows the value, the change vs the prior season, the MLB rank among 30 and the
-  prior season's value, all from the `022` views and game results.
-- Without `card` an article still gets a title-only card.
-
-**Glossary** (`content/cards/glossary/<slug>.json`, slug = kebab-case term, `wrc-plus`):
+**Part** (`content/cards/part/<article slug>.json`, one file for the series):
 
 ```json
 {
-  "kind": "glossary", "slug": "wrc-plus", "date": "2026-10-11", "number": 1,
-  "term": "wRC+", "aka": "Weighted Runs Created Plus",
+  "kind": "part", "slug": "2026-season-review",
+  "series": { "en": "2026 season review", "zh-TW": "2026 賽季回顧" },
+  "season": 2026,
+  "parts": [
+    { "title": {…}, "text": {…}, "stats": ["k_pct", "iso", "hard_hit_pct"] },
+    { "title": {…}, "text": {…}, "facts": [{ "label": {…}, "value": "69 → 41" }] }
+  ]
+}
+```
+
+- One part per section, in the article's order. Up to 3 tiles each: `stats` (live team metrics,
+  like the article card) and/or `facts` (written values, checked in step 2; `"from → to"` works).
+- `title` about 40 English characters; `text` one or two sentences, about 150. On Instagram the
+  parts follow the article card in one carousel, so they share its paper.
+
+**Glossary** (`content/cards/glossary/<slug>.json`, slug = kebab-case term: `wrc-plus`, `hard-hit-pct`):
+
+```json
+{
+  "kind": "glossary", "slug": "iso", "date": "2026-10-14", "number": 2,
+  "term": "ISO", "aka": "Isolated Power",
   "definition": { "en": "…", "zh-TW": "…" },
-  "scale": [{ "value": "100", "label": { "en": "League average", "zh-TW": "聯盟平均" } }],
-  "example": { "player": 665489, "stat": "wrc_plus", "seasons": [2025, 2026] }
+  "scale": [{ "value": ".156", "label": { "en": "MLB average, 2026", "zh-TW": "2026 大聯盟平均" } }],
+  "example": { "team": true, "stat": "iso", "seasons": [2025, 2026] }
 }
 ```
 
-- `number`: the highest `number` in `content/cards/glossary/*.json` + 1. Never reuse or renumber a
-  number; it is the series' identity on the Instagram grid.
-- `term` keeps its case (wRC+, not WRC+). `aka` = what the abbreviation stands for (optional).
-- `definition`: one or two plain sentences a new fan follows. Keep the English to about 200
-  characters, or it won't fit the landscape card.
-- `scale`: 2–3 reading-guide rows (what's average, good, great). These are conventions, not DB
-  values, but they must agree with the league context in the fact pack.
-- `example` (optional): a Blue Jay whose numbers make the term concrete (a big change, an extreme).
-  `stat` is a key of `PLAYER_STAT` in `stats.ts`; `seasons` must be seasons he played for Toronto
-  (`web_player_season_stats` is Jays-only). Look up his `mlbam_id` in the DB.
+- `number`: from the queue's Baseball 101 plan (numbers follow posting order). Never reuse or
+  renumber a posted number.
+- `term` keeps its case (wRC+, not WRC+). `definition`: one or two plain sentences, about 200
+  English characters. `scale`: 2–3 reading-guide rows; an "MLB average" row uses the DB's value.
+- `example`, one of:
+  - a player: `{ "player": <mlbam_id>, "stat": "<PLAYER_STAT key>", "seasons": […] }`, seasons he
+    played for Toronto (`web_player_season_stats` is Jays-only);
+  - the team: `{ "team": true, "stat": "<team metric key>", "seasons": […] }`: value and MLB rank
+    per season from the `022` views.
 
-**News** (`content/cards/news/<date>-<short-slug>.json`):
-
-```json
-{
-  "kind": "news", "slug": "2026-09-23-eliminated", "date": "2026-09-23",
-  "headline": { "en": "…", "zh-TW": "…" },
-  "deck": { "en": "…", "zh-TW": "…" },
-  "facts": [{ "label": { "en": "Game 1 vs BAL", "zh-TW": "第一戰 vs BAL" }, "value": "L 2-4" }],
-  "source": "MLB Stats API"
-}
-```
-
-- `date` = the day it happened (it becomes the stamp). The `slug` starts with it.
-- `headline`: about 60 English characters at most. `deck` (optional): about 140.
-- `facts` (optional, up to 3): short values, each checked in step 2.
-- `source`: "MLB Stats API" when the DB backs every fact (its games and standings come from there),
-  otherwise the outlet you took it from.
+**News** (`content/cards/news/<date>-<short-slug>.json`): `headline` (about 60 English characters),
+optional `deck` (about 140), up to 3 `facts`, `source` ("MLB Stats API" when the DB backs every
+fact, else the outlet), `date` = the day it happened (the stamp).
 
 ### 4. Render
 
@@ -126,60 +133,66 @@ From `web/`, start `pnpm dev --port 3100` in the background and wait for "Ready"
 server per project. If it says another is running, use that one at its port (usually 3000) and
 leave it alone; it's the author's.
 
+Write each batch to `reports/share-cards/<batch>/` (git-ignored) in posting shape: `x/` (English)
+and `ig/` (carousel slides numbered in upload order, English first, then zh-TW). For example:
+
 ```bash
-OUT=reports/share-cards/<kind>/<slug>; mkdir -p "$OUT"   # from the repo root; git-ignored
-for size in x ig; do for loc in en zh-TW; do
-  curl -s -o "$OUT/$size-$loc.png" -w "%{http_code} $size-$loc\n" \
-    "http://localhost:3100/api/dev/share-card?kind=<kind>&slug=<slug>&size=$size&locale=$loc"
-done; done
+B="http://localhost:3100/api/dev/share-card"; OUT=reports/share-cards/<batch>
+curl -s -o "$OUT/x/part1.png" -w "%{http_code}\n" "$B?kind=part&slug=<article>&part=1&size=x&locale=en"
+curl -s -o "$OUT/ig/iso-1-en.png" -w "%{http_code}\n" "$B?kind=glossary&slug=iso&size=ig&locale=en"
 ```
 
-Add `og` to the sizes for an article. A 400 means a bad parameter. A 404 means no spec: the file
-name, `kind` and `slug` must all match, and an article must be in the registry. The route answers
-only under `next dev`; in production it returns 404 on purpose.
+- **400** = a bad parameter (`kind=part` also needs `part=N`). **404 with plain text** = no spec: the
+  file name, `kind` and `slug` must match, and an article must be in the registry.
+- **404 with Next's HTML "page could not be found"** after a `pnpm build`: stale build output.
+  Stop the dev server, delete `web/.next`, start it again.
+- The route answers only under `next dev`; in production it returns 404 on purpose.
 
 ### 5. Check every PNG
 
-Open each one with `Read`:
+Open each one with `Read` (a contact sheet of several, made with Pillow in the conda env, is fine
+for a first pass; open any doubtful one at full size):
 
-- **Fit:** the title / headline / definition doesn't run into the stat cards or the footer, and
-  nothing is cut off. Fix the copy first (shorter, or reworded so a CJK line doesn't break a
-  two-character word).
+- **Fit:** titles and text don't run into the tiles or the footer; nothing is cut off; tiles don't
+  wrap their values. Fix the copy first. English prose already keeps hyphenated words together
+  (`Hard-hit%`, `79-83`) and Chinese titles break at punctuation and word boundaries.
 - **Language:** a zh-TW card that came out in English means the Chinese font didn't download.
   Re-render it.
 - **Numbers:** they match the fact table.
-- **Contrast:** secondary text on the paper stays readable.
 
 Then stop the dev server if you started it, and confirm the port is free. A leftover `node` process
 can keep listening after the task stops; end that PID too.
 
-### 6. Report to the author
+### 6. Captions, posting page, queue
 
-Write in the language the author used (usually Traditional Chinese):
+- **X** (English, attach the `x` image): at most 280 *weighted* characters (each CJK character 2,
+  any link 23); count them before handing over. An article or part post carries the article URL
+  (`SITE.url` + `/en/articles/<slug>`): a post with an image shows no link card. Glossary / news
+  posts link a site page when one fits (`/en/season/<year>`, `/en/players/<id>`, `/en/standings`).
+  One hashtag, #BlueJays.
+- **Instagram** (the carousel): a hook line, 2–4 short lines in English, `—`, the same in Chinese,
+  then 5–8 hashtags (#BlueJays #TorontoBlueJays #MLB #Baseball, a topic tag, #藍鳥 #棒球). Articles
+  say "link in bio" / 連結在個人檔案.
+- Write `captions.md` and an `index.html` posting page in the batch folder: every image in upload
+  order, each caption with a copy button.
+- Update `web/content/social/queue.md`: rows → `ready`, file paths, anything that still needs the
+  author.
 
-1. **Files:** the PNG paths and the spec / registry change, not committed.
-2. **Facts:** the claim → DB → source table, and anything not checkable.
-3. **Post copy, English and zh-TW:**
-   - **X** (attach `x-<locale>.png`): at most 280 *weighted* characters. X counts each CJK
-     character as 2 and any link as 23, so a zh-TW post with a link holds about 125 Chinese
-     characters. Count before handing it over. An article post carries its URL (`SITE.url` +
-     `/<locale>/articles/<slug>`): a post with an image shows no link card, so the link goes in the
-     text. Posting the bare link instead shows the `og` card. Glossary / news posts link a site
-     page when one fits (`/season/<year>`, `/players/<id>`, `/standings`). One or two hashtags at
-     most (#BlueJays).
-   - **Instagram** (upload `ig-<locale>.png`): links in captions aren't clickable, so articles say
-     "link in bio" / 連結在個人檔案. A hook line, 2–4 short lines, then 5–10 hashtags on their own:
-     #BlueJays #TorontoBlueJays #MLB #Baseball plus the topic (#Sabermetrics for Baseball 101). The
-     zh-TW caption may add #藍鳥 #棒球; names and jargon stay English.
-4. **Article posts:** once posted, send back the X / Instagram post URL so the registry's `discuss`
-   field links "Join the discussion" to it.
+### 7. Report to the author
+
+In the language the author used (usually Traditional Chinese): the batch folder and posting page,
+the fact table (anything corrected or not checkable, and any article sentence the DB contradicts),
+what's ready by day, and what's next in the queue. After posting, the author sends back the post
+URLs: add them to the queue's **Links** / **Posted**, and for an article also to the registry's
+`discuss` field.
 
 ## Adding a kind
 
 1. `tokens.ts`: add it to `CardKind` and `KIND`. Each kind gets its **own paper**: one shared paper
    across kinds made the feed monotonous. Offer the author the spares in `PAPERS` first (`bulletin`
    pale red, `indexCard` pale blue-grey, `navyBoard`, `lava`). Renders of them are in
-   `reports/share-cards/paper-review/` if that folder is still on this machine.
+   `reports/share-cards/paper-review/` if that folder is still on this machine. (A kind that is
+   part of another, like `part`, shares its parent's paper.)
 2. `spec.ts`: the spec type, `CARD_KINDS`, and where its JSON lives.
 3. `card.tsx`: a body component with landscape and portrait layouts; render it from
    `renderShareCard`.
@@ -191,6 +204,9 @@ Satori (next/og) rules that have bitten before:
 - A `<div>` with more than one child needs `display: flex`. Write a number as `{String(n)}`.
 - Don't return a Fragment from a body component: Satori lays its children out in a row. Wrap them
   in a column flex `<div>`.
+- `flex: 1` on a card inside a *column* collapses its height to the padding: use it only in rows.
 - No CSS variables or `color-mix()`: use the hex and `mix()` in `tokens.ts`.
+- A glyph must be in the font subset: `allText()` in `card.tsx` lists the strings sent to Google
+  Fonts; a character the renderer adds itself (like U+2011) has to be listed there.
 - A portrait card with little content: let the body `justifyContent: center` share the space.
   The footer may wrap, with the URL on `marginLeft: auto`.

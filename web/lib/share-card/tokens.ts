@@ -70,7 +70,7 @@ export function rankTintHex(rank: number, of = 30, strength = 45): string {
  * papaya (frame, text, the cap's knock-out); stat / note cards stay light papaya
  * with navy text on every paper, so the rank and Δ chips keep their tints.
  */
-export type CardKind = "article" | "glossary" | "news";
+export type CardKind = "article" | "glossary" | "news" | "part";
 
 export type KindStyle = {
   paper: string; // the card surface
@@ -139,8 +139,13 @@ export const PAPERS = {
   lava: dark(C.lava, { accent: C.papaya, tagFill: C.papaya, tagInk: C.lava, rule: C.papaya, stamp: C.papaya }),
 } satisfies Record<string, Paper>;
 
+const ARTICLE_TAG = { en: "Article", "zh-TW": "文章" };
+
 export const KIND: Record<CardKind, KindStyle> = {
-  article: { ...PAPERS.parchment, tag: { en: "Article", "zh-TW": "文章" } },
+  article: { ...PAPERS.parchment, tag: ARTICLE_TAG },
   glossary: { ...PAPERS.steel, tag: { en: "Baseball 101", "zh-TW": "棒球名詞" } },
   news: { ...PAPERS.navy, tag: { en: "News", "zh-TW": "時事" } },
+  // An article's series parts are its own pages (they follow its card in an
+  // Instagram carousel), so they keep the article's paper and tag.
+  part: { ...PAPERS.parchment, tag: ARTICLE_TAG },
 };

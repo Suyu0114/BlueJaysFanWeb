@@ -4,8 +4,8 @@ import { getTranslations } from "next-intl/server";
 import { SITE, siteHost } from "@/lib/site";
 import { capLogo, cardFonts } from "./fonts";
 import { Ink, roughLine, roughRect, scorecardFrame, seedFrom } from "./rough";
-import { pick, type ArticleCard, type CardSpec, type GlossaryCard, type NewsCard } from "./spec";
-import { resolveCardStats, resolvePlayerExample, type CardStat, type ResolvedExample } from "./stats";
+import { pick, type ArticleCard, type CardSpec, type GlossaryCard, type NewsCard, type PartCard } from "./spec";
+import { resolveCardStats, resolvePlayerExample, resolveTeamExample, type CardStat, type ResolvedExample } from "./stats";
 import { C, KIND, PAPERS, SHADOW, TONE, navyA, rankTintHex, softInk, type KindStyle } from "./tokens";
 
 // The share-card renderer: the site's hand-drawn scorecard (parchment, rough.js
@@ -73,6 +73,10 @@ function fit(text: string, width: number, lines: number, sizes: number[]): numbe
 // ---- building blocks -----------------------------------------------------------------
 
 const prose = (zh: boolean) => (zh ? "Noto Serif TC" : "Gabriela");
+/** CJK titles break at spaces and punctuation only, so a two-character word never splits across lines. Titles only: body text may have no break point. */
+const titleBreak = (zh: boolean) => (zh ? { wordBreak: "keep-all" as const } : {});
+/** English prose: a hyphen between two letters or digits never ends a line ("Hard-hit%", "79-83"). Gabriela has U+2011; zh text keeps plain hyphens. */
+const nbHyphens = (s: string, zh: boolean) => (zh ? s : s.replace(/(?<=[A-Za-z0-9])-(?=[A-Za-z0-9])/g, "\u2011"));
 
 function Tag({ text, S, zh, L, seed }: { text: string; S: KindStyle; zh: boolean; L: Layout; seed: number }) {
   const fs = L.tag;
@@ -177,12 +181,13 @@ function StatCard({ stat, rankLabel, S, zh, L, grow }: { stat: CardStat; rankLab
 }
 
 /** A small papaya card: value over label (Baseball 101 scale, News facts). */
-function NoteCard({ value, label, S, zh, L, flex = true }: { value: string; label: string; S: KindStyle; zh: boolean; L: Layout; flex?: boolean }) {
+function NoteCard({ value, label, S, zh, L, flex = true, row = false }: { value: string; label: string; S: KindStyle; zh: boolean; L: Layout; flex?: boolean; row?: boolean }) {
   return (
     <div
       style={{
         display: "flex",
-        flexDirection: "column",
+        flexDirection: row ? "row" : "column",
+        ...(row ? { alignItems: "center", justifyContent: "space-between", gap: 16 * L.k } : {}),
         ...(flex ? { flex: 1 } : {}),
         background: S.card,
         border: `${1.5 * L.k}px solid ${S.cardBorder}`,
@@ -191,7 +196,7 @@ function NoteCard({ value, label, S, zh, L, flex = true }: { value: string; labe
       }}
     >
       <div style={{ fontFamily: "Gabriela", fontSize: L.value * 0.8, color: C.navy, lineHeight: 1.1 }}>{value}</div>
-      <div style={{ fontFamily: prose(zh), fontSize: L.sub, color: navyA(0.6), marginTop: 2 * L.k }}>{label}</div>
+      <div style={{ fontFamily: prose(zh), fontSize: row ? L.sub * 1.2 : L.sub, color: navyA(0.6), ...(row ? { textAlign: "right" } : { marginTop: 2 * L.k }) }}>{label}</div>
     </div>
   );
 }
@@ -310,8 +315,8 @@ function ArticleBody({ spec, stats, c }: { spec: ArticleCard; stats: CardStat[];
   const size = L.portrait ? fit(title, inner, 4, [80, 72, 64, 56]) : fit(title, inner, 2, [56, 50, 44, 40]);
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: size, lineHeight: 1.2, color: S.ink, marginTop: L.gap * (L.portrait ? 1.6 : 1) }}>
-        {title}
+      <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: size, lineHeight: 1.2, color: S.ink, marginTop: L.gap * (L.portrait ? 1.6 : 1), ...titleBreak(zh) }}>
+        {nbHyphens(title, zh)}
       </div>
       <div style={{ display: "flex", marginTop: L.gap * 0.8 }}>
         <Rule color={S.rule} width={L.portrait ? 260 : 190} L={L} seed={c.seed + 21} />
@@ -334,7 +339,7 @@ function ArticleBody({ spec, stats, c }: { spec: ArticleCard; stats: CardStat[];
   );
 }
 
-function GlossaryBody({ spec, example, c, exampleTitle }: { spec: GlossaryCard; example: ResolvedExample | null; c: Ctx; exampleTitle: string }) {
+function GlossaryBody({ spec, example, c, exampleTitle, teamName }: { spec: GlossaryCard; example: ResolvedExample | null; c: Ctx; exampleTitle: string; teamName: string }) {
   const number = `NO. ${String(spec.number).padStart(3, "0")}`;
   const { L, S, zh } = c;
   const ink = (a: number) => softInk(S, a);
@@ -344,6 +349,9 @@ function GlossaryBody({ spec, example, c, exampleTitle }: { spec: GlossaryCard; 
   const defWidth = L.portrait ? inner : inner * 0.58;
   const defSize = L.portrait ? fit(definition, defWidth, 7, [40, 36, 32]) : fit(definition, defWidth, 5, [27, 25, 23, 21]);
   const scale = spec.scale ?? [];
+  const ranked = example?.points.some((p) => p.rank) ?? false;
+  // Landscape scale rows: the value column fits the widest value (38.6% is wider than 100).
+  const scaleW = Math.max(L.value * 1.7, ...scale.map((s) => Math.ceil(textWidth(s.value, L.value * 0.72) * 1.15)));
 
   const exampleCard = example && (
     <div
@@ -359,16 +367,49 @@ function GlossaryBody({ spec, example, c, exampleTitle }: { spec: GlossaryCard; 
       <div style={{ fontFamily: zh ? "Noto Serif TC" : "Graduate", fontSize: L.label, letterSpacing: 1.5, color: navyA(0.55), textTransform: "uppercase" }}>
         {exampleTitle}
       </div>
-      <div style={{ fontFamily: "Gabriela", fontSize: L.sub * 1.25, color: C.navy, marginTop: 2 * L.k }}>{example.name}</div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10 * L.k, marginTop: 2 * L.k, fontFamily: "Gabriela", color: C.navy }}>
-        {example.points.map((p, i) => (
-          <div key={p.season} style={{ display: "flex", alignItems: "baseline", gap: 6 * L.k }}>
-            {i > 0 && <div style={{ fontSize: L.value * 0.6, color: navyA(0.45) }}>→</div>}
-            <div style={{ fontSize: L.sub, color: navyA(0.55) }}>{String(p.season)}</div>
-            <div style={{ fontSize: L.value * 0.75 }}>{p.value}</div>
-          </div>
-        ))}
+      <div style={{ fontFamily: example.name ? "Gabriela" : prose(zh), fontSize: L.sub * 1.25, color: C.navy, marginTop: 2 * L.k }}>
+        {example.name ?? `${teamName} · ${example.label}`}
       </div>
+      {ranked ? (
+        // The team: a small table — season over value over MLB rank chip, "MLB rank" as the row label.
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 12 * L.k, marginTop: 4 * L.k, fontFamily: "Gabriela", color: C.navy }}>
+          <div style={{ display: "flex", fontFamily: prose(zh), fontSize: L.sub * 0.9, color: navyA(0.55), paddingBottom: 1 * L.k }}>{c.rankLabel}</div>
+          {example.points.map((p, i) => (
+            <div key={p.season} style={{ display: "flex", alignItems: "center", gap: 12 * L.k }}>
+              {i > 0 && <div style={{ fontSize: L.value * 0.6, color: navyA(0.45) }}>→</div>}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                <div style={{ fontSize: L.sub, color: navyA(0.55) }}>{String(p.season)}</div>
+                <div style={{ fontSize: L.value * 0.75, lineHeight: 1.15 }}>{p.value}</div>
+                {p.rank && (
+                  <div
+                    style={{
+                      display: "flex",
+                      fontFamily: prose(zh),
+                      fontSize: L.sub * 0.9,
+                      background: rankTintHex(p.rank.rank),
+                      borderRadius: 4 * L.k,
+                      padding: `${1 * L.k}px ${5 * L.k}px`,
+                      marginTop: 2 * L.k,
+                    }}
+                  >
+                    {p.rank.text}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10 * L.k, marginTop: 2 * L.k, fontFamily: "Gabriela", color: C.navy }}>
+          {example.points.map((p, i) => (
+            <div key={p.season} style={{ display: "flex", alignItems: "baseline", gap: 6 * L.k }}>
+              {i > 0 && <div style={{ fontSize: L.value * 0.6, color: navyA(0.45) }}>→</div>}
+              <div style={{ fontSize: L.sub, color: navyA(0.55) }}>{String(p.season)}</div>
+              <div style={{ fontSize: L.value * 0.75 }}>{p.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -383,7 +424,7 @@ function GlossaryBody({ spec, example, c, exampleTitle }: { spec: GlossaryCard; 
         <Rule color={S.rule} width={L.portrait ? 260 : 170} L={L} seed={c.seed + 21} />
       </div>
       <div style={{ display: "flex", fontFamily: prose(zh), fontSize: defSize, lineHeight: 1.45, color: S.ink, marginTop: L.gap * 0.9 }}>
-        {definition}
+        {nbHyphens(definition, zh)}
       </div>
     </div>
   );
@@ -420,12 +461,66 @@ function GlossaryBody({ spec, example, c, exampleTitle }: { spec: GlossaryCard; 
               padding: `${5 * L.k}px ${12 * L.k}px`,
             }}
           >
-            <div style={{ fontFamily: "Gabriela", fontSize: L.value * 0.72, color: C.navy, width: L.value * 1.7 }}>{s.value}</div>
+            <div style={{ fontFamily: "Gabriela", fontSize: L.value * 0.72, color: C.navy, width: scaleW, flexShrink: 0 }}>{s.value}</div>
             <div style={{ fontFamily: prose(zh), fontSize: L.sub * 1.1, color: navyA(0.65) }}>{pick(s.label, c.locale)}</div>
           </div>
         ))}
         {exampleCard}
       </div>
+    </div>
+  );
+}
+
+/** A series part: series name, the takeaway, a sentence or two, then up to 3 tiles (live stat cards, then facts). */
+function PartBody({ spec, stats, c }: { spec: PartCard; stats: CardStat[]; c: Ctx }) {
+  const { L, S, zh } = c;
+  const title = pick(spec.title, c.locale);
+  const text = spec.text ? pick(spec.text, c.locale) : null;
+  const inner = L.W - 2 * L.m - 2 * L.pad[1];
+  const tSize = L.portrait ? fit(title, inner, 3, [84, 76, 68, 60]) : fit(title, inner, 2, [52, 46, 42, 38]);
+  const dSize = L.portrait ? fit(text ?? "", inner, 5, [38, 34, 30]) : fit(text ?? "", inner, 2, [25, 23, 21]);
+  const facts = spec.facts.map((f) => (
+    <NoteCard key={f.value + pick(f.label, "en")} value={f.value} label={pick(f.label, c.locale)} S={S} zh={zh} L={L} row={L.portrait} flex={!L.portrait} />
+  ));
+  const statCards = stats.map((s) => <StatCard key={s.label} stat={s} rankLabel={c.rankLabel} S={S} zh={zh} L={L} grow={!L.portrait} />);
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <div
+        style={{
+          display: "flex",
+          fontFamily: zh ? "Noto Serif TC" : "Graduate",
+          fontWeight: zh ? 700 : 400,
+          fontSize: L.tag * 0.9,
+          letterSpacing: 2,
+          color: softInk(S, 0.6),
+          textTransform: "uppercase",
+          marginTop: L.gap * (L.portrait ? 1.2 : 0.4),
+        }}
+      >
+        {pick(spec.series, c.locale)}
+      </div>
+      <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: tSize, lineHeight: 1.2, color: S.ink, marginTop: L.gap * 0.4, ...titleBreak(zh) }}>
+        {nbHyphens(title, zh)}
+      </div>
+      <div style={{ display: "flex", marginTop: L.gap * 0.7 }}>
+        <Rule color={S.rule} width={L.portrait ? 260 : 170} L={L} seed={c.seed + 21} />
+      </div>
+      {text && (
+        <div style={{ display: "flex", fontFamily: prose(zh), fontSize: dSize, lineHeight: 1.45, color: softInk(S, 0.85), marginTop: L.gap * 0.7 }}>{nbHyphens(text, zh)}</div>
+      )}
+      {L.portrait ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: L.gap, marginTop: L.gap * 1.4 }}>
+          {statCards}
+          {facts}
+        </div>
+      ) : (
+        statCards.length + facts.length > 0 && (
+          <div style={{ display: "flex", gap: L.gap, marginTop: L.gap * 1.1 }}>
+            {statCards}
+            {facts}
+          </div>
+        )
+      )}
     </div>
   );
 }
@@ -445,12 +540,12 @@ function NewsBody({ spec, c }: { spec: NewsCard; c: Ctx }) {
 
   const text = (
     <div style={{ display: "flex", flexDirection: "column", ...(L.portrait ? {} : { width: textW }) }}>
-      <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: hSize, lineHeight: 1.2, color: S.ink }}>{headline}</div>
+      <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: hSize, lineHeight: 1.2, color: S.ink, ...titleBreak(zh) }}>{nbHyphens(headline, zh)}</div>
       <div style={{ display: "flex", marginTop: L.gap * 0.8 }}>
         <Rule color={S.rule} width={L.portrait ? 260 : 170} L={L} seed={c.seed + 21} />
       </div>
       {deck && (
-        <div style={{ display: "flex", fontFamily: prose(zh), fontSize: dSize, lineHeight: 1.45, color: softInk(S, 0.85), marginTop: L.gap * 0.8 }}>{deck}</div>
+        <div style={{ display: "flex", fontFamily: prose(zh), fontSize: dSize, lineHeight: 1.45, color: softInk(S, 0.85), marginTop: L.gap * 0.8 }}>{nbHyphens(deck, zh)}</div>
       )}
     </div>
   );
@@ -487,7 +582,7 @@ function NewsBody({ spec, c }: { spec: NewsCard; c: Ctx }) {
 
 /** Every string on the card, for subsetting the fonts. */
 function allText(spec: CardSpec, extra: string[]): string {
-  return [JSON.stringify(spec), SITE.name, SITE.name.toUpperCase(), siteHost(), "→0123456789−+.%", ...extra].join("");
+  return [JSON.stringify(spec), SITE.name, SITE.name.toUpperCase(), siteHost(), "→0123456789−+.%\u2011", ...extra].join("");
 }
 
 export async function renderShareCard(spec: CardSpec, opts: CardOptions): Promise<ImageResponse> {
@@ -495,7 +590,7 @@ export async function renderShareCard(spec: CardSpec, opts: CardOptions): Promis
   const locale = opts.locale === "zh-TW" ? "zh-TW" : "en";
   const zh = locale === "zh-TW";
   const S = KIND[spec.kind];
-  const seed = seedFrom(`${spec.kind}:${spec.slug}`);
+  const seed = seedFrom(spec.kind === "part" ? `part:${spec.slug}:${spec.index}` : `${spec.kind}:${spec.slug}`);
 
   const [tA, tS, tC, logo] = await Promise.all([
     getTranslations({ locale, namespace: "Articles" }),
@@ -504,10 +599,14 @@ export async function renderShareCard(spec: CardSpec, opts: CardOptions): Promis
     capLogo(S),
   ]);
   const [stats, example] = await Promise.all([
-    spec.kind === "article" && spec.season && spec.stats.length > 0
+    (spec.kind === "article" || spec.kind === "part") && spec.season && spec.stats.length > 0
       ? resolveCardStats(spec.season, spec.stats, locale)
       : Promise.resolve([] as CardStat[]),
-    spec.kind === "glossary" && spec.example ? resolvePlayerExample(spec.example) : Promise.resolve(null),
+    spec.kind === "glossary" && spec.example
+      ? "team" in spec.example
+        ? resolveTeamExample(spec.example, locale)
+        : resolvePlayerExample(spec.example)
+      : Promise.resolve(null),
   ]);
 
   const byline = tA("byline", { author: SITE.author });
@@ -527,8 +626,9 @@ export async function renderShareCard(spec: CardSpec, opts: CardOptions): Promis
     footerLeft,
     tS("rankLabel"),
     tC("example"),
+    tC("teamExample"),
     ...stats.flatMap((s) => [s.label, s.label.toUpperCase(), s.value, s.delta?.text ?? "", s.rank?.text ?? "", s.prior ?? ""]),
-    example ? `${example.name}${example.label}${example.points.map((p) => `${p.season}${p.value}`).join("")}` : "",
+    example ? `${example.name ?? ""}${example.label}${example.points.map((p) => `${p.season}${p.value}${p.rank?.text ?? ""}`).join("")}` : "",
   ];
   const text = allText(spec, strings);
 
@@ -541,17 +641,22 @@ export async function renderShareCard(spec: CardSpec, opts: CardOptions): Promis
     spec.kind === "article" ? (
       <ArticleBody spec={spec} stats={stats} c={c} />
     ) : spec.kind === "glossary" ? (
-      <GlossaryBody spec={spec} example={example} c={c} exampleTitle={tC("example")} />
+      <GlossaryBody spec={spec} example={example} c={c} exampleTitle={tC("example")} teamName={tC("teamExample")} />
+    ) : spec.kind === "part" ? (
+      <PartBody spec={spec} stats={stats} c={c} />
     ) : (
       <NewsBody spec={spec} c={c} />
     );
 
+  const counter = (text: string) => (
+    <div style={{ display: "flex", fontFamily: "Graduate", fontSize: L.tag * 0.9, letterSpacing: 2, color: softInk(S, 0.6) }}>{text}</div>
+  );
   const headerExtra =
-    spec.kind === "glossary" && !L.portrait ? (
-      <div style={{ display: "flex", fontFamily: "Graduate", fontSize: L.tag * 0.9, letterSpacing: 2, color: softInk(S, 0.6) }}>
-        {`NO. ${String(spec.number).padStart(3, "0")}`}
-      </div>
-    ) : undefined;
+    spec.kind === "glossary" && !L.portrait
+      ? counter(`NO. ${String(spec.number).padStart(3, "0")}`)
+      : spec.kind === "part"
+        ? counter(`${spec.index} / ${spec.total}`)
+        : undefined;
 
   return new ImageResponse(
     (

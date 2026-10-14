@@ -165,7 +165,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   026_article_views.sql        # web_article_views: public view count per article slug (RLS on, no policies; written only by /api/views)
   027_rest_api_lockdown.sql    # every web_ object off the REST API: RLS on, views security_invoker, revoke anon/authenticated; idempotent — re-run after any new web_ table/view
 /.claude/skills/publish-article/ # project skill: draft (PDF/docx/md) -> registry + en/zh-TW MDX, live figures, DB fact check, verify
-/.claude/skills/share-card/   # project skill: article / Baseball 101 / news share cards (PNG, X + IG sizes, en + zh-TW) via the dev route, DB-checked, + X / IG captions
+/.claude/skills/share-card/   # project skill: article (+ series parts) / Baseball 101 / news share cards (PNG, X + IG sizes) via the dev route, DB-checked, + X / IG captions; reads and updates content/social/queue.md
 /.github/workflows/etl.yml     # daily cron (rolling 7-day window for current season)
 /ETL_update_flow.md            # backfill + manual re-run steps
 /web/                          # Next.js app
@@ -189,7 +189,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     about/page.tsx             # bio + contact card (#contact: LinkedIn / portfolio / email / X / Instagram when set) + how the data works + sharing credit; JSON-LD Person (no email)
   app/sitemap.ts               # /sitemap.xml: every page in both locales with hreflang alternates (static pages, articles, seasons, all-time roster players); revalidate 1 day
   app/robots.ts                # /robots.txt: allow all but /api/, points to the sitemap
-  app/api/dev/share-card/route.ts # DEV ONLY (404 unless `next dev`): ?kind=&slug=&size=og|x|ig&locale= -> PNG of a committed spec (registry `card` / content/cards JSON), for /share-card
+  app/api/dev/share-card/route.ts # DEV ONLY (404 unless `next dev`): ?kind=&slug=&size=og|x|ig&locale=[&part=N] -> PNG of a committed spec (registry `card` / content/cards JSON), for /share-card
   app/api/views/[slug]/route.ts # POST: +1 article view — registry slugs only, VERCEL_ENV=production only (dev / preview return the count), one parameterized upsert, nothing about the reader stored
   components/
     PlayerNav.tsx              # tabs with `available` prop (compare = >= 2 MLB seasons, P12; bazi slot reserved for v2)
@@ -295,12 +295,12 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     site.ts                    # SITE (name / author / url / contact links incl. x + instagram / email parts) + sourceLine() + xHandle(): the only place the brand and contacts live
     article-views.ts           # getArticleViews (one query, cached) + publicViews / MIN_PUBLIC_VIEWS (counts stay hidden below 50)
     share-card/                # link previews + social cards (next/og) — the only place their design lives
-      card.tsx                 # renderShareCard(spec, { size: og | x | ig, locale }): landscape / portrait layouts, kind tag + wordmark + cap, Sheet (paper + rough frame + print shadow), stat / note cards, date stamp; renderSiteCard (site default og)
+      card.tsx                 # renderShareCard(spec, { size: og | x | ig, locale }): landscape / portrait layouts, kind tag + wordmark + cap, Sheet (paper + rough frame + print shadow), stat / note cards, date stamp, series-part counter; renderSiteCard (site default og). English prose keeps hyphenated words together (U+2011); zh titles wordBreak keep-all
       tokens.ts                # @theme hex mirror + mix() / alpha(); PAPERS (parchment / steel / navy in use; spares indexCard / navyBoard / bulletin / lava) -> KIND = one paper per kind; Δ / rank tints (rankTintHex = rankTint)
       rough.tsx                # rough.generator() paths server-side: scorecardFrame (ScorecardFrame's params, stroke scaled; ink per paper), roughRect / roughLine, <Ink>
       fonts.ts                 # Google Fonts css2 subsets (Graduate / Gabriela / Noto Serif TC 400+700; no Chinese face -> English card), capLogo (knocked out on a dark paper); replaced lib/og.ts
-      spec.ts                  # CardSpec (article = registry entry, glossary / news = content/cards JSON) + loadCardSpec
-      stats.ts                 # DB values at render: resolveCardStats (022 views + game results, formatMetric / ordinal) / resolvePlayerExample (getSeasonPlayerStats)
+      spec.ts                  # CardSpec (article = registry entry; part / glossary / news = content/cards JSON) + loadCardSpec(kind, slug, part?)
+      stats.ts                 # DB values at render: resolveCardStats (022 views + game results, formatMetric / ordinal) / resolvePlayerExample (getSeasonPlayerStats) / resolveTeamExample (022 value + MLB rank per season)
     export-png.ts              # shared PNG back half: papaya paper, brick rule, credit footer (caption | wordmark in Graduate, host · data sources · date), 2x canvas, download
     export-svg.ts              # P12 M7 any <svg> -> PNG: resolves var(--color-*), inlines class paint, rasterises, then export-png
     export-table.ts            # headers + rows -> ledger-style table PNG on a canvas (navy header bar, papaya stripes; numeric columns right-aligned), then export-png. Flat: no per-cell tints
@@ -338,7 +338,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   content/articles/
     index.ts                   # registry: slug / date / dataAsOf / locales / title + summary per locale (no frontmatter); optional `card` = the share card's season + 2–3 stat keys
     <slug>/en.mdx, zh-TW.mdx   # article bodies, English first
-  content/cards/<kind>/<slug>.json # share card specs: glossary (numbered series) / news; copy in both languages, DB keys not values
+  content/cards/<kind>/<slug>.json # share card specs: part (an article's social series, every part in one file) / glossary (numbered series) / news; copy in both languages, DB keys not values (except checked `facts`)
+  content/social/queue.md      # social posting plan: platform rules (X English only; IG English then zh-TW carousel), launch schedule, Baseball 101 numbering, posted links; /share-card keeps it current
   mdx-components.tsx           # required by @next/mdx: article typography (headings in Gabriela — sentences, often CJK) + locale-aware internal links + the figure components
 ```
 
@@ -486,6 +487,6 @@ mirrored in CSS as `--ease-soft`. Don't hand-tune durations in components.
 
 **Articles (2026-10-06, post-P13):** `/articles` + `/articles/[slug]` (nav after Team). One `.mdx` per locale under `web/content/articles/<slug>/` (English first), listed in `content/articles/index.ts`. Figures are the season page's modules, extracted into components for this (`SeasonPanel`, `SeasonRecordStrip`, `MonthlyRecordPanel`, `SeasonSplitsPanel`) and read live by season, so an article's charts always match the site; the season page also gained the runs-per-game-by-month chart. New articles go through `/publish-article`. Reach (same day): Vercel Web Analytics, a public view count (`026`, shown from 50 views), share cards (`opengraph-image`), sitemap / robots / hreflang, and share + "Join the discussion" at the end of each article. The site deliberately has no comments; discussion lives on the article's X / Instagram post. Plan: `~/.claude/plans/pasted-content-id-0a6a-1-jazzy-abelson.md`.
 
-**Share cards (2026-10-13, post-P13):** the article link previews and the site default moved onto `lib/share-card` (rough.js frame drawn server-side, an article's 2–3 stat cards from the DB), and the same renderer makes social PNGs for three kinds — article, Baseball 101 (a numbered glossary series) and news — in `og` 1200×630 / `x` 1200×675 / `ig` 1080×1440 (3:4: whole in the IG feed and grid), en + zh-TW, through the dev route and the `/share-card` skill. Papers are light / mid / dark (parchment / steel / navy, the author's pick of four rendered schemes); the rejected papers are kept as spares in `PAPERS`. Baseball 101 and news are social-only for now; their specs (`content/cards/`) are shaped so site pages can read them later. Same plan file.
+**Share cards (2026-10-13, post-P13):** the article link previews and the site default moved onto `lib/share-card` (rough.js frame drawn server-side, an article's 2–3 stat cards from the DB), and the same renderer makes social PNGs for three kinds — article, Baseball 101 (a numbered glossary series) and news — in `og` 1200×630 / `x` 1200×675 / `ig` 1080×1440 (3:4: whole in the IG feed and grid), en + zh-TW, through the dev route and the `/share-card` skill. An article can also be split into a series of `part` cards (one takeaway each, on its paper): X posts them one by one, Instagram as one carousel after the article card. The posting plan lives in `web/content/social/queue.md` (X English only; Instagram English first, Chinese second). Papers are light / mid / dark (parchment / steel / navy, the author's pick of four rendered schemes); the rejected papers are kept as spares in `PAPERS`. Baseball 101 and news are social-only for now; their specs (`content/cards/`) are shaped so site pages can read them later. Same plan file.
 
 v2 (deferred): BaZi personality / fortune / matchup-prediction / injury-risk; daily WAR snapshots for strict same-date pace comparisons; player-vs-player `/compare` page (SprayChart `secondaryEvents` prop is already wired; the per-player season Compare tab shipped in P12). Team-level backlog after P13 (see `docs/P13_spec.md` §13): AL East rival overlay / AL average toggle, park-adjusted pitching (ERA- / FIP-), extra-inning record (needs innings per game), seasons before 2022.
