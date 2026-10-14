@@ -175,6 +175,10 @@ can keep listening after the task stops; end that PID too.
   say "link in bio" / 連結在個人檔案.
 - Write `captions.md` and an `index.html` posting page in the batch folder: every image in upload
   order, each caption with a copy button.
+- The author posts from a phone, so also publish the posting page as a private Artifact (the images
+  as `files`, `capabilities: {downloads: true}` for save buttons and a zip of each Instagram
+  carousel). Update the kit already linked in the queue (pass its `url`) instead of making a new
+  one, so the link stays the same.
 - Update `web/content/social/queue.md`: rows → `ready`, file paths, anything that still needs the
   author.
 

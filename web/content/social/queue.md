@@ -28,7 +28,8 @@ author posts by hand and sends back each post's URL, which goes in **Links**.
 
 One post a day. Launch day (D0) is set when the accounts are ready; then fill in **Date**.
 The review's six parts go on X one by one; on Instagram they are all in the D0
-carousel. Batch: `reports/share-cards/launch/`.
+carousel. Batch: `reports/share-cards/launch/`. Phone posting kit (private page, save
+buttons + captions): https://claude.ai/artifact/UH3ZzVzkFRCjKvrGLWd23U
 
 | Day | Date | Post | X | Instagram | Spec | Status | Links |
 |---|---|---|---|---|---|---|---|
