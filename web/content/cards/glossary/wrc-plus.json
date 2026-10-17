@@ -1,0 +1,18 @@
+{
+  "kind": "glossary",
+  "slug": "wrc-plus",
+  "date": "2026-10-11",
+  "number": 1,
+  "term": "wRC+",
+  "aka": "Weighted Runs Created Plus",
+  "definition": {
+    "en": "How many runs a hitter creates, next to the league average and adjusted for his home park. 100 is average; every point above or below is 1%.",
+    "zh-TW": "衡量打者創造得分的能力，與聯盟平均比較，並扣除主場球場的影響。100 是平均，每高或低 1 點就是好或差 1%。"
+  },
+  "scale": [
+    { "value": "100", "label": { "en": "League average", "zh-TW": "聯盟平均" } },
+    { "value": "115", "label": { "en": "Above average", "zh-TW": "高於平均" } },
+    { "value": "140", "label": { "en": "Great", "zh-TW": "頂尖" } }
+  ],
+  "example": { "player": 665489, "stat": "wrc_plus", "seasons": [2025, 2026] }
+}

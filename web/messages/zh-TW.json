@@ -771,6 +771,12 @@
     "followX": "在 X 追蹤 →",
     "followInstagram": "在 Instagram 追蹤 →"
   },
+  "ShareCard": {
+    "source": "資料來源：{source}",
+    "number": "第 {n} 號",
+    "example": "藍鳥實例",
+    "teamExample": "全隊"
+  },
   "About": {
     "title": "關於",
     "lede": "{site} 是一個多倫多藍鳥隊的數據網站，由 {author} 製作與撰寫。",

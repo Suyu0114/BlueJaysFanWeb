@@ -1,0 +1,72 @@
+{
+  "kind": "part",
+  "slug": "2026-season-review",
+  "series": { "en": "2026 season review", "zh-TW": "2026 賽季回顧" },
+  "season": 2026,
+  "parts": [
+    {
+      "title": { "en": "Plenty of contact, not much carry", "zh-TW": "碰得到球，卻打不遠" },
+      "text": {
+        "en": "The Jays struck out less than almost anyone, yet finished last in MLB in both ISO and Hard-hit%. The result: 4.00 runs a game, the fewest in the majors.",
+        "zh-TW": "問題不是揮空，而是打不遠：三振率聯盟第 2 低，ISO 和 Hard-hit% 卻都是聯盟第 30。結果是每場 4.00 分，全聯盟最少。"
+      },
+      "stats": ["k_pct", "iso", "hard_hit_pct"]
+    },
+    {
+      "title": { "en": "Where the home runs went", "zh-TW": "全壘打去哪了" },
+      "text": {
+        "en": "Home runs fell from 191 to 152, and the outfield lost 28 of them, about 70% of the drop. Newcomer Okamoto's 33 was the bright spot.",
+        "zh-TW": "全壘打從 191 支降到 152 支，外野就少了 28 支，約佔七成。新加入的 Okamoto 一人 33 轟，是唯一的亮點。"
+      },
+      "facts": [
+        { "label": { "en": "Team HR, 2025 → 2026", "zh-TW": "全隊 HR，2025 → 2026" }, "value": "191 → 152" },
+        { "label": { "en": "Outfield HR", "zh-TW": "外野 HR" }, "value": "69 → 41" },
+        { "label": { "en": "Okamoto HR (3B)", "zh-TW": "Okamoto HR（三壘）" }, "value": "33" }
+      ]
+    },
+    {
+      "title": { "en": "The middle of the order went quiet", "zh-TW": "中心打線熄火" },
+      "text": {
+        "en": "Springer and Guerrero Jr. lost about 77 runs of Off between them, roughly 60% of the lineup's 128-run decline.",
+        "zh-TW": "Springer 和 Guerrero Jr. 兩人的 Off 合計少了約 77 分，約佔全隊跌幅 128 分的六成。"
+      },
+      "facts": [
+        { "label": { "en": "Springer · Off", "zh-TW": "Springer · Off" }, "value": "+48.3 → +4.0" },
+        { "label": { "en": "Guerrero Jr. · Off", "zh-TW": "Guerrero Jr. · Off" }, "value": "+27.0 → −5.4" },
+        { "label": { "en": "Team Off", "zh-TW": "全隊 Off" }, "value": "+84.1 → −44.3" }
+      ]
+    },
+    {
+      "title": { "en": "Pitching: Cease and the bullpen held", "zh-TW": "投手：Cease 和牛棚撐住了" },
+      "text": {
+        "en": "Runs allowed fell from 721 to 694. Cease struck out 34.9% of hitters for 5.5 WAR and the back of the bullpen held; the back of the rotation didn't.",
+        "zh-TW": "失分從 721 降到 694。Cease 三振率 34.9%、WAR 5.5，牛棚後段也很穩；破口在輪值後段。"
+      },
+      "stats": ["ra_per_g", "fip", "hr9"]
+    },
+    {
+      "title": { "en": "The home edge disappeared", "zh-TW": "主場優勢消失了" },
+      "text": {
+        "en": "Of the 15 wins lost from 2025, 12 were lost at Rogers Centre; the road record barely moved. August, at 17-11, was the best month.",
+        "zh-TW": "比 2025 年少贏的 15 場裡，有 12 場在羅杰斯中心，客場戰績和去年差不多。8 月 17-11 是全年最好的月份。"
+      },
+      "facts": [
+        { "label": { "en": "Home, 2025 → 2026", "zh-TW": "主場，2025 → 2026" }, "value": "54-27 → 42-39" },
+        { "label": { "en": "Road", "zh-TW": "客場" }, "value": "40-41 → 37-44" },
+        { "label": { "en": "August, the best month", "zh-TW": "8 月，全年最佳" }, "value": "17-11" }
+      ]
+    },
+    {
+      "title": { "en": "Three questions for 2027", "zh-TW": "2027 的三個問題" },
+      "text": {
+        "en": "The run differential says 76-86; they went 79-83, yet 20-24 in one-run games. Next year comes down to three things:",
+        "zh-TW": "得失分差推算是 76-86，實際 79-83，一分差比賽卻是 20-24。明年要回答的三件事："
+      },
+      "facts": [
+        { "label": { "en": "Most HR by an outfielder (Lukes)", "zh-TW": "外野手最多 HR（Lukes）" }, "value": "10" },
+        { "label": { "en": "Guerrero Jr. · wRC+", "zh-TW": "Guerrero Jr. · wRC+" }, "value": "137 → 95" },
+        { "label": { "en": "Gausman · ERA", "zh-TW": "Gausman · ERA" }, "value": "3.59 → 4.38" }
+      ]
+    }
+  ]
+}
