@@ -1,6 +1,9 @@
 """Pull per-position OAA / FRV from Baseball Savant and upsert into
 web_fielding_frv. Source: pybaseball.statcast_outs_above_average.
 
+Each run replaces the season's rows, so a row whose position label is no longer
+on the leaderboard does not linger.
+
 Usage:
     python pull_fielding.py                 # current season (2025) by default
     python pull_fielding.py --season 2025
@@ -29,9 +32,9 @@ logging.basicConfig(
 )
 log = logging.getLogger("pull_fielding")
 
-# Position codes per Baseball Savant: 3=1B, 4=2B, 5=3B, 6=SS, 7=LF, 8=CF, 9=RF.
-# Pitchers (1) and catchers (2) are excluded from Savant's OAA leaderboard.
-POSITIONS: list[int] = [3, 4, 5, 6, 7, 8, 9]
+# Savant position code -> our label. Pitchers (1) and catchers (2) are excluded
+# from Savant's OAA leaderboard.
+POSITIONS: dict[int, str] = {3: "1B", 4: "2B", 5: "3B", 6: "SS", 7: "LF", 8: "CF", 9: "RF"}
 
 UPSERT_SQL = """
     insert into web_fielding_frv (
@@ -60,10 +63,14 @@ UPSERT_SQL = """
 
 def fetch(season: int) -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
-    for pos in POSITIONS:
+    for pos, label in POSITIONS.items():
         log.info("Fetching OAA/FRV season=%s pos=%s", season, pos)
         df = statcast_outs_above_average(year=season, pos=pos, min_att=1)
-        frames.append(df)
+        # Label rows with the leaderboard we asked for. Savant's
+        # primary_pos_formatted is the player's PRIMARY position (Varsho's LF
+        # row says CF), so keying on it collapsed a multi-position player's
+        # rows onto one label and the last position pulled overwrote the rest.
+        frames.append(df.assign(position=label))
     return pd.concat(frames, ignore_index=True)
 
 
@@ -86,7 +93,7 @@ def to_rows(df: pd.DataFrame, season: int) -> list[dict]:
             {
                 "mlbam_id": mlbam,
                 "season": season,
-                "position": str(r.get("primary_pos_formatted") or "").strip(),
+                "position": r["position"],
                 "frv": _to_int(r.get("fielding_runs_prevented")),
                 "oaa": _to_int(r.get("outs_above_average")),
                 "oaa_in_front": _to_int(r.get("outs_above_average_infront")),
@@ -132,6 +139,8 @@ def run(season: int) -> None:
         n = upsert_players(conn, seeds)
         log.info("Upserted %d player seeds (names only if blank)", n)
         with conn.cursor() as cur:
+            cur.execute("delete from web_fielding_frv where season = %s", (season,))
+            log.info("Deleted %d existing %s rows", cur.rowcount, season)
             cur.executemany(UPSERT_SQL, rows)
             log.info("Upserted %d fielding rows", cur.rowcount)
         conn.commit()

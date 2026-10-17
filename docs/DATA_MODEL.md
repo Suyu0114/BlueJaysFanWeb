@@ -36,7 +36,7 @@ the columns that **don't** exist so nobody assumes them.
 | [`web_player_team_season_stats`](#web_player_team_season_stats) | 324 | one row per (player, season, club) + season total (`team_id = 0`) — **every club** | MLB Stats API `/people/{id}/stats`; history one-shot + nightly (P12) |
 | [`web_player_position_splits`](#web_player_position_splits) | 253 | one row per (player, season, position batted at) — **Jays only** | MLB Stats API `statSplits` by position (`sitCodes`); nightly (post-P13, @ 2026-10-04) |
 | [`web_player_seasons`](#web_player_seasons) | 178 | one row per (player, season, team) | derived during ETL |
-| [`web_fielding_frv`](#web_fielding_frv) | 1,808 | one row per (player, season, position) | Baseball Savant OAA leaderboard |
+| [`web_fielding_frv`](#web_fielding_frv) | 3,647 | one row per (player, season, position) | Baseball Savant OAA leaderboard |
 | [`web_id_map`](#web_id_map) | 0 | one row per MLBAM id | Chadwick register (lazy cache) |
 | [`web_games`](#web_games) | 832 | one row per game_pk | MLB Stats API schedule |
 | [`web_player_game_stats`](#web_player_game_stats) | 7,716 | one row per (game, player, stat group) | MLB Stats API boxscore |
@@ -311,6 +311,10 @@ Conflict key: `(mlbam_id, season, position)`.*
 Per-position fielding value from Savant's OAA leaderboard. **FRV, not DRS** (DRS
 needs paid FanGraphs — see CLAUDE.md). A multi-position player gets multiple rows.
 **Pitchers and catchers are absent** — Savant's OAA leaderboard doesn't cover them.
+`position` = the leaderboard the row came from, **not** Savant's `primary_pos_formatted`,
+which carries the player's primary position on every leaderboard (Varsho's 2024 LF
+row says CF). Keying on it collapsed each multi-position player onto one row, the
+last position pulled winning, until 2026-10-17. Each run replaces the season's rows.
 
 | Column | Type | Null | Meaning |
 |---|---|---|---|
