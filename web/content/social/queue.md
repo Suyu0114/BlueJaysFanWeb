@@ -12,6 +12,9 @@ author posts by hand and sends back each post's URL, which goes in **Links**.
 - **Instagram: English first, Chinese second.** One carousel per post: the English
   slide(s), then the zh-TW slide(s). Caption in English, a `—` line, then Chinese,
   then hashtags. Links in captions aren't clickable: "link in bio".
+- **Instagram hashtags: at most 5** (Instagram's limit). Article / part / news:
+  `#BlueJays #TorontoBlueJays #MLB #藍鳥 #棒球`. Baseball 101 (one Jays tag):
+  `#Sabermetrics #BaseballStats #MLB #BlueJays #棒球`.
 - **Baseball 101 numbers follow posting order** and are fixed once a card is posted.
 - **Status:** `idea` → `spec` (spec written) → `ready` (rendered + captions,
   waiting for the author) → `posted` (with links).
@@ -36,7 +39,7 @@ buttons + captions): https://claude.ai/artifact/UH3ZzVzkFRCjKvrGLWd23U
 | D0 | | Article: The 2026 Blue Jays (+ link) | `x/d0-article.png` | carousel: article + parts 1–6 in English, then zh-TW (14 slides) | registry `card` + `content/cards/part/2026-season-review.json` | ready | |
 | D1 | | Baseball 101 No. 001 · wRC+ | `x/glossary-wrc-plus.png` | en + zh-TW | `content/cards/glossary/wrc-plus.json` | ready | |
 | D2 | | Part 1/6 · Plenty of contact, not much carry | `x/part1.png` | in D0 | part 1 | ready | |
-| D3 | | Baseball 101 No. 002 · ISO | `x/glossary-iso.png` | en + zh-TW | `content/cards/glossary/iso.json` | ready | |
+| D3 | | Baseball 101 No. 002 · ISO | `x/glossary-iso.png` | en + zh-TW | `content/cards/glossary/iso.json` | ready (revised 2026-10-17: both formulas, ÷ at-bats) | |
 | D4 | | Part 2/6 · Where the home runs went | `x/part2.png` | in D0 | part 2 | ready | |
 | D5 | | Baseball 101 No. 003 · Hard-hit% | `x/glossary-hard-hit-pct.png` | en + zh-TW | `content/cards/glossary/hard-hit-pct.json` | ready | |
 | D6 | | Part 3/6 · The middle of the order went quiet | `x/part3.png` | in D0 | part 3 | ready | |

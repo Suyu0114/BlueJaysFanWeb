@@ -64,9 +64,21 @@ function textWidth(s: string, size: number): number {
   return w;
 }
 
-/** The largest size from `sizes` whose text fits `width` in `lines` lines (10% slack for word wrap). */
+// Multi-line prose (Lines): "\n" starts a line, "1. " a numbered step indented STEP_INDENT em, LINE_GAP em between lines.
+const STEP = /^(\d+)\.\s+(.*)$/;
+const STEP_INDENT = 1.3;
+const LINE_GAP = 0.3;
+
+/** The largest size from `sizes` whose text fits `width` in `lines` lines (10% slack for word wrap), counting Lines' breaks, step indents and gaps. */
 function fit(text: string, width: number, lines: number, sizes: number[]): number {
-  for (const s of sizes) if (Math.ceil((textWidth(text, s) * 1.1) / width) <= lines) return s;
+  const parts = text.split("\n");
+  const count = (s: number) =>
+    parts.reduce((n, p) => {
+      const step = STEP.exec(p);
+      return n + Math.ceil((textWidth(step ? step[2] : p, s) * 1.1) / (step ? width - s * STEP_INDENT : width));
+    }, 0) +
+    ((parts.length - 1) * LINE_GAP) / 1.45;
+  for (const s of sizes) if (count(s) <= lines) return s;
   return sizes[sizes.length - 1];
 }
 
@@ -102,6 +114,29 @@ function Tag({ text, S, zh, L, seed }: { text: string; S: KindStyle; zh: boolean
       >
         {text}
       </div>
+    </div>
+  );
+}
+
+/** Prose split at "\n"; a line starting "1. " is a numbered step with a hanging indent. Font, size and colour come from the parent. */
+function Lines({ text, zh, size, width }: { text: string; zh: boolean; size: number; width: number }) {
+  const marker = size * STEP_INDENT;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: size * LINE_GAP }}>
+      {text.split("\n").map((line, i) => {
+        const step = STEP.exec(line);
+        return step ? (
+          // Explicit widths: in the portrait column `flex: 1` collapses to min-content.
+          <div key={i} style={{ display: "flex" }}>
+            <div style={{ display: "flex", width: marker, flexShrink: 0 }}>{`${step[1]}.`}</div>
+            <div style={{ display: "flex", width: width - marker }}>{nbHyphens(step[2], zh)}</div>
+          </div>
+        ) : (
+          <div key={i} style={{ display: "flex" }}>
+            {nbHyphens(line, zh)}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -347,7 +382,9 @@ function GlossaryBody({ spec, example, c, exampleTitle, teamName }: { spec: Glos
   const inner = L.W - 2 * L.m - 2 * L.pad[1];
   const termSize = L.portrait ? fit(spec.term, inner, 1, [190, 160, 130]) : fit(spec.term, inner * 0.58, 1, [118, 100, 84]);
   const defWidth = L.portrait ? inner : inner * 0.58;
-  const defSize = L.portrait ? fit(definition, defWidth, 7, [40, 36, 32]) : fit(definition, defWidth, 5, [27, 25, 23, 21]);
+  // Portrait: about 5 lines fit above the scale tiles and the example at 40px (7 overflowed it). Landscape: the
+  // column holds 5.5 at 27px; a single paragraph counts whole lines, so for it that's still 5.
+  const defSize = L.portrait ? fit(definition, defWidth, 5, [40, 36, 32]) : fit(definition, defWidth, 5.5, [27, 25, 23, 21]);
   const scale = spec.scale ?? [];
   const ranked = example?.points.some((p) => p.rank) ?? false;
   // Landscape scale rows: the value column fits the widest value (38.6% is wider than 100).
@@ -423,8 +460,8 @@ function GlossaryBody({ spec, example, c, exampleTitle, teamName }: { spec: Glos
       <div style={{ display: "flex", marginTop: L.gap * 0.9 }}>
         <Rule color={S.rule} width={L.portrait ? 260 : 170} L={L} seed={c.seed + 21} />
       </div>
-      <div style={{ display: "flex", fontFamily: prose(zh), fontSize: defSize, lineHeight: 1.45, color: S.ink, marginTop: L.gap * 0.9 }}>
-        {nbHyphens(definition, zh)}
+      <div style={{ display: "flex", flexDirection: "column", fontFamily: prose(zh), fontSize: defSize, lineHeight: 1.45, color: S.ink, marginTop: L.gap * 0.9 }}>
+        <Lines text={definition} zh={zh} size={defSize} width={defWidth} />
       </div>
     </div>
   );

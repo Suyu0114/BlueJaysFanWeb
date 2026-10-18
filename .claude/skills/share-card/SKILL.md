@@ -116,7 +116,9 @@ among 30 and the prior season, all live. Without `card` an article gets a title-
 - `number`: from the queue's Baseball 101 plan (numbers follow posting order). Never reuse or
   renumber a posted number.
 - `term` keeps its case (wRC+, not WRC+). `definition`: one or two plain sentences, about 200
-  English characters. `scale`: 2–3 reading-guide rows; an "MLB average" row uses the DB's value.
+  English characters. A stat with two formulas can list them: `\n` breaks a line, `1. ` starts a
+  numbered step (see `iso.json`). Spell out every step: "divide by at-bats" was the line the first
+  ISO draft left out. `scale`: 2–3 reading-guide rows; an "MLB average" row uses the DB's value.
 - `example`, one of:
   - a player: `{ "player": <mlbam_id>, "stat": "<PLAYER_STAT key>", "seasons": […] }`, seasons he
     played for Toronto (`web_player_season_stats` is Jays-only);
@@ -171,8 +173,9 @@ can keep listening after the task stops; end that PID too.
   posts link a site page when one fits (`/en/season/<year>`, `/en/players/<id>`, `/en/standings`).
   One hashtag, #BlueJays.
 - **Instagram** (the carousel): a hook line, 2–4 short lines in English, `—`, the same in Chinese,
-  then 5–8 hashtags (#BlueJays #TorontoBlueJays #MLB #Baseball, a topic tag, #藍鳥 #棒球). Articles
-  say "link in bio" / 連結在個人檔案.
+  then **at most 5 hashtags** (Instagram's limit). Article / part / news: `#BlueJays #TorontoBlueJays
+  #MLB #藍鳥 #棒球`. Baseball 101 is about the stat, so one Jays tag: `#Sabermetrics #BaseballStats
+  #MLB #BlueJays #棒球`. Articles say "link in bio" / 連結在個人檔案.
 - Write `captions.md` and an `index.html` posting page in the batch folder: every image in upload
   order, each caption with a copy button.
 - The author posts from a phone, so also publish the posting page as a private Artifact (the images

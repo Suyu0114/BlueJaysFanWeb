@@ -36,7 +36,7 @@ export type GlossaryCard = {
   number: number; // series number: "No. 001"
   term: string; // jargon, English in both languages, case kept (wRC+)
   aka?: string; // what the abbreviation stands for, English
-  definition: Localized; // one or two plain-language sentences
+  definition: Localized; // one or two plain-language sentences; "\n" breaks a line, a line starting "1. " is a numbered step
   scale?: { value: string; label: Localized }[]; // reading guide, e.g. 100 = average
   example?: PlayerExample | TeamExample; // a Blue Jay's, or the team's, value from the DB
 };
