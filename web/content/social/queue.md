@@ -25,7 +25,7 @@ author posts by hand and sends back each post's URL, which goes in **Links**.
 ## Accounts
 
 - X: `x.com/suyujaysnotes` (`SITE.links.x`). Being set up by the author.
-- Instagram: not open yet. When it is, set `SITE.links.instagram` in `web/lib/site.ts`.
+- Instagram: `instagram.com/suyu.baseball.notes` (`SITE.links.instagram`, opened 2026-10-14).
 
 ## Launch: 2026 season review + Baseball 101, first arc
 

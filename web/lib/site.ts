@@ -12,7 +12,7 @@ export const SITE = {
     portfolio: "https://suyu-portfolio.vercel.app",
     // null hides a profile everywhere (footer, About, JSON-LD, article discussion links).
     x: "https://x.com/suyujaysnotes" as string | null,
-    instagram: null as string | null, // e.g. "https://www.instagram.com/<handle>" once it exists
+    instagram: "https://www.instagram.com/suyu.baseball.notes/" as string | null,
   },
   // Assembled on the client (ContactEmail) so the address never appears as
   // plain "user@domain" text in the server HTML that scrapers read.
