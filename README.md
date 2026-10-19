@@ -136,7 +136,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   │   ├── compare/              # P12 Compare tab: controls, club splits, arc, arsenal compare, velo, zone grid
 │   │   ├── season/               # season page modules: panel, record strip, month by month (+ runs-per-game chart), splits,
 │   │   │                         # trend by game number, team stats vs MLB, value by position (+ vs MLB table), player stats table
-│   │   ├── article/              # figures (season modules for MDX), ArticleEnd / ArticleShare, ViewPing
+│   │   ├── article/              # figures (season modules + PlayerCards for MDX), StatTable (static article tables, row links), ArticleEnd / ArticleShare, ViewPing
 │   │   ├── team/                 # P13 team page: season strip, run sources, rank grid, trends,
 │   │   │                         # rotation/bullpen, ERA vs FIP, trajectory, splits, callouts, glossary
 │   │   ├── Exportable / TableExport  # "PNG ↓" on charts; "PNG ↓" + "Copy table" on tables (generic)

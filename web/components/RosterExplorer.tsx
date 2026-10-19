@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
-import { Link } from "@/i18n/navigation";
 import ScorecardFrame from "@/components/ScorecardFrame";
+import RosterCard from "@/components/RosterCard";
 import SlidingPill from "@/components/motion/SlidingPill";
 import { DUR, EASE_SOFT, SPRING_SOFT, STAGGER } from "@/lib/motion";
 import type { RosterMode, RosterPlayer } from "@/lib/players";
@@ -84,7 +83,7 @@ export default function RosterExplorer({
         <GroupedGrid players={filtered} t={t} />
       ) : (
         <div className="mt-8">
-          <CardGrid players={filtered} t={t} />
+          <CardGrid players={filtered} />
         </div>
       )}
     </div>
@@ -129,7 +128,7 @@ function GroupedGrid({
           <h2 className="mb-3 font-display text-sm uppercase tracking-wide text-navy/70">
             {t("sectionActive")}
           </h2>
-          <CardGrid players={active} t={t} />
+          <CardGrid players={active} />
         </section>
       )}
       {pastSeasons.map((s) => (
@@ -137,20 +136,14 @@ function GroupedGrid({
           <h2 className="mb-3 font-display text-sm uppercase tracking-wide text-navy/70">
             {t("sectionPast", { season: String(s) })}
           </h2>
-          <CardGrid players={pastGroups.get(s)!} t={t} />
+          <CardGrid players={pastGroups.get(s)!} />
         </section>
       ))}
     </div>
   );
 }
 
-function CardGrid({
-  players,
-  t,
-}: {
-  players: RosterPlayer[];
-  t: ReturnType<typeof useTranslations>;
-}) {
+function CardGrid({ players }: { players: RosterPlayer[] }) {
   // Each card reveals as it scrolls in (staggered across its row, so a long
   // all-time list fills in as you scroll rather than all at once). On a filter
   // change, `layout` slides the surviving cards to their new grid slots while
@@ -172,35 +165,7 @@ function CardGrid({
               default: { duration: DUR.enter, ease: EASE_SOFT, delay: (i % 4) * STAGGER },
             }}
           >
-            <ScorecardFrame seedKey={String(p.mlbam_id)} className="h-full">
-              <Link
-                href={`/players/${p.mlbam_id}`}
-                className="relative z-10 block h-full p-4"
-              >
-                {p.headshot_url && (
-                  <Image
-                    src={p.headshot_url}
-                    alt={p.name}
-                    width={120}
-                    height={120}
-                    unoptimized
-                    className="mx-auto rounded-full bg-papaya ring-1 ring-navy/15 transition-transform duration-500 group-hover:-rotate-2 group-hover:scale-105"
-                  />
-                )}
-                <div className="mt-3 text-center">
-                  <div className="font-medium text-navy">{p.name}</div>
-                  <div className="mt-1 text-xs text-navy/60">
-                    {p.position}
-                    {p.bats && p.throws && (
-                      <>
-                        {" · "}
-                        {t("bats")} {p.bats} / {t("throws")} {p.throws}
-                      </>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            </ScorecardFrame>
+            <RosterCard player={p} />
           </motion.li>
         ))}
       </AnimatePresence>

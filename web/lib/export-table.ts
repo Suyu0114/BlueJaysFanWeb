@@ -9,16 +9,13 @@
 
 import type { Cell } from "./copy-table";
 import { exportColors, exportFonts, renderBrandedPng, type BrandedPngOptions } from "./export-png";
+import { rightAlignedColumns } from "./table-align";
 
 const HEAD_H = 26;
 const ROW_H = 24;
 const PAD_X = 8; // cell side padding (px-2)
 const EDGE_X = 12; // outer cell padding (pl-3 / pr-3)
 const PARCHMENT = 8; // paper margin around the table
-
-// A column of numbers (".292", "24.5%", "+3.2", "10-11", "4.12 (3rd)") reads
-// right-aligned like the on-page tables; a column of words stays left.
-const NUMERIC = /^[-+−–]?[.\d]/;
 
 const text = (v: Cell) => (v == null ? "" : String(v).replace(/[\t\r\n]+/g, " ").trim());
 
@@ -41,11 +38,7 @@ export async function exportTableAsPng(headers: Cell[], rows: Cell[][], opts: Br
     for (const r of body) w = Math.max(w, measure.measureText(r[i]).width);
     return Math.ceil(w) + (i === 0 ? EDGE_X : PAD_X) + (i === last ? EDGE_X : PAD_X);
   });
-  const rightAligned = head.map((_, i) => {
-    if (i === 0) return false;
-    const filled = body.map((r) => r[i]).filter(Boolean);
-    return filled.length > 0 && filled.filter((v) => NUMERIC.test(v)).length * 2 >= filled.length;
-  });
+  const rightAligned = rightAlignedColumns(body, head.length);
 
   const tableW = widths.reduce((a, b) => a + b, 0);
   const tableH = HEAD_H + body.length * ROW_H;

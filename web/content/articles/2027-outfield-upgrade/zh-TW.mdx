@@ -1,0 +1,159 @@
+## 缺口：外野打不出全壘打
+
+2026 年藍鳥外野不是完全不會打，而是打不遠。外野的 OPS 是 .707，只比 MLB 每隊外野平均（.723）低一點，30 隊排第 19；但全壘打只有 41 支，每隊平均是 58 支，並列第 29。
+
+<PositionVsMlb season={2026} />
+
+DH 的洞更深：OPS .644，排第 28。所以這個冬天最划算的補強，是一位能守角落外野、也能當 DH 的強打者，一個人補兩個洞。（George 我還是愛你 💙）
+
+## 2026 誰在守外野
+
+今年沒有一位藍鳥外野手打出 11 支以上的全壘打。打席最多的 Nathan Lukes 是聯盟平均水準的打者（wRC+ 102，100 為聯盟平均），其他人不是樣本太小，就是低於平均。
+
+<StatTable
+  title="2026 年藍鳥外野手"
+  file="2026-blue-jays-outfielders"
+  links={["/players/664770", "/players/662139", "/players/664702", "/players/660821", "/players/703520", "/players/682818", "/players/676914"]}
+  headers={["球員", "PA", "OPS", "wRC+", "HR", "WAR", "備註"]}
+  rows={[
+    ["Nathan Lukes", "450", ".714", "102", "10", "2.2", "主守 RF，Def +5.2"],
+    ["Daulton Varsho", "365", ".682", "91", "7", "1.1", "季中交易到 Astros"],
+    ["Myles Straw", "330", ".646", "83", "3", "0.7", "2027 是 $8MM 球團選擇權"],
+    ["Jesús Sánchez", "299", ".734", "105", "8", "-0.2", "目前不在 26 人名單"],
+    ["Brett Bateman", "181", ".826", "138", "2", "1.9", "小樣本，但打得最好"],
+    ["Yohendrick Piñango", "180", ".702", "97", "5", "-0.1", ""],
+    ["Davis Schneider", "156", ".625", "84", "5", "-0.2", ""],
+  ]}
+  note="藍鳥隊內成績，外野至少 30 個打席的球員。Def 是守備加上守位調整的得分（FanGraphs，經 MLB Stats API）。"
+/>
+
+Varsho 走後 🥲，中外野的守備缺口是由 Straw 和 Bateman 補上。Straw 的守備穩，但打擊點不起來；藍鳥要在世界大賽後決定是否執行他 $8MM 的選擇權（不執行要付 $1.75MM 買斷金）。真正的問題是：今年能打 20 轟的外野手，都在傷兵名單上。
+
+表上沒有 Anthony Santander：他開季前左肩盂唇撕裂，整季沒有在大聯盟出賽，9 月 9 日才到 Buffalo 復健。他 2024 年在 Orioles 打 44 轟，2025 年加盟藍鳥後 221 個打席只有 6 轟、OPS .565。他能不能回到 2024 年的樣子，是外野最大的變數 🙂‍↕️
+
+另一位要等的是 Addison Barger。他 2025 年 502 個打席打出 21 轟、wRC+ 107，三壘和右外野都守（右外野 201 個打席、10 轟）。2026 年他開季打了 8 場就因左腳踝扭傷進傷兵名單，5 月 9 日復出只打一場，又因右手肘發炎回到傷兵名單，之後整季沒有再上場，只有 28 個打席。他如果健康，就是一位有 20 轟能力、能守右外野的打者。
+
+DH 這邊也要補人：George Springer（2027 年 37 歲）合約到期，今年 517 個打席 wRC+ 105、15 轟。他如果離開，DH 的洞會更大 😭
+
+<PlayerCards ids={[623993, 680718, 543807]} />
+
+## 自由市場第一梯隊：真正能改變打線的三個人
+
+接下來看自由市場。今年的外野自由球員裡，只有三位能直接補上「20 支全壘打」這個缺口：兩位是 32 歲的穩定強打，一位是來自日本職棒的未知數。
+
+<StatTable
+  title="自由市場第一梯隊"
+  file="2026-27-free-agent-outfielders-top-tier"
+  headers={["球員", "2027 年齡", "2026 球隊", "PA", "AVG / OBP / SLG", "HR", "SB", "wRC+", "Def", "WAR"]}
+  rows={[
+    ["Randy Arozarena", "32", "SEA", "670", ".281 / .381 / .484", "26", "26", "151", "-11.7", "5.5"],
+    ["Seiya Suzuki", "32", "CHC", "634", ".270 / .368 / .473", "26", "3", "134", "+1.5", "4.6"],
+    ["Teruaki Sato", "28", "阪神（NPB）", "614", ".306 / .383 / .609", "39", "8", "—", "—", "—"],
+  ]}
+  note="2026 年例行賽全季成績（轉隊的球員為跨隊合計），來自 MLB Stats API。Sato 為 NPB 成績（Baseball-Reference），不能直接和 MLB 數字比較。"
+/>
+
+**Randy Arozarena**：連續六季 20 轟 20 盜，2026 是他生涯最好的一年（wRC+ 151、WAR 5.5）。缺點是年紀和守備：左外野 Def -11.7、OAA -5（OAA 是比平均守備員多或少守下的出局數）。對藍鳥來說，他可以守左外野，也可以後幾年慢慢移到 DH。
+
+**Seiya Suzuki**：第四季連續 20 轟以上（2025 年 32 轟），上壘率 .368。跑壘不如 Arozarena，但右外野的守備是正值（Def +1.5、OAA +5）。打擊比 Arozarena 差一點，整體層次很接近。
+
+**Teruaki Sato**：預計會被阪神 posting。今年在 NPB 614 個打席打 .306 / .383 / .609、39 轟（去年 40 轟），是中央聯盟 MVP 的熱門人選。他最年輕，力量最大，風險也最大：擊球準度（hit tool）有疑慮，今年三振率 26.7%（614 個打席 164 次三振），而且近幾季守三壘比守右外野多。NPB 數據不能直接換算成 MLB 的成績。
+
+Sato 還有兩個問號：NPB 比較難打全壘打，所以他的 39 轟比帳面更有份量，但最近幾位從 NPB 過來的強打者，到大聯盟後三振率都明顯上升；另外他近年主要守三壘，對重視守備的藍鳥來說比較像三壘或 DH 的選項。這兩點我會另外寫一篇，和其他日職強打者一起比較。
+
+> Arozarena 和 Suzuki 大概都會收到並拒絕 qualifying offer。簽下這類球員，藍鳥要付出選秀順位。
+
+## 第二梯隊與便宜選項
+
+如果不想花大錢，市場上還有四種人：會打但守備弱的全職打者、專打單邊投手的平台打者、高風險高上限的反彈人選，以及守備好但打不動的中外野手。
+
+不過藍鳥這幾年很看重守備：球隊 OAA 在 2022–2026 年五季都排在 30 隊前 12 名，2024 年並列第 5、2025 年第 7。2023 年球季前換來 Varsho、簽下 Kevin Kiermaier，也是以守備為主的補強。所以下表的 Def 要和打擊一起看：Bauers（-14.5）、Conforto（-8.2）這類守備明顯是負值的人，在藍鳥比較可能當 DH，而不是外野主力。
+
+<StatTable
+  title="第二梯隊與便宜選項"
+  file="2026-27-free-agent-outfielders-second-tier"
+  headers={["球員", "2027 年齡", "2026 球隊", "PA", "HR", "wRC+", "Def", "WAR", "類型"]}
+  rows={[
+    ["Jake Bauers", "31", "MIL", "578", "26", "143", "-14.5", "3.6", "全職打者，主守一壘"],
+    ["Ian Happ", "32", "CHC", "636", "24", "107", "+1.7", "2.6", "全職左外野"],
+    ["Randal Grichuk", "35", "NYY / CWS", "280", "15", "139", "-6.5", "1.7", "平台：打左投"],
+    ["Michael Conforto", "34", "CHC", "314", "15", "119", "-8.2", "0.8", "平台：左打"],
+    ["Tyrone Taylor", "33", "NYM / CHC", "241", "11", "127", "+0.3", "1.5", "平台：右打"],
+    ["Luis Robert Jr.", "29", "NYM / BAL", "230", "11", "97", "-0.2", "0.5", "高風險高上限"],
+    ["Trent Grisham", "30", "NYY", "484", "18", "98", "-6.8", "0.7", "反彈人選"],
+    ["Cedric Mullins", "32", "TB", "502", "15", "76", "+7.4", "1.1", "中外野守備"],
+    ["Daulton Varsho", "30", "TOR / HOU", "526", "12", "78", "+1.4", "0.8", "中外野守備（舊面孔）"],
+  ]}
+  note="2026 年例行賽全季成績（轉隊的球員為跨隊合計），來自 MLB Stats API。名單與分類參考 MLB Trade Rumors 的自由球員預覽。"
+/>
+
+**全職打者**：Jake Bauers 是今年最大的驚喜，季後賽還拿下國聯冠軍賽 MVP 🫡。他在例行賽幫 Brewers 打出 wRC+ 143、保送率 16%，xwOBA .371（依擊球品質推算的打擊價值）是這份名單最高的。但他主守一壘，守外野要打折扣，對藍鳥比較像角落外野加 DH 的人選。Ian Happ 今年打擊下滑（打擊率 .218），但耐用、保送多，左外野守備是正值。
+
+**平台打者**：藍鳥的 DH 和角落外野可以用兩個便宜的人分工。前藍鳥球員 Randal Grichuk 今年 280 個打席打出 15 支全壘打、wRC+ 139，是專門對付左投的右打；左打的 Michael Conforto 可以配右投。
+
+**高風險高上限**：Luis Robert Jr. 在 2023 年打過 38 轟 20 盜，但過去三季只累積 1086 個打席。他先要等 Orioles 決定是否執行 $20MM 的球團選擇權（買斷 $2MM）。Trent Grisham 2025 年打了 34 轟，今年只剩 18 轟；他已經收過一次 qualifying offer，這次不會再收到，簽他不用付選秀順位。不過藍鳥手上已經有 Santander 這個反彈賭注，我想不必再押第二個了 😵
+
+**中外野守備**：Cedric Mullins 今年 OAA +11，是名單上守備最好的外野手，但 wRC+ 只有 76。Varsho 也在市場上：他今年帶著手腕傷打出生涯最差的一季，還為此動了小手術。這兩人都補不了長打，只能解決中外野守備。也希望 Varsho 的手腕快快好起來。
+
+## 自家農場：有深度，但沒有現成的強打
+
+藍鳥農場明年能提供的是外野備援，不是 25 支全壘打的主力。MLB Pipeline 季前的藍鳥 Top 30 裡有五位外野手：離大聯盟最近的兩位是上壘型的打者，守備和速度最好的兩位還在 Single-A。
+
+<StatTable
+  title="藍鳥 Top 30 新秀裡的外野手"
+  file="2026-blue-jays-outfield-prospects"
+  headers={["球員", "Top 30", "2027 年齡", "2026 層級", "PA", "AVG / OBP / SLG", "HR", "SB", "K%"]}
+  rows={[
+    ["RJ Schreck", "9", "26", "AAA Buffalo", "259", ".220 / .378 / .395", "8", "4", "18.9%"],
+    ["Yohendrick Piñango", "10", "25", "AAA Buffalo", "308", ".269 / .351 / .455", "11", "5", "25.0%"],
+    ["Jake Cook", "11", "23", "A Dunedin", "328", ".250 / .367 / .371", "5", "21", "28.4%"],
+    ["Victor Arias", "12", "23", "AA New Hampshire", "351", ".226 / .277 / .379", "10", "9", "23.6%"],
+    ["Blaine Bullard", "15", "20", "A Dunedin", "477", ".245 / .328 / .365", "8", "37", "27.3%"],
+  ]}
+  note="排名：MLB Pipeline 2026 年季前版（3 月 2 日）。成績：MLB Stats API，該層級的例行賽。K% 是三振率。"
+/>
+
+- **最接近大聯盟**：Piñango 今年已經在大聯盟打了 180 個打席（wRC+ 97）；Schreck 保送率 18% 很高，但長打不足。兩人都是備援型，不是中心打者。
+- **未來的中外野**：Jake Cook 的跑速是 80 分、守備 65 分（20–80 的球探評分，50 是平均），是系統裡工具最好的外野手，但今年才在 Single-A，還帶過腳筋傷。
+- **等待反彈**：Victor Arias 去年秋天做了肩膀手術，今年 Double-A 的 OBP 只有 .277。
+
+不在 Top 30、但今年打得有力量的，都在 Double-A：
+
+- **Jace Bohrofen**：197 個打席 13 轟、OPS .931，但三振率 34%。
+- **Eddie Micheletti Jr.**：401 個打席 14 轟、OPS .801，三振率只有 17.5%，打擊最平衡。
+- **Alexis Hernandez**：在 High-A 打出 14 轟、OPS .895，升上 Double-A 後打 .341。
+
+已經上來的 Brett Bateman 是今年農場最好的消息（大聯盟 wRC+ 138），但只有 181 個打席、2 支全壘打。小聯盟數據不能直接換算，2026 年 AAA 全壘打王是 35 支，打者環境偏高。
+
+## 時程與變數：12/1 是分水嶺
+
+這個休賽季最關鍵的日期是 12/1：勞資協議在這天到期，大型簽約很可能都擠在這之前。
+
+1. **世界大賽後數日：選擇權、FA 申請與 qualifying offer。** 球團決定選擇權，例如 Straw（$8MM）和 Robert Jr.（$20MM）；頂級自由球員可能收到 qualifying offer，例如 Arozarena、Suzuki。
+2. **11/1 – 12/15：NPB posting 期間。** Sato 如果被阪神 posting，有 45 天可以和大聯盟球隊談約。
+3. **12/1：勞資協議到期（美東時間 23:59）。** 多數報導預期球團會停擺（lockout）。2021 年藍鳥就是在上次停擺前幾天簽下 Gausman。
+4. **停擺期間：40 人名單的簽約與交易全部凍結。** 上次停擺是 2021 年 12 月 2 日到 2022 年 3 月 10 日，Suzuki 的 posting 談判期也被暫停。
+5. **新協議之後：市場重開。** 還沒簽約的自由球員會在春訓前集中簽下。
+
+如果真的停擺，Sato 的 posting 談判期也可能像 2021 年的 Suzuki 一樣被暫停，藍鳥的外野補強可能要等到春訓前才有結果。
+
+## 結論：先簽一位強打，再用農場補深度
+
+外野缺的是全壘打，而農場明年給不出 20 轟的打者，所以補強還是要靠自由市場。三條路線的取捨：
+
+1. **大合約**：Arozarena 或 Suzuki；照藍鳥重視守備的習慣，Suzuki（Def +1.5）比 Arozarena（Def -11.7）更合適。兩人都能守角落外野，年紀大了也能轉 DH，一個人補外野長打和 Springer 留下的 DH 兩個洞。代價是 32 歲的多年約，加上 qualifying offer 的選秀順位。Sato 最年輕、力量最大，但 NPB 轉 MLB 的風險也最大：三振率可能大幅上升，守位也未必是外野。
+2. **平台組合**：Grichuk 打左投、Conforto 打右投，輪流守角落外野和 DH。兩人今年合計約 600 個打席、30 轟，產量不輸一位全職強打；風險是年紀（35、34 歲）和守備（Def 都是負的）。
+3. **農場與內部**：Piñango、Schreck、Bateman 當第四、第五外野手；Jake Cook 是更遠以後的中外野答案。Santander 和 Barger 如果健康回來，是不用花錢的力量來源，但不能當成唯一的計畫。
+
+我的想法是最多一張大合約、等待球員回歸與農場新人：簽一位第一梯隊的角落外野強打，我認為 Suzuki 最適合；中外野交給 Bateman 和 Straw（如果藍鳥執行他的選擇權）；再等 Barger 和 Santander 健康回歸，其餘的深度交給農場。
+
+2025 年我們還在世界大賽，2026 年卻早早放假。這個冬天外野怎麼補，會是藍鳥重回十月的第一步 🤞
+
+## 資料來源與註記
+
+- 藍鳥成績與各守位 vs MLB：本站 [2026](/season/2026) 賽季頁（MLB 官方數據；Off、Def 為 FanGraphs 經 MLB，OAA 為 Baseball Savant）。
+- 自由球員與小聯盟成績：MLB Stats API；xwOBA、OAA：Baseball Savant。
+- 自由球員名單與選擇權條款：MLB Trade Rumors 的[中外野](https://www.mlbtraderumors.com/2026/09/previewing-the-upcoming-center-field-class.html)、[角落外野](https://www.mlbtraderumors.com/2026/10/previewing-the-upcoming-corner-outfield-class.html)、[DH](https://www.mlbtraderumors.com/2026/10/previewing-the-upcoming-dh-class.html)預覽。
+- Sato 的 NPB 成績：[Baseball-Reference](https://www.baseball-reference.com/register/player.fcgi?id=sato--000ter)。
+- 新秀排名與分發：MLB Pipeline 的[藍鳥 2026 季前 Top 30](https://www.mlb.com/bluejays/news/blue-jays-top-30-prospects-list-2026-preseason)與[開季分發](https://www.mlb.com/rangers/news/where-blue-jays-top-prospects-will-begin-the-season)。
+- 勞資協議：[ESPN](https://www.espn.com/mlb/story/_/id/47108752/)。

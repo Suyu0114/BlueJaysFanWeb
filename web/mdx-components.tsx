@@ -2,6 +2,7 @@ import type { ComponentPropsWithoutRef } from "react";
 import type { MDXComponents } from "mdx/types";
 import { Link } from "@/i18n/navigation";
 import { ARTICLE_FIGURES } from "@/components/article/figures";
+import StatTable from "@/components/article/StatTable";
 
 // Required by @next/mdx (App Router): how an article's Markdown renders, plus
 // the figure components every article can use without importing them.
@@ -30,6 +31,7 @@ const components: MDXComponents = {
       <a href={href} target="_blank" rel="noopener noreferrer" className={LINK} {...props} />
     ),
   ...ARTICLE_FIGURES,
+  StatTable,
 };
 
 export function useMDXComponents(): MDXComponents {

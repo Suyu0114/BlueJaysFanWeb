@@ -7,6 +7,8 @@ import SeasonSplitsPanel from "@/components/season/SeasonSplitsPanel";
 import TeamSeasonStats from "@/components/season/TeamSeasonStats";
 import PositionValueChart, { type PositionMetric, type PositionMode } from "@/components/season/PositionValueChart";
 import PositionVsMlbTable from "@/components/season/PositionVsMlbTable";
+import RosterCard from "@/components/RosterCard";
+import { getPlayer } from "@/lib/players";
 import { getStandings, TORONTO_TEAM_ID } from "@/lib/standings";
 import { getTeamGames, getTeamPlayerSeasons, getTeamPositionSplits, getTeamSeasons } from "@/lib/team-season-data";
 import { getTeamTrend } from "@/lib/team-trends";
@@ -204,4 +206,39 @@ export async function MonthByMonth({ season, caption }: FigureProps) {
   );
 }
 
-export const ARTICLE_FIGURES = { Figure, SeasonRecord, TeamStats, PositionValue, PositionVsMlb, SeasonSplits, MonthByMonth };
+// Static class strings (Tailwind can't see computed ones): a row of 1–3 cards stays one row on
+// phones too; 4+ wrap two to a row there.
+const CARD_COLS: Record<number, string> = {
+  1: "mx-auto max-w-[12rem] grid-cols-1",
+  2: "mx-auto max-w-md grid-cols-2",
+  3: "grid-cols-3",
+};
+
+/** The players page's roster cards for these players (by MLBAM id), linking to their pages. */
+export async function PlayerCards({ ids, caption }: { ids: number[]; caption?: ReactNode }) {
+  const players = await Promise.all(ids.map((id) => getPlayer(id)));
+  const missing = ids.filter((_, i) => !players[i]);
+  const t = await getTranslations("Articles");
+  return (
+    <Figure caption={caption}>
+      <ul className={`grid gap-2 sm:gap-4 ${CARD_COLS[ids.length] ?? "grid-cols-2 sm:grid-cols-4"}`}>
+        {players.map(
+          (p) =>
+            p && (
+              <li key={p.mlbam_id}>
+                {/* Same position rule as the all-time roster: off the 26-man, his last Jays position. */}
+                <RosterCard player={p.is_active_26 ? p : { ...p, position: p.last_jays_position ?? p.position }} />
+              </li>
+            ),
+        )}
+      </ul>
+      {missing.length > 0 && (
+        <p className="mt-2 rounded-md border border-dashed border-navy/25 p-3 text-sm text-navy/55">
+          {t("playerMissing", { ids: missing.join(", ") })}
+        </p>
+      )}
+    </Figure>
+  );
+}
+
+export const ARTICLE_FIGURES = { Figure, SeasonRecord, TeamStats, PositionValue, PositionVsMlb, SeasonSplits, MonthByMonth, PlayerCards };

@@ -41,9 +41,52 @@ exist. A normal run only adds content.
 - **Figures are live components, never screenshots.** A screenshot of a site module becomes that
   module's figure tag. Real images (photos, diagrams) are the only PNGs, under
   `web/public/articles/<slug>/`.
-- **Keep the author's voice.** Fix numbers, rule violations and unambiguous typos (a duplicated
-  character, a wrong character). Anything ambiguous goes in the report, unchanged.
+- **Keep the author's voice** (see **Voice** below). Fix numbers, rule violations and unambiguous
+  typos (a duplicated character, a wrong character). Anything ambiguous goes in the report,
+  unchanged.
 - **Don't commit or push** unless the author asks. Publishing = their `git push`.
+
+## Voice
+
+The author wants every article to read as **professional and warm**: a fan who does the analysis
+properly. Polish both languages toward the rules below. Polishing never changes a claim or a
+number, and every sentence you reword is listed in the report (before → after).
+
+- **Evidence first, feeling second.** A paragraph opens with the number or the finding, then the
+  judgment. Warmth comes after the evidence and never stands in for it.
+  - e.g. "Varland 從 2025 年的輔助角色變成終結者，配上 Miles、Rogers，牛棚後段很穩。"
+- **First person at the turns.** Use 我 for the author's own judgment or recommendation ("我認為
+  Suzuki 最適合") and 我們 for the fans and the site ("之後我們在接下來的文章再來探討"). Keep
+  everything else in a plain analytical voice. In English: "I think…", "we'll come back to…".
+- **Affection is allowed, but the conclusion follows the data.** The author writes fondly about
+  players ("George，我依然愛你 💙", "也希望 Varsho 的手腕快快好起來"). Keep those lines, but don't
+  let them soften a finding the numbers support.
+- **Emoji: the author's own, sparingly.** Keep every emoji the author wrote, at the end of a
+  sentence as tone (💙 🥲 😭 😵 🫡 😞), with a space before it. Never in headings, tables, figure
+  captions or next to a number. Don't add new ones. If one section piles up more than two, keep them
+  and suggest trimming in the report.
+- **Asides become prose.** Drafts carry asides in half-width brackets, e.g. "(我們已經有 Santander
+  我想就不往這方面參考了吧 😵)".
+  - Turn each into a sentence, or a full-width （…） aside, that keeps its meaning and emoji, e.g.
+    "不過藍鳥手上已經有 Santander 這個反彈賭注，我想不必再押第二個了 😵".
+  - A note to self ("要核對", "發布前確認", "/publish-article 查不到") is not prose. Take it out of
+    the article and list it in the report.
+- **Explain once, then trust the reader.** Gloss a stat the first time it appears, in brackets
+  ("BABIP（打進場內的球變成安打的比率）"). Say what a number can't tell ("只能當參考", "小樣本"). No
+  hype words the data doesn't carry.
+- **End on the fan's hope.** The closing line looks forward ("希望 2027 藍鳥隊能重回世界大賽!!!").
+  - If the draft has no closing line, propose one in the report.
+  - Add one only if the author asked for polishing. Mark it in the report as added so the author
+    can delete it.
+- **Chinese mechanics.**
+  - Traditional characters only; simplified ones slip in (挤 → 擠).
+  - Full-width punctuation in Chinese text （），：；「」.
+  - A space between Chinese and Latin letters or digits ("Varsho 走後", "39 轟").
+  - 轟 is fine for HR counts in prose.
+  - Keep the author's "!!" in closings; don't add exclamation marks.
+- **English carries the same voice.** Translate the warmth too: keep "I think…", the
+  affectionate lines and the author's emoji in the same places. It should read like a fan writing
+  for Toronto readers, in plain natural English, not translationese and not a corporate report.
 
 ## Workflow
 
@@ -52,6 +95,9 @@ exist. A normal run only adds content.
 - **PDF:** use `Read` with `pages`.
 - **.docx:** `pandoc -t markdown` if available; otherwise the docx skill.
 - **Markdown:** read it directly.
+- **A claude.ai doc link** (a draft written in Claude Docs): read it with the docs tools. Leave out
+  sections the draft marks as author-only (e.g. 資料來源與發布前待辦), and tabs set aside as material
+  for another article. Their sources still go in the article's sources section.
 
 Write down:
 
@@ -123,6 +169,15 @@ no imports:
 | Splits table | `<SeasonSplits season={2026} highlight={["home", "away"]} />` (keys: `home`, `away`, `oneRun`, `blowouts`, `vsDivision`, `vsWinning`, `vsLosing`) |
 | Month by month (runs-per-game chart + record table) | `<MonthByMonth season={2026} />` |
 | A non-data image | `<Figure caption="…">![alt](/articles/<slug>/x.png)</Figure>` |
+| A table of numbers the site has no module for (free agents, prospects, NPB) | `<StatTable title="…" file="ascii-name" headers={["Player", "PA"]} rows={[["Randy Arozarena", "670"]]} note="source / scope" />` (`links={["/players/664770", null]}` = a link per row on the first cell, for Jays with a player page) |
+| A player's roster card (the players page's card) | `<PlayerCards ids={[623993, 680718]} />` (MLBAM ids; 1–3 sit in one row) |
+
+- **No Markdown pipe tables.** The site's MDX has no GFM plugin, so a `| a | b |` table renders as
+  plain text. Every table is a figure tag: a site module if the data is in the DB, otherwise a
+  `StatTable`. `StatTable` cells are display strings (`".281 / .381 / .484"`, `"18.9%"`, `"—"`).
+  Numeric columns align right on their own. The `note` says where the numbers came from.
+  - Its numbers are static and **not** in the DB, so step 3 can't check them. List them as "not
+    checkable" in the report with their source.
 
 - **Boxes the author drew** on a table become `highlight` rows. Highlight only the rows the text
   talks about. `TeamStats` takes the metric keys in `web/lib/team-metrics.ts` (`r_per_g`, `avg`,
@@ -200,6 +255,7 @@ concrete:
 2. **Numbers corrected:** a table of claim | draft | database | source.
 3. **Sentences rewritten** because a correction changed the claim: before → after.
 4. **Other edits:** names (e.g. 岡本和真 → Okamoto), brand, typos fixed.
+   - **Voice edits:** each reworded sentence (before → after), and any closing line you added.
 5. **Left as written:** possible typos or unclear phrasing you didn't touch, and claims the DB
    can't confirm.
 6. **Figures:** screenshot → tag mapping, plus anything that needs a new component or the author's
