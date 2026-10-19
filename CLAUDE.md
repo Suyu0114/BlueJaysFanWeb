@@ -166,7 +166,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
   025_team_position_views.sql  # web_v_team_position: by-position OPS / HR per club + MLB row (team_id 0) + rank among 30; groups mirror batterGroup
   026_article_views.sql        # web_article_views: public view count per article slug (RLS on, no policies; written only by /api/views)
   027_rest_api_lockdown.sql    # every web_ object off the REST API: RLS on, views security_invoker, revoke anon/authenticated; idempotent — re-run after any new web_ table/view
-/.claude/skills/publish-article/ # project skill: draft (PDF/docx/md) -> registry + en/zh-TW MDX, live figures, DB fact check, verify
+/.claude/skills/publish-article/ # project skill: draft (PDF/docx/md/Claude Docs link) -> registry + en/zh-TW MDX, live figures + StatTable, DB fact check, the author's Voice rules (professional + warm), verify
 /.claude/skills/share-card/   # project skill: article (+ series parts) / Baseball 101 / news share cards (PNG, X + IG sizes) via the dev route, DB-checked, + X / IG captions; reads and updates content/social/queue.md
 /.github/workflows/etl.yml     # daily cron (rolling 7-day window for current season)
 /ETL_update_flow.md            # backfill + manual re-run steps
@@ -201,6 +201,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     ScorecardFrame.tsx         # reusable rough.js parchment frame (hero + roster cards)
     HeroCard.tsx               # "Today's Blue Jays" cards (wraps ScorecardFrame)
     RosterExplorer.tsx         # client roster filter (All/Pitchers/Batters) + all-time active/departed grouping
+    RosterCard.tsx             # one roster card (headshot, name, position · B/T, links to the player page); shared by RosterExplorer and the article PlayerCards
     SeasonStatTable.tsx        # P9 year-by-year basic+advanced table (overview, batter-only)
     RecentForm.tsx             # P9 Last 7 / Last 30 / Season slash lines (overview)
     GameLog.tsx                # P9 last-10 game log (overview)
@@ -263,7 +264,8 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       ArticleEnd.tsx           # server: end-of-article panel — ArticleShare + "Join the discussion" (the article's X / IG post from the registry's `discuss`, else the profile; hidden with neither)
       ArticleShare.tsx         # client: Share on X (intent, via the site handle) / Copy link / native share sheet (useSyncExternalStore, like ContactEmail)
       ViewPing.tsx             # client: POST /api/views once per browser per 24 h (localStorage, guarded); skips navigator.webdriver
-      figures.tsx              # MDX figures keyed by season — SeasonRecord / TeamStats / PositionValue / PositionVsMlb / SeasonSplits / MonthByMonth / Figure — live reads through the season page's readers, React cache() per season; no data -> a visible "no data" line
+      figures.tsx              # MDX figures keyed by season — SeasonRecord / TeamStats / PositionValue / PositionVsMlb / SeasonSplits / MonthByMonth / PlayerCards (roster cards by MLBAM id; off the 26-man = last Jays position) / Figure — live reads through the season page's readers, React cache() per season; no data -> a visible "no data" line
+      StatTable.tsx            # MDX <StatTable title headers rows note file />: an article's own static table (free agents, prospects, NPB — data the site has no module for), site table chrome + PNG / copy export; optional `links` = one site path per row on the first cell; not DB-checked, dated by dataAsOf
     standings-chrome.ts        # P11 shared table chrome (navy header bar / ledger stripes / rowBg); P13 stripeBg(i, highlight) for any table
     StandingsTabs.tsx          # P11 client view switcher: AL / NL / Wild Card (+ AL-NL toggle inside WC)
     motion/
@@ -306,6 +308,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     export-png.ts              # shared PNG back half: papaya paper, brick rule, credit footer (caption | wordmark in Graduate, host · data sources · date), 2x canvas, download
     export-svg.ts              # P12 M7 any <svg> -> PNG: resolves var(--color-*), inlines class paint, rasterises, then export-png
     export-table.ts            # headers + rows -> ledger-style table PNG on a canvas (navy header bar, papaya stripes; numeric columns right-aligned), then export-png. Flat: no per-cell tints
+    table-align.ts             # rightAlignedColumns: which display-string columns read as numbers (right-aligned); shared by export-table and the article StatTable
     copy-table.ts              # P12 M7 toTsv (N-N record cells -> en dash so Excel/Sheets don't read dates; optional source line after a blank row) + copyText (clipboard w/ fallback)
     savant.ts                  # P12 M6 readers: percentiles, Savant season (xwOBA / Barrel%), pitch RV/100, league season
     season-deltas.ts           # P12 pure: delta / per-metric tone / 2026 zone-change helpers, biggestChanges (What changed), overlayByGame (M4) — now built on P13's N-series mergeByGame
@@ -387,7 +390,7 @@ Env vars live in `.env` at the repo root (single `DATABASE_URL`). The ETL loads
 - **D3 components receive plain JSON props** (`BattedBallEvent[]`), not Supabase clients. Keep them framework-pure for easier testing.
 - **No new dependencies without a clear reason.** The stack is intentionally small.
 - **Site name, author and contact links live only in `web/lib/site.ts`.** Header, footer, About, layout metadata and every export read `SITE`; the brand is a proper noun and stays English in zh-TW, so it is not in `messages/` (there is no `Nav.brand`). A profile link (`SITE.links.x`, `SITE.links.instagram`) shows up in the footer, About, the Person JSON-LD and the articles' discussion block as soon as it's set; `null` hides it everywhere. X is `x.com/suyujaysnotes` (2026-10-06); Instagram isn't open yet.
-- **Articles are MDX in the repo, not a CMS.** Data figures are the live season modules embedded by season (`<TeamStats season={2026} block="offense" highlight={["iso"]} />`), never screenshots; PNG only for non-data images (`web/public/articles/<slug>/`). The text's own numbers are dated by the registry's `dataAsOf`. Add a figure by reusing a season component — don't fork a second copy of a module for articles.
+- **Articles are MDX in the repo, not a CMS.** Data figures are the live season modules embedded by season (`<TeamStats season={2026} block="offense" highlight={["iso"]} />`), never screenshots; PNG only for non-data images (`web/public/articles/<slug>/`). The text's own numbers are dated by the registry's `dataAsOf`. Numbers the site has no module for (free agents, prospects, NPB) go in a `<StatTable>` (static, not DB-checked); MDX has no GFM, so a Markdown pipe table won't render. Add a figure by reusing a season component — don't fork a second copy of a module for articles.
 - **`/api/views/[slug]` is the only write path visitors can trigger.** Keep it that narrow: a whitelisted slug, production only, one parameterized statement, no reader data. Anything new that writes from the site needs the same scrutiny (and its own `web_` table with RLS on).
 - **In an article, the database wins over the draft.** The author's numbers are a reference: every one is fact-checked against the DB (via `etl/season_report.py`), DB values replace draft values, and a sentence whose claim flips is rewritten minimally and reported. The whole workflow is the project skill `/publish-article` (`.claude/skills/publish-article/SKILL.md`).
 - **Share card design lives only in `web/lib/share-card/`.** The site's link previews (`opengraph-image.tsx`) and the social PNGs (`/share-card`) all call it; a route or a skill run only supplies a spec. Each kind of card has its **own paper** (article = parchment, Baseball 101 = steel, news = navy) — never one shared paper with only the accent changed; a new kind takes one of the spares in `PAPERS` first. Satori has no CSS variables or `color-mix()`, so `tokens.ts` re-declares the `@theme` hexes and mixes in JS — keep them in sync.

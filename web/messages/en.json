@@ -756,6 +756,7 @@
       "zh-TW": "Chinese (Traditional)"
     },
     "figureMissing": "This chart has no data for {season}.",
+    "playerMissing": "No player with id {ids} in the database.",
     "views": "{count, plural, one {# view} other {# views}}",
     "shareTitle": "Share this article",
     "shareX": "Share on X",

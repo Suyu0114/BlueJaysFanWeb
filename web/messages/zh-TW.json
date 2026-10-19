@@ -756,6 +756,7 @@
       "zh-TW": "中文"
     },
     "figureMissing": "這張圖沒有 {season} 年的數據。",
+    "playerMissing": "資料庫裡沒有球員 {ids}。",
     "views": "{count, plural, other {# 次瀏覽}}",
     "shareTitle": "分享這篇文章",
     "shareX": "分享到 X",
