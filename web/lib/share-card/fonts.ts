@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { C, type KindStyle } from "./tokens";
 
-// Fonts and the cap logo for the share cards (next/og ImageResponse) — the site
+// Fonts and the site logo for the share cards (next/og ImageResponse) — the site
 // default and the article cards, and the social cards the /share-card skill
 // renders. Satori can't read the site's next/font faces, so each card fetches
 // its own subset from Google Fonts.
@@ -53,17 +53,17 @@ export async function cardFonts(text: string, zh: boolean) {
 }
 
 /**
- * The recoloured Jays cap (navy marks on a papaya die-cut) as a data URL for
- * <img>. On a dark paper it's knocked out instead: papaya marks, the die-cut in
- * the paper colour.
+ * The site logo (public/brand, drawn by scripts/brand-logo.mjs: navy ink on a
+ * papaya die-cut) as a data URL for <img>. `full` = the lettered roundel, for
+ * where it's big enough to read (the site card); `mark` = the same ring without
+ * lettering, for a card's corner next to the wordmark. On a dark paper it's
+ * knocked out: papaya ink, the die-cut in the paper colour. The logo uses the two
+ * hexes in fills and strokes alike, so the swap is on the colour, not the attribute.
  */
-export async function capLogo(paper: Pick<KindStyle, "dark" | "paper">): Promise<string> {
-  let svg = await readFile(join(process.cwd(), "public/team-logos/141.svg"), "utf8");
+export async function siteLogo(paper: Pick<KindStyle, "dark" | "paper">, variant: "full" | "mark"): Promise<string> {
+  let svg = await readFile(join(process.cwd(), `public/brand/${variant === "full" ? "logo" : "logo-mark"}.svg`), "utf8");
   if (paper.dark) {
-    svg = svg
-      .replaceAll(`fill="${C.papaya}"`, 'fill="@cut"')
-      .replaceAll(`fill="${C.navy}"`, `fill="${C.papaya}"`)
-      .replaceAll('fill="@cut"', `fill="${paper.paper}"`);
+    svg = svg.replaceAll(C.papaya, "@cut").replaceAll(C.navy, C.papaya).replaceAll("@cut", paper.paper);
   }
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
 }

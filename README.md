@@ -166,6 +166,8 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   ├── content/social/queue.md   # social posting plan + status (X / Instagram)
 │   ├── app/api/dev/share-card/   # DEV ONLY share card PNG route (404 in production)
 │   ├── mdx-components.tsx        # article typography + figure components for MDX
+│   ├── public/brand/             # site logo: SN roundel (logo.svg), small mark (logo-mark.svg: tab icon, share-card corner), apple-touch-icon.png
+│   ├── scripts/brand-logo.mjs    # ONE-SHOT: draws the logo SVGs + PNGs (IG / X profile pictures -> reports/brand/)
 │   └── messages/{en,zh-TW}.json
 ├── .claude/skills/publish-article/  # Claude Code skill: article draft -> MDX + live figures + DB fact check
 ├── .claude/skills/share-card/   # Claude Code skill: X / IG share cards (article, Baseball 101, news) + captions

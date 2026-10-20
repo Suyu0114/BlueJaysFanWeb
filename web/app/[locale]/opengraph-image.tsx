@@ -3,7 +3,7 @@ import { CARD_SIZES, renderSiteCard } from "@/lib/share-card/card";
 import { SITE } from "@/lib/site";
 
 // The site's default share card, used by every page without its own (articles
-// have one): wordmark, the Jays cap and the site's one-line description in the
+// have one): wordmark, the site logo and the site's one-line description in the
 // reader's language, on the share cards' parchment and hand-drawn frame.
 
 export const size = CARD_SIZES.og;
