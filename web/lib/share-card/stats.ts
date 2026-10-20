@@ -4,9 +4,10 @@ import { deltaTone, type Tone } from "@/lib/season-deltas";
 import { signed, wl } from "@/lib/season-format";
 import { formatMetric, METRIC, metricLabel, rankKey, tiedRank, type MetricFormat, type MetricKey } from "@/lib/team-metrics";
 import { TORONTO_TEAM_ID } from "@/lib/team-ids";
-import { winLoss } from "@/lib/team-season";
+import { isPitcher, positionGroup, winLoss } from "@/lib/team-season";
 import { getSeasonPlayerStats, getTeamGames, getTeamSeasons } from "@/lib/team-season-data";
 import { getTeamTrend } from "@/lib/team-trends";
+import { pick, type Localized } from "./spec";
 
 // The numbers on a share card, read from the DB at render time through the
 // site's own readers and formatters — the 022 views for team values and ranks,
@@ -109,10 +110,22 @@ export type PlayerStatKey = keyof typeof PLAYER_STAT;
 export type PlayerExample = { player: number; stat: PlayerStatKey; seasons: number[] };
 /** The Jays as a team: a 022-view metric per season, with its MLB rank among 30. */
 export type TeamExample = { team: true; stat: MetricKey; seasons: number[] };
+/** Several Blue Jays in one season, side by side: a row per player, a column per stat (ERA vs FIP, a WAR top three). */
+export type PlayersExample = { players: number[]; stats: PlayerStatKey[]; season: number; positions?: boolean; title?: Localized };
+/** The team's record next to MLB's expected record (x-W/L, web_standings via the 022 view) and the gap, per season. */
+export type RecordExample = { team: true; stat: "x_wl"; seasons: number[] };
+export type GlossaryExample = PlayerExample | TeamExample | PlayersExample | RecordExample;
+
 export type ResolvedExample = {
   name: string | null; // the player; null = the team (the card says so in its own words)
   label: string;
   points: { season: number; value: string; rank?: { text: string; rank: number } }[];
+};
+/** A small example table: column heads, then rows of a label (+ an optional position tag) and one cell per column. */
+export type ExampleTable = {
+  title: string | null; // the line under "Blue Jays example"; null = the team
+  cols: string[];
+  rows: { label: string; tag?: string; cells: string[] }[];
 };
 
 /** The team's value and MLB rank in each listed season (the 022 views, as the season page shows them). */
@@ -149,4 +162,41 @@ export async function resolvePlayerExample(ex: PlayerExample): Promise<ResolvedE
     return v == null ? [] : [{ season, value: formatMetric(v, def.format) }];
   });
   return name && points.length > 0 ? { name, label: def.label, points } : null;
+}
+
+/** The listed Blue Jays in one season (web_player_season_stats), in the spec's order; pitchers tagged SP / RP like the season page. */
+export async function resolvePlayersExample(ex: PlayersExample, locale: string): Promise<ExampleTable | null> {
+  const all = await getSeasonPlayerStats(ex.season);
+  const rows = ex.players.flatMap((id) => {
+    const r = all.find((x) => x.mlbam_id === id);
+    if (!r) return [];
+    const tag = ex.positions ? (isPitcher(r) ? positionGroup({ ...r, season: ex.season, apps: r.g_pit }) : r.position ?? undefined) : undefined;
+    return [{ label: r.name, tag, cells: ex.stats.map((k) => formatMetric(r[k], PLAYER_STAT[k].format)) }];
+  });
+  return rows.length > 0
+    ? { title: ex.title ? pick(ex.title, locale) : String(ex.season), cols: ex.stats.map((k) => PLAYER_STAT[k].label), rows }
+    : null;
+}
+
+/** Record, expected W-L and the gap (W − xW) per season, as the season page's record strip and the team page's luck table show them. */
+export async function resolveRecordExample(ex: RecordExample, locale: string): Promise<ExampleTable | null> {
+  const [tS, tT, trend] = await Promise.all([
+    getTranslations({ locale, namespace: "Season" }),
+    getTranslations({ locale, namespace: "Team" }),
+    getTeamTrend(ex.seasons),
+  ]);
+  const me = ex.seasons.flatMap((season) => {
+    const r = trend.clubs.find((c) => c.team_id === TORONTO_TEAM_ID && c.season === season);
+    return r?.w != null && r.l != null && r.x_w != null && r.x_l != null ? [r] : [];
+  });
+  if (me.length === 0) return null;
+  return {
+    title: null,
+    cols: me.map((r) => String(r.season)),
+    rows: [
+      { label: tS("statRecord"), cells: me.map((r) => `${r.w}-${r.l}`) },
+      { label: tS("statXwl"), cells: me.map((r) => `${r.x_w}-${r.x_l}`) },
+      { label: tT("colLuck"), cells: me.map((r) => signed(r.w! - r.x_w!)) },
+    ],
+  };
 }

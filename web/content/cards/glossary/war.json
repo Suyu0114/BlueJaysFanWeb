@@ -1,0 +1,24 @@
+{
+  "kind": "glossary",
+  "slug": "war",
+  "date": "2026-10-19",
+  "number": 5,
+  "term": "WAR",
+  "aka": "Wins Above Replacement (FanGraphs)",
+  "definition": {
+    "en": "Wins added over a replacement-level call-up from the minors. Hitting, baserunning, fielding and pitching all count, so every position shares one scale.",
+    "zh-TW": "一位球員比「隨時能從小聯盟叫上來的替補」多幫球隊贏幾場，打擊、跑壘、守備和投球都算進去。所有守位、包括投手，都用同一把尺。"
+  },
+  "scale": [
+    { "value": "2", "label": { "en": "Solid starter", "zh-TW": "穩定先發" } },
+    { "value": "4", "label": { "en": "All-Star", "zh-TW": "全明星" } },
+    { "value": "6", "label": { "en": "MVP level", "zh-TW": "MVP 等級" } }
+  ],
+  "example": {
+    "players": [656302, 686973, 672960],
+    "stats": ["war"],
+    "season": 2026,
+    "positions": true,
+    "title": { "en": "The top three, 2026", "zh-TW": "2026 年隊內前三名" }
+  }
+}

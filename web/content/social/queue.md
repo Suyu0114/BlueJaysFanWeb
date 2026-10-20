@@ -43,11 +43,11 @@ buttons + captions): https://claude.ai/artifact/UH3ZzVzkFRCjKvrGLWd23U
 | D4 | | Part 2/6 · Where the home runs went | `x/part2.png` | in D0 | part 2 | ready | |
 | D5 | | Baseball 101 No. 003 · Hard-hit% | `x/glossary-hard-hit-pct.png` | en + zh-TW | `content/cards/glossary/hard-hit-pct.json` | ready | |
 | D6 | | Part 3/6 · The middle of the order went quiet | `x/part3.png` | in D0 | part 3 | ready | |
-| D7 | | Baseball 101 No. 004 · FIP | | en + zh-TW | — | idea | |
+| D7 | | Baseball 101 No. 004 · FIP | `x/glossary-fip.png` | en + zh-TW | `content/cards/glossary/fip.json` | ready | |
 | D8 | | Part 4/6 · Pitching: Cease and the bullpen held | `x/part4.png` | in D0 | part 4 | ready | |
-| D9 | | Baseball 101 No. 005 · WAR | | en + zh-TW | — | idea | |
+| D9 | | Baseball 101 No. 005 · WAR | `x/glossary-war.png` | en + zh-TW | `content/cards/glossary/war.json` | ready | |
 | D10 | | Part 5/6 · The home edge disappeared | `x/part5.png` | in D0 | part 5 | ready | |
-| D11 | | Baseball 101 No. 006 · x-W/L | | en + zh-TW | — | idea | |
+| D11 | | Baseball 101 No. 006 · x-W/L | `x/glossary-x-wl.png` | en + zh-TW | `content/cards/glossary/x-wl.json` | ready | |
 | D12 | | Part 6/6 · Three questions for 2027 | `x/part6.png` | in D0 | part 6 | ready | |
 
 Optional second image on the X part posts: the matching chart from the season
@@ -85,9 +85,9 @@ window / CBA date / 99-day 2021–22 lockout (MLB Trade Rumors, ESPN).
 | 001 | wRC+ | Guerrero Jr. 137 → 95 | 1 · read the 2026 review (Oct–Nov) | ready |
 | 002 | ISO | the team .162 (12th) → .134 (30th) | 1 | ready |
 | 003 | Hard-hit% | the team 41.2% (11th) → 34.0% (30th) | 1 | ready |
-| 004 | FIP | Rogers' 1.77 ERA vs 3.35 FIP (needs a same-season two-stat example) | 1 | idea |
-| 005 | WAR | Cease 5.5 | 1 | idea |
-| 006 | x-W/L | 76-86 expected vs 79-83 actual (needs a team-record example: x-W/L isn't a `022` metric) | 1 | idea |
+| 004 | FIP | Tyler Rogers 1.77 ERA / 3.35 FIP vs Jeff Hoffman 3.94 / 2.50 (2026; `players` × `stats` example) | 1 | ready |
+| 005 | WAR | 2026 top three: Cease 5.5 (SP), Varland 3.1 (RP), Okamoto 3.0 (3B) | 1 | ready |
+| 006 | x-W/L | 94-68 vs 88-74 (2025), 79-83 vs 76-86 (2026) (`x_wl` record example) | 1 | ready |
 | 007– | OBP · SLG / OPS · K% / BB% · WHIP · OAA · Barrel% · xwOBA | | 2 · offseason basics (Dec–Jan) | idea |
 | | Pitch clock · ABS challenge · Exit velocity / Launch angle · Spin rate · Chase% (2026 zone change: caveat) | | 3 · before Opening Day (Feb–Mar) | idea |
 

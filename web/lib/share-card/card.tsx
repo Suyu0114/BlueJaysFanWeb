@@ -5,7 +5,17 @@ import { SITE, siteHost } from "@/lib/site";
 import { capLogo, cardFonts } from "./fonts";
 import { Ink, roughLine, roughRect, scorecardFrame, seedFrom } from "./rough";
 import { pick, type ArticleCard, type CardSpec, type GlossaryCard, type NewsCard, type PartCard } from "./spec";
-import { resolveCardStats, resolvePlayerExample, resolveTeamExample, type CardStat, type ResolvedExample } from "./stats";
+import {
+  resolveCardStats,
+  resolvePlayerExample,
+  resolvePlayersExample,
+  resolveRecordExample,
+  resolveTeamExample,
+  type CardStat,
+  type ExampleTable,
+  type GlossaryExample,
+  type ResolvedExample,
+} from "./stats";
 import { C, KIND, PAPERS, SHADOW, TONE, navyA, rankTintHex, softInk, type KindStyle } from "./tokens";
 
 // The share-card renderer: the site's hand-drawn scorecard (parchment, rough.js
@@ -245,6 +255,13 @@ function StatCard({ stat, rankLabel, S, zh, L, grow }: { stat: CardStat; rankLab
   );
 }
 
+/**
+ * A tile label's explicit "\n" breaks, one div per line: Satori breaks CJK anywhere, so a tile label that wraps
+ * picks its own break. Without one, the plain string. The landscape scale rows are wide: there "\n" is a space.
+ */
+const labelLines = (s: string): ReactNode => (s.includes("\n") ? s.split("\n").map((t, i) => <div key={i}>{t}</div>) : s);
+const labelColumn = (s: string) => (s.includes("\n") ? { display: "flex", flexDirection: "column" as const } : {});
+
 /** A small papaya card: value over label (Baseball 101 scale, News facts). */
 function NoteCard({ value, label, S, zh, L, flex = true, row = false }: { value: string; label: string; S: KindStyle; zh: boolean; L: Layout; flex?: boolean; row?: boolean }) {
   return (
@@ -261,7 +278,7 @@ function NoteCard({ value, label, S, zh, L, flex = true, row = false }: { value:
       }}
     >
       <div style={{ fontFamily: "Gabriela", fontSize: L.value * 0.8, color: C.navy, lineHeight: 1.1 }}>{value}</div>
-      <div style={{ fontFamily: prose(zh), fontSize: row ? L.sub * 1.2 : L.sub, color: navyA(0.6), ...(row ? { textAlign: "right" } : { marginTop: 2 * L.k }) }}>{label}</div>
+      <div style={{ fontFamily: prose(zh), fontSize: row ? L.sub * 1.2 : L.sub, color: navyA(0.6), ...(row ? { textAlign: "right" } : { marginTop: 2 * L.k }), ...labelColumn(label) }}>{labelLines(label)}</div>
     </div>
   );
 }
@@ -404,44 +421,20 @@ function ArticleBody({ spec, stats, c }: { spec: ArticleCard; stats: CardStat[];
   );
 }
 
-function GlossaryBody({ spec, example, c, exampleTitle, teamName }: { spec: GlossaryCard; example: ResolvedExample | null; c: Ctx; exampleTitle: string; teamName: string }) {
-  const number = `NO. ${String(spec.number).padStart(3, "0")}`;
-  const { L, S, zh } = c;
-  const ink = (a: number) => softInk(S, a);
-  const definition = pick(spec.definition, c.locale);
-  const inner = L.W - 2 * L.m - 2 * L.pad[1];
-  const termSize = L.portrait ? fit(spec.term, inner, 1, [190, 160, 130]) : fit(spec.term, inner * 0.58, 1, [118, 100, 84]);
-  const defWidth = L.portrait ? inner : inner * 0.58;
-  // Portrait: about 5 lines fit above the scale tiles and the example at 40px (7 overflowed it). Landscape: the
-  // column holds 5.5 at 27px; a single paragraph counts whole lines, so for it that's still 5.
-  const defSize = L.portrait ? fit(definition, defWidth, 5, [40, 36, 32]) : fit(definition, defWidth, 5.5, [27, 25, 23, 21]);
-  const scale = spec.scale ?? [];
-  const ranked = example?.points.some((p) => p.rank) ?? false;
-  // Landscape scale rows: the value column fits the widest value (38.6% is wider than 100).
-  const scaleW = Math.max(L.value * 1.7, ...scale.map((s) => Math.ceil(textWidth(s.value, L.value * 0.72) * 1.15)));
-
-  const exampleCard = example && (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        background: S.card,
-        border: `${1.5 * L.k}px solid ${S.cardBorder}`,
-        borderRadius: 8 * L.k,
-        padding: `${10 * L.k}px ${14 * L.k}px`,
-      }}
-    >
-      <div style={{ fontFamily: zh ? "Noto Serif TC" : "Graduate", fontSize: L.label, letterSpacing: 1.5, color: navyA(0.55), textTransform: "uppercase" }}>
-        {exampleTitle}
-      </div>
-      <div style={{ fontFamily: example.name ? "Gabriela" : prose(zh), fontSize: L.sub * 1.25, color: C.navy, marginTop: 2 * L.k }}>
-        {example.name ?? `${teamName} · ${example.label}`}
+/** A Baseball 101 example, one value per season: the player's name, or the team + metric, then season → value (with the MLB rank chip for the team). */
+function ExampleSeries({ series, teamName, c }: { series: ResolvedExample; teamName: string; c: Ctx }) {
+  const { L, zh } = c;
+  const ranked = series.points.some((p) => p.rank);
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <div style={{ fontFamily: series.name ? "Gabriela" : prose(zh), fontSize: L.sub * 1.25, color: C.navy, marginTop: 2 * L.k }}>
+        {series.name ?? `${teamName} · ${series.label}`}
       </div>
       {ranked ? (
         // The team: a small table — season over value over MLB rank chip, "MLB rank" as the row label.
         <div style={{ display: "flex", alignItems: "flex-end", gap: 12 * L.k, marginTop: 4 * L.k, fontFamily: "Gabriela", color: C.navy }}>
           <div style={{ display: "flex", fontFamily: prose(zh), fontSize: L.sub * 0.9, color: navyA(0.55), paddingBottom: 1 * L.k }}>{c.rankLabel}</div>
-          {example.points.map((p, i) => (
+          {series.points.map((p, i) => (
             <div key={p.season} style={{ display: "flex", alignItems: "center", gap: 12 * L.k }}>
               {i > 0 && <div style={{ fontSize: L.value * 0.6, color: navyA(0.45) }}>→</div>}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
@@ -468,7 +461,7 @@ function GlossaryBody({ spec, example, c, exampleTitle, teamName }: { spec: Glos
         </div>
       ) : (
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 * L.k, marginTop: 2 * L.k, fontFamily: "Gabriela", color: C.navy }}>
-          {example.points.map((p, i) => (
+          {series.points.map((p, i) => (
             <div key={p.season} style={{ display: "flex", alignItems: "baseline", gap: 6 * L.k }}>
               {i > 0 && <div style={{ fontSize: L.value * 0.6, color: navyA(0.45) }}>→</div>}
               <div style={{ fontSize: L.sub, color: navyA(0.55) }}>{String(p.season)}</div>
@@ -477,6 +470,96 @@ function GlossaryBody({ spec, example, c, exampleTitle, teamName }: { spec: Glos
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * A Baseball 101 example as a small table: column heads (seasons or stats), then a row per player
+ * (name + an optional position tag) or per line of the record. Values right-aligned, as on the site's tables.
+ */
+function ExampleTableBody({ table, teamName, c }: { table: ExampleTable; teamName: string; c: Ctx }) {
+  const { L, zh } = c;
+  const cell = L.value * (L.portrait ? 0.65 : 0.6);
+  const lab = L.sub * (L.portrait ? 1.2 : 1.1);
+  const tagSize = L.sub * 0.85;
+  const gap = 14 * L.k;
+  // Names never wrap (nowrap + 30% slack over the width estimate); the position tag has its own column so the tags line up.
+  const labelW = Math.ceil(Math.max(...table.rows.map((r) => textWidth(r.label, lab))) * 1.3);
+  const tagW = table.rows.some((r) => r.tag) ? Math.ceil(Math.max(...table.rows.map((r) => textWidth(r.tag ?? "", tagSize))) * 1.3) : 0;
+  const colW = Math.ceil(Math.max(...table.cols.map((h) => textWidth(h, L.sub)), ...table.rows.flatMap((r) => r.cells.map((v) => textWidth(v, cell)))) * 1.15);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", color: C.navy }}>
+      <div style={{ fontFamily: prose(zh), fontSize: L.sub * 1.25, marginTop: 2 * L.k }}>{table.title ?? teamName}</div>
+      <div
+        style={{
+          display: "flex",
+          gap,
+          marginTop: 4 * L.k,
+          paddingBottom: 2 * L.k,
+          borderBottom: `${1 * L.k}px solid ${navyA(0.2)}`,
+          fontFamily: "Gabriela",
+          fontSize: L.sub,
+          color: navyA(0.55),
+        }}
+      >
+        <div style={{ display: "flex", width: labelW }} />
+        {tagW > 0 && <div style={{ display: "flex", width: tagW }} />}
+        {table.cols.map((h) => (
+          <div key={h} style={{ display: "flex", justifyContent: "flex-end", width: colW }}>
+            {h}
+          </div>
+        ))}
+      </div>
+      {table.rows.map((r) => (
+        <div key={r.label} style={{ display: "flex", alignItems: "baseline", gap, marginTop: 3 * L.k }}>
+          <div style={{ display: "flex", width: labelW, flexShrink: 0, whiteSpace: "nowrap", fontFamily: hasCjk(r.label) ? "Noto Serif TC" : "Gabriela", fontSize: lab }}>
+            {nbHyphens(r.label, zh)}
+          </div>
+          {tagW > 0 && <div style={{ display: "flex", width: tagW, flexShrink: 0, fontFamily: "Gabriela", fontSize: tagSize, color: navyA(0.5) }}>{r.tag ?? ""}</div>}
+          {r.cells.map((v, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "flex-end", width: colW, fontFamily: "Gabriela", fontSize: cell, lineHeight: 1.15 }}>
+              {nbHyphens(v, false)}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function GlossaryBody({ spec, example, c, exampleTitle, teamName }: { spec: GlossaryCard; example: ResolvedExample | ExampleTable | null; c: Ctx; exampleTitle: string; teamName: string }) {
+  const number = `NO. ${String(spec.number).padStart(3, "0")}`;
+  const { L, S, zh } = c;
+  const ink = (a: number) => softInk(S, a);
+  const definition = pick(spec.definition, c.locale);
+  const inner = L.W - 2 * L.m - 2 * L.pad[1];
+  const termSize = L.portrait ? fit(spec.term, inner, 1, [190, 160, 130]) : fit(spec.term, inner * 0.58, 1, [118, 100, 84]);
+  const defWidth = L.portrait ? inner : inner * 0.58;
+  // Portrait: about 5 lines fit above the scale tiles and the example at 40px (7 overflowed it). Landscape: the
+  // column holds 5.5 at 27px; a single paragraph counts whole lines, so for it that's still 5.
+  const defSize = L.portrait ? fit(definition, defWidth, 5, [40, 36, 32]) : fit(definition, defWidth, 5.5, [27, 25, 23, 21]);
+  const scale = spec.scale ?? [];
+  const series = example && "points" in example ? example : null;
+  const table = example && "rows" in example ? example : null;
+  // Landscape scale rows: the value column fits the widest value (38.6% is wider than 100).
+  const scaleW = Math.max(L.value * 1.7, ...scale.map((s) => Math.ceil(textWidth(s.value, L.value * 0.72) * 1.15)));
+
+  const exampleCard = example && (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        background: S.card,
+        border: `${1.5 * L.k}px solid ${S.cardBorder}`,
+        borderRadius: 8 * L.k,
+        padding: `${10 * L.k}px ${14 * L.k}px`,
+      }}
+    >
+      <div style={{ fontFamily: zh ? "Noto Serif TC" : "Graduate", fontSize: L.label, letterSpacing: 1.5, color: navyA(0.55), textTransform: "uppercase" }}>
+        {exampleTitle}
+      </div>
+      {series ? <ExampleSeries series={series} teamName={teamName} c={c} /> : table && <ExampleTableBody table={table} teamName={teamName} c={c} />}
     </div>
   );
 
@@ -529,7 +612,7 @@ function GlossaryBody({ spec, example, c, exampleTitle, teamName }: { spec: Glos
             }}
           >
             <div style={{ fontFamily: "Gabriela", fontSize: L.value * 0.72, color: C.navy, width: scaleW, flexShrink: 0 }}>{s.value}</div>
-            <div style={{ fontFamily: prose(zh), fontSize: L.sub * 1.1, color: navyA(0.65) }}>{pick(s.label, c.locale)}</div>
+            <div style={{ fontFamily: prose(zh), fontSize: L.sub * 1.1, color: navyA(0.65) }}>{pick(s.label, c.locale).replace(/\n/g, " ")}</div>
           </div>
         ))}
         {exampleCard}
@@ -647,6 +730,13 @@ function NewsBody({ spec, c }: { spec: NewsCard; c: Ctx }) {
 
 // ---- entry point -----------------------------------------------------------------------
 
+/** A Baseball 101 example from the DB: one value per season (a Jay or the team), several Jays in one season, or the record vs expected. */
+function resolveExample(ex: GlossaryExample, locale: string): Promise<ResolvedExample | ExampleTable | null> {
+  if ("players" in ex) return resolvePlayersExample(ex, locale);
+  if ("team" in ex) return ex.stat === "x_wl" ? resolveRecordExample(ex, locale) : resolveTeamExample(ex, locale);
+  return resolvePlayerExample(ex);
+}
+
 /** Every string on the card, for subsetting the fonts. */
 function allText(spec: CardSpec, extra: string[]): string {
   return [JSON.stringify(spec), SITE.name, SITE.name.toUpperCase(), siteHost(), "→0123456789−+.%\u2011", ...extra].join("");
@@ -669,11 +759,7 @@ export async function renderShareCard(spec: CardSpec, opts: CardOptions): Promis
     (spec.kind === "article" || spec.kind === "part") && spec.season && spec.stats.length > 0
       ? resolveCardStats(spec.season, spec.stats, locale)
       : Promise.resolve([] as CardStat[]),
-    spec.kind === "glossary" && spec.example
-      ? "team" in spec.example
-        ? resolveTeamExample(spec.example, locale)
-        : resolvePlayerExample(spec.example)
-      : Promise.resolve(null),
+    spec.kind === "glossary" && spec.example ? resolveExample(spec.example, locale) : Promise.resolve(null),
   ]);
 
   const byline = tA("byline", { author: SITE.author });
@@ -695,7 +781,11 @@ export async function renderShareCard(spec: CardSpec, opts: CardOptions): Promis
     tC("example"),
     tC("teamExample"),
     ...stats.flatMap((s) => [s.label, s.label.toUpperCase(), s.value, s.delta?.text ?? "", s.rank?.text ?? "", s.prior ?? ""]),
-    example ? `${example.name ?? ""}${example.label}${example.points.map((p) => `${p.season}${p.value}${p.rank?.text ?? ""}`).join("")}` : "",
+    !example
+      ? ""
+      : "rows" in example
+        ? [example.title ?? "", ...example.cols, ...example.rows.flatMap((r) => [r.label, r.tag ?? "", ...r.cells])].join("")
+        : `${example.name ?? ""}${example.label}${example.points.map((p) => `${p.season}${p.value}${p.rank?.text ?? ""}`).join("")}`,
   ];
   const text = allText(spec, strings);
 
