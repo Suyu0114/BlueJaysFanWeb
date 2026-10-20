@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ImageResponse } from "next/og";
 import { getTranslations } from "next-intl/server";
 import { SITE, siteHost } from "@/lib/site";
-import { capLogo, cardFonts } from "./fonts";
+import { cardFonts, siteLogo } from "./fonts";
 import { Ink, roughLine, roughRect, scorecardFrame, seedFrom } from "./rough";
 import { pick, type ArticleCard, type CardSpec, type GlossaryCard, type NewsCard, type PartCard } from "./spec";
 import {
@@ -21,7 +21,7 @@ import { C, KIND, PAPERS, SHADOW, TONE, navyA, rankTintHex, softInk, type KindSt
 // The share-card renderer: the site's hand-drawn scorecard (parchment, rough.js
 // double frame, offset print shadow, papaya stat cards) as a PNG for link
 // previews and social posts. One skeleton for every kind — kind tag, wordmark +
-// cap, a hand-drawn rule, content, footer — and one paper per kind (tokens.ts
+// logo, a hand-drawn rule, content, footer — and one paper per kind (tokens.ts
 // KIND). Landscape (og / x) and portrait (ig) layouts. Every number comes
 // from the DB at render time (stats.ts). renderSiteCard is the site's default
 // link preview on the same paper and frame.
@@ -753,7 +753,7 @@ export async function renderShareCard(spec: CardSpec, opts: CardOptions): Promis
     getTranslations({ locale, namespace: "Articles" }),
     getTranslations({ locale, namespace: "Season" }),
     getTranslations({ locale, namespace: "ShareCard" }),
-    capLogo(S),
+    siteLogo(S, "mark"),
   ]);
   const [stats, example] = await Promise.all([
     (spec.kind === "article" || spec.kind === "part") && spec.season && spec.stats.length > 0
@@ -828,7 +828,7 @@ export async function renderShareCard(spec: CardSpec, opts: CardOptions): Promis
 /**
  * The site's default link preview (every page without its own image): the
  * wordmark, the site's one-line description in the reader's language and the
- * cap, on the article cards' parchment and frame.
+ * lettered logo, on the article cards' parchment and frame.
  */
 export async function renderSiteCard(locale: string): Promise<ImageResponse> {
   const L = layout("og");
@@ -836,7 +836,7 @@ export async function renderSiteCard(locale: string): Promise<ImageResponse> {
   const S = PAPERS.parchment;
   const seed = seedFrom("site");
   const tagline = (await getTranslations({ locale: zh ? "zh-TW" : "en", namespace: "Home" }))("subtitle");
-  const [logo, fonts] = await Promise.all([capLogo(S), cardFonts(`${SITE.name}${tagline}${siteHost()}`, zh)]);
+  const [logo, fonts] = await Promise.all([siteLogo(S, "full"), cardFonts(`${SITE.name}${tagline}${siteHost()}`, zh)]);
   if (!fonts) return renderSiteCard("en");
 
   return new ImageResponse(

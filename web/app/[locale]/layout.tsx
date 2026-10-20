@@ -42,11 +42,14 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     ...(xHandle() ? { site: `@${xHandle()}`, creator: `@${xHandle()}` } : {}),
   },
-  // Tab icon: the recoloured Jays cap mark from etl/fetch_team_logos.py (navy
-  // ink on papaya paper), reusing the same asset the standings tables render.
-  // The stock create-next-app app/favicon.ico was removed — left in place it
-  // would still be auto-served at /favicon.ico and compete with this one.
-  icons: { icon: [{ url: "/team-logos/141.svg", type: "image/svg+xml" }] },
+  // Tab icon: the site logo's small mark (the SN roundel without lettering, which
+  // a 16 px tab can't show; scripts/brand-logo.mjs), plus a PNG for iOS, which
+  // ignores SVG icons. The stock create-next-app app/favicon.ico was removed —
+  // left in place it would still be auto-served at /favicon.ico and compete.
+  icons: {
+    icon: [{ url: "/brand/logo-mark.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/brand/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
 };
 
 export function generateStaticParams() {

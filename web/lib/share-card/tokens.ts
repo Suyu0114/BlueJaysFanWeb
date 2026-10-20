@@ -65,9 +65,9 @@ export function rankTintHex(rank: number, of = 30, strength = 45): string {
  * Each kind of post has its own paper, so a feed of them doesn't read as one
  * colour: light / mid / dark — Article on the site's parchment, Baseball 101 on
  * steel, News on navy (the author's pick of four schemes, 2026-10-13). The brand
- * stays in what doesn't change: the hand-drawn frame, wordmark, cap and type.
+ * stays in what doesn't change: the hand-drawn frame, wordmark, logo and type.
  * Every paper is mixed from the @theme tokens. A dark paper flips the ink to
- * papaya (frame, text, the cap's knock-out); stat / note cards stay light papaya
+ * papaya (frame, text, the logo's knock-out); stat / note cards stay light papaya
  * with navy text on every paper, so the rank and Δ chips keep their tints.
  */
 export type CardKind = "article" | "glossary" | "news" | "part";
