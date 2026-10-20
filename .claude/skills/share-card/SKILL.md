@@ -157,7 +157,7 @@ for a first pass; open any doubtful one at full size):
 
 - **Fit:** titles and text don't run into the tiles or the footer; nothing is cut off; tiles don't
   wrap their values. Fix the copy first. English prose already keeps hyphenated words together
-  (`Hard-hit%`, `79-83`) and Chinese titles break at punctuation and word boundaries.
+  (`Hard-hit%`, `79-83`) and Chinese titles break only after punctuation (，、：…); a title with no punctuation wraps anywhere, so give a long one a comma where it should break (「能打 20 轟的人，都在傷兵名單」).
 - **Language:** a zh-TW card that came out in English means the Chinese font didn't download.
   Re-render it.
 - **Numbers:** they match the fact table.

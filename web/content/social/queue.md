@@ -55,6 +55,29 @@ page's "PNG ↓" (`/season/2026`): part 1 team stats vs MLB (offense), part 2 va
 by position (HR), part 3 value by position (Off), part 4 team stats vs MLB (run
 prevention), part 5 splits or month by month.
 
+## 2027 outfield upgrade (article 2026-10-17)
+
+Article + seven parts, the same shape as the launch: X one post a day (English), Instagram
+one carousel at OF0 (article + parts 1–7 in English, then zh-TW: 16 slides). Post it any
+time after the article is live, ideally done before the CBA expires on 12/1; it can
+interleave with the launch arc. Batch: `reports/share-cards/2027-outfield-upgrade/`; the
+same phone kit as above (section OF0–OF7). 2026-10-19: zh titles now break only after punctuation (card.tsx), so the launch zh carousel slides (08–14) were re-rendered too; kit v5.
+
+| Day | Date | Post | X | Instagram | Spec | Status | Links |
+|---|---|---|---|---|---|---|---|
+| OF0 | | Article: The Blue Jays' 2027 outfield (+ link) | `x/d0-article.png` | carousel: article + parts 1–7 in English, then zh-TW (16 slides) | registry `card` + `content/cards/part/2027-outfield-upgrade.json` | ready | |
+| OF1 | | Part 1/7 · An outfield that couldn't hit it out | `x/part1.png` | in OF0 | part 1 | ready | |
+| OF2 | | Part 2/7 · The 20-homer bats were on the IL | `x/part2.png` | in OF0 | part 2 | ready | |
+| OF3 | | Part 3/7 · Three bats that change a lineup | `x/part3.png` | in OF0 | part 3 | ready | |
+| OF4 | | Part 4/7 · Cheaper bats, and the Jays' glove habit | `x/part4.png` | in OF0 | part 4 | ready | |
+| OF5 | | Part 5/7 · The farm: depth, not a slugger | `x/part5.png` | in OF0 | part 5 | ready | |
+| OF6 | | Part 6/7 · December 1 is the line | `x/part6.png` | in OF0 | part 6 | ready | |
+| OF7 | | Part 7/7 · My take: one big deal, then wait | `x/part7.png` | in OF0 | part 7 | ready | |
+
+Facts not in the DB (cards say them, the article sources them): free-agent lines (MLB Stats
+API), Sato's NPB line (Baseball-Reference), prospect lines (MLB Stats API), the posting
+window / CBA date / 99-day 2021–22 lockout (MLB Trade Rumors, ESPN).
+
 ## Baseball 101 plan
 
 | No. | Term | Example | Arc | Status |

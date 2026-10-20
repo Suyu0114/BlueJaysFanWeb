@@ -85,10 +85,40 @@ function fit(text: string, width: number, lines: number, sizes: number[]): numbe
 // ---- building blocks -----------------------------------------------------------------
 
 const prose = (zh: boolean) => (zh ? "Noto Serif TC" : "Gabriela");
-/** CJK titles break at spaces and punctuation only, so a two-character word never splits across lines. Titles only: body text may have no break point. */
-const titleBreak = (zh: boolean) => (zh ? { wordBreak: "keep-all" as const } : {});
 /** English prose: a hyphen between two letters or digits never ends a line ("Hard-hit%", "79-83"). Gabriela has U+2011; zh text keeps plain hyphens. */
 const nbHyphens = (s: string, zh: boolean) => (zh ? s : s.replace(/(?<=[A-Za-z0-9])-(?=[A-Za-z0-9])/g, "\u2011"));
+
+// CJK titles break after punctuation, so a phrase never splits across lines ("最多一張大合約"
+// was cut before 合約). Satori ignores word-break: keep-all, so the title is cut into pieces after
+// each punctuation mark and each piece is a nowrap flex item in a wrapping row. Spaces are not
+// break points: in a zh title they are only the gap around Latin and digits ("能打 20 轟"), and
+// breaking there strands a number from its unit. A piece too wide for the line wraps anywhere, as
+// before. Titles only: body text may have no break point.
+const BREAK_AFTER = /[，、：；。！？）」』]/;
+function cjkPieces(s: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  for (const ch of s) {
+    cur += ch;
+    if (BREAK_AFTER.test(ch)) {
+      out.push(cur);
+      cur = "";
+    }
+  }
+  if (cur.trim()) out.push(cur);
+  return out.map((p) => p.trim()).filter(Boolean);
+}
+/** The title row's wrapping style: zh wraps its pieces (see cjkPieces). */
+const titleRow = (zh: boolean) => (zh ? { flexWrap: "wrap" as const } : {});
+/** A title's content: English as one string, zh as pieces that only break between them. */
+function titleContent(title: string, zh: boolean, size: number, width: number) {
+  if (!zh) return nbHyphens(title, false);
+  return cjkPieces(title).map((p, i) => (
+    <span key={i} style={{ whiteSpace: textWidth(p, size) <= width ? "nowrap" : "normal" }}>
+      {p}
+    </span>
+  ));
+}
 
 function Tag({ text, S, zh, L, seed }: { text: string; S: KindStyle; zh: boolean; L: Layout; seed: number }) {
   const fs = L.tag;
@@ -350,8 +380,8 @@ function ArticleBody({ spec, stats, c }: { spec: ArticleCard; stats: CardStat[];
   const size = L.portrait ? fit(title, inner, 4, [80, 72, 64, 56]) : fit(title, inner, 2, [56, 50, 44, 40]);
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: size, lineHeight: 1.2, color: S.ink, marginTop: L.gap * (L.portrait ? 1.6 : 1), ...titleBreak(zh) }}>
-        {nbHyphens(title, zh)}
+      <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: size, lineHeight: 1.2, color: S.ink, marginTop: L.gap * (L.portrait ? 1.6 : 1), ...titleRow(zh) }}>
+        {titleContent(title, zh, size, inner)}
       </div>
       <div style={{ display: "flex", marginTop: L.gap * 0.8 }}>
         <Rule color={S.rule} width={L.portrait ? 260 : 190} L={L} seed={c.seed + 21} />
@@ -536,8 +566,8 @@ function PartBody({ spec, stats, c }: { spec: PartCard; stats: CardStat[]; c: Ct
       >
         {pick(spec.series, c.locale)}
       </div>
-      <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: tSize, lineHeight: 1.2, color: S.ink, marginTop: L.gap * 0.4, ...titleBreak(zh) }}>
-        {nbHyphens(title, zh)}
+      <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: tSize, lineHeight: 1.2, color: S.ink, marginTop: L.gap * 0.4, ...titleRow(zh) }}>
+        {titleContent(title, zh, tSize, inner)}
       </div>
       <div style={{ display: "flex", marginTop: L.gap * 0.7 }}>
         <Rule color={S.rule} width={L.portrait ? 260 : 170} L={L} seed={c.seed + 21} />
@@ -577,7 +607,7 @@ function NewsBody({ spec, c }: { spec: NewsCard; c: Ctx }) {
 
   const text = (
     <div style={{ display: "flex", flexDirection: "column", ...(L.portrait ? {} : { width: textW }) }}>
-      <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: hSize, lineHeight: 1.2, color: S.ink, ...titleBreak(zh) }}>{nbHyphens(headline, zh)}</div>
+      <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: hSize, lineHeight: 1.2, color: S.ink, ...titleRow(zh) }}>{titleContent(headline, zh, hSize, textW)}</div>
       <div style={{ display: "flex", marginTop: L.gap * 0.8 }}>
         <Rule color={S.rule} width={L.portrait ? 260 : 170} L={L} seed={c.seed + 21} />
       </div>

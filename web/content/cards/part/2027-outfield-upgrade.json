@@ -1,0 +1,92 @@
+{
+  "kind": "part",
+  "slug": "2027-outfield-upgrade",
+  "series": { "en": "2027 outfield upgrade", "zh-TW": "2027 外野補強" },
+  "season": 2026,
+  "parts": [
+    {
+      "title": { "en": "An outfield that couldn't hit it out", "zh-TW": "外野打不出全壘打" },
+      "text": {
+        "en": "The outfield's OPS was close to average, but its 41 home runs tied for 29th of 30 clubs. DH was an even bigger hole.",
+        "zh-TW": "外野 OPS 接近平均，但只打 41 轟，30 隊並列第 29。DH 的洞更深。"
+      },
+      "facts": [
+        { "label": { "en": "Outfield HR vs MLB average", "zh-TW": "外野 HR vs 大聯盟平均" }, "value": "41 vs 58" },
+        { "label": { "en": "Outfield OPS vs MLB average", "zh-TW": "外野 OPS vs 大聯盟平均" }, "value": ".707 vs .723" },
+        { "label": { "en": "DH OPS vs MLB average", "zh-TW": "DH OPS vs 大聯盟平均" }, "value": ".644 vs .720" }
+      ]
+    },
+    {
+      "title": { "en": "The 20-homer bats were on the IL", "zh-TW": "能打 20 轟的人，都在傷兵名單" },
+      "text": {
+        "en": "No Jays outfielder hit more than 10 home runs. The two who can, Santander (44 in 2024) and Barger (21 in 2025), barely played in 2026.",
+        "zh-TW": "沒有一位藍鳥外野手超過 10 轟。有這個能力的 Santander（2024 年 44 轟）和 Barger（2025 年 21 轟），2026 年幾乎都沒上場。"
+      },
+      "facts": [
+        { "label": { "en": "Most HR by a Jays outfielder (Lukes)", "zh-TW": "藍鳥外野手最多 HR（Lukes）" }, "value": "10" },
+        { "label": { "en": "Santander · 2026 MLB PA", "zh-TW": "Santander · 2026 大聯盟打席" }, "value": "0" },
+        { "label": { "en": "Barger · PA, 2025 → 2026", "zh-TW": "Barger · 打席，2025 → 2026" }, "value": "502 → 28" }
+      ]
+    },
+    {
+      "title": { "en": "Three bats that change a lineup", "zh-TW": "能改變打線的三個人" },
+      "text": {
+        "en": "Only three free-agent outfielders can fill the 20-homer gap on their own: two steady 32-year-olds and an unknown from Japan.",
+        "zh-TW": "自由市場上只有三位外野手能直接補上 20 轟的缺口：兩位 32 歲的穩定強打，和一位日本職棒的未知數。"
+      },
+      "facts": [
+        { "label": { "en": "Arozarena · HR / wRC+", "zh-TW": "Arozarena · HR / wRC+" }, "value": "26 / 151" },
+        { "label": { "en": "Suzuki · HR / wRC+", "zh-TW": "Suzuki · HR / wRC+" }, "value": "26 / 134" },
+        { "label": { "en": "Sato (NPB) · HR / AVG", "zh-TW": "Sato（NPB）· HR / AVG" }, "value": "39 / .306" }
+      ]
+    },
+    {
+      "title": { "en": "Cheaper bats, and the Jays' glove habit", "zh-TW": "便宜選項，和藍鳥的守備偏好" },
+      "text": {
+        "en": "Bauers and Grichuk can hit, but the Jays' team OAA has ranked in the top 12 five years running, so weak gloves look more like DHs here.",
+        "zh-TW": "Bauers 和 Grichuk 都能打，但藍鳥的球隊 OAA 連五季都在前 12 名，守備差的人在這裡比較像 DH。"
+      },
+      "stats": ["oaa"],
+      "facts": [
+        { "label": { "en": "Bauers · wRC+ / Def", "zh-TW": "Bauers · wRC+ / Def" }, "value": "143 / −14.5" },
+        { "label": { "en": "Grichuk · wRC+ / Def", "zh-TW": "Grichuk · wRC+ / Def" }, "value": "139 / −6.5" }
+      ]
+    },
+    {
+      "title": { "en": "The farm: depth, not a slugger", "zh-TW": "農場：有深度，缺強打" },
+      "text": {
+        "en": "The closest outfield prospects are on-base types, and the best tools (Jake Cook's 80-grade speed) are still in Single-A. Bateman is already up.",
+        "zh-TW": "最接近大聯盟的外野新秀都是上壘型，工具最好的 Jake Cook（80 分跑速）還在 Single-A。Bateman 已經上來了。"
+      },
+      "facts": [
+        { "label": { "en": "Piñango · AAA HR / OBP", "zh-TW": "Piñango · AAA HR / OBP" }, "value": "11 / .351" },
+        { "label": { "en": "Schreck · AAA OBP", "zh-TW": "Schreck · AAA OBP" }, "value": ".378" },
+        { "label": { "en": "Bateman · MLB wRC+", "zh-TW": "Bateman · 大聯盟 wRC+" }, "value": "138" }
+      ]
+    },
+    {
+      "title": { "en": "December 1 is the line", "zh-TW": "12/1 是分水嶺" },
+      "text": {
+        "en": "The CBA expires December 1 and most reports expect a lockout, which would freeze signings and trades. The big deals will likely land before it.",
+        "zh-TW": "勞資協議 12/1 到期，多數報導預期會停擺，簽約和交易都會凍結。大型簽約很可能都擠在這之前。"
+      },
+      "facts": [
+        { "label": { "en": "NPB posting window", "zh-TW": "NPB posting 期間" }, "value": "11/1 – 12/15" },
+        { "label": { "en": "CBA expires", "zh-TW": "勞資協議到期" }, "value": "12/1" },
+        { "label": { "en": "Last lockout, days", "zh-TW": "上次停擺天數" }, "value": "99" }
+      ]
+    },
+    {
+      "title": { "en": "My take: one big deal, then wait", "zh-TW": "我的想法：最多一張大合約" },
+      "text": {
+        "en": "One big contract at most, and I think Suzuki fits best. Give center to Bateman and Straw, wait on Barger and Santander, and let the farm supply the depth.",
+        "zh-TW": "最多一張大合約，我認為 Suzuki 最適合；中外野交給 Bateman 和 Straw，再等 Barger、Santander 回歸，深度交給農場。"
+      },
+      "facts": [
+        { "label": { "en": "Suzuki · wRC+", "zh-TW": "Suzuki · wRC+" }, "value": "134" },
+        { "label": { "en": "Suzuki · Def (RF)", "zh-TW": "Suzuki · Def（右外野）" }, "value": "+1.5" },
+        { "label": { "en": "Arozarena · Def (LF)", "zh-TW": "Arozarena · Def（左外野）" }, "value": "−11.7" }
+      ]
+    }
+  ]
+}
