@@ -123,7 +123,14 @@ among 30 and the prior season, all live. Without `card` an article gets a title-
   - a player: `{ "player": <mlbam_id>, "stat": "<PLAYER_STAT key>", "seasons": […] }`, seasons he
     played for Toronto (`web_player_season_stats` is Jays-only);
   - the team: `{ "team": true, "stat": "<team metric key>", "seasons": […] }`: value and MLB rank
-    per season from the `022` views.
+    per season from the `022` views;
+  - several Jays in one season, as a table (a row per player, a column per stat):
+    `{ "players": [<mlbam_id>, …], "stats": ["era", "fip"], "season": 2026, "positions": true, "title": {…} }`
+    (`positions` adds SP / RP / the season position; see `fip.json`, `war.json`);
+  - the team's record vs expected: `{ "team": true, "stat": "x_wl", "seasons": […] }`: record,
+    x-W/L and the gap per season (`x-wl.json`).
+- A scale label may break with `\n`: an Instagram tile breaks there (Satori otherwise splits CJK
+  anywhere, 預/期); the wide X rows read it as a space.
 
 **News** (`content/cards/news/<date>-<short-slug>.json`): `headline` (about 60 English characters),
 optional `deck` (about 140), up to 3 `facts`, `source` ("MLB Stats API" when the DB backs every

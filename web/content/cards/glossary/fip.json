@@ -1,0 +1,23 @@
+{
+  "kind": "glossary",
+  "slug": "fip",
+  "date": "2026-10-19",
+  "number": 4,
+  "term": "FIP",
+  "aka": "Fielding Independent Pitching",
+  "definition": {
+    "en": "An ERA built only from what the pitcher controls: strikeouts (K), walks (BB), hit batters (HBP), home runs (HR). Lower is better, like ERA.\n1. 13×HR + 3×(BB+HBP) − 2×K\n2. Divide by innings, add a league constant (2026: 3.09)",
+    "zh-TW": "只用投手自己能掌控的結果算出的 ERA：三振（K）、保送（BB）、觸身球（HBP）、全壘打（HR）。和 ERA 一樣，越低越好。\n1. 13×HR + 3×(BB+HBP) − 2×K\n2. 除以投球局數，再加上聯盟常數（2026 年是 3.09）"
+  },
+  "scale": [
+    { "value": "3.20", "label": { "en": "Excellent", "zh-TW": "頂尖" } },
+    { "value": "4.17", "label": { "en": "MLB average, 2026", "zh-TW": "2026 大聯盟平均" } },
+    { "value": "4.70", "label": { "en": "Poor", "zh-TW": "偏差" } }
+  ],
+  "example": {
+    "players": [643511, 656546],
+    "stats": ["era", "fip"],
+    "season": 2026,
+    "title": { "en": "Two relievers, 2026", "zh-TW": "2026 年的兩位後援投手" }
+  }
+}

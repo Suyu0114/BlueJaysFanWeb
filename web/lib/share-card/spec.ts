@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getArticle } from "@/content/articles";
-import type { CardStatKey, PlayerExample, TeamExample } from "./stats";
+import type { CardStatKey, GlossaryExample } from "./stats";
 import type { CardKind } from "./tokens";
 
 // What a share card says. Article cards come from the article registry
@@ -38,7 +38,7 @@ export type GlossaryCard = {
   aka?: string; // what the abbreviation stands for, English
   definition: Localized; // one or two plain-language sentences; "\n" breaks a line, a line starting "1. " is a numbered step
   scale?: { value: string; label: Localized }[]; // reading guide, e.g. 100 = average
-  example?: PlayerExample | TeamExample; // a Blue Jay's, or the team's, value from the DB
+  example?: GlossaryExample; // from the DB: a Blue Jay's or the team's value by season, several Jays in one season, or the record vs expected
 };
 
 export type NewsCard = {

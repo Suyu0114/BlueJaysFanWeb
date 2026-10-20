@@ -304,7 +304,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       rough.tsx                # rough.generator() paths server-side: scorecardFrame (ScorecardFrame's params, stroke scaled; ink per paper), roughRect / roughLine, <Ink>
       fonts.ts                 # Google Fonts css2 subsets (Graduate / Gabriela / Noto Serif TC 400+700; no Chinese face -> English card), capLogo (knocked out on a dark paper); replaced lib/og.ts
       spec.ts                  # CardSpec (article = registry entry; part / glossary / news = content/cards JSON) + loadCardSpec(kind, slug, part?)
-      stats.ts                 # DB values at render: resolveCardStats (022 views + game results, formatMetric / ordinal) / resolvePlayerExample (getSeasonPlayerStats) / resolveTeamExample (022 value + MLB rank per season)
+      stats.ts                 # DB values at render: resolveCardStats (022 views + game results, formatMetric / ordinal) / resolvePlayerExample (getSeasonPlayerStats) / resolveTeamExample (022 value + MLB rank per season) / resolvePlayersExample (several Jays × stats, one season) / resolveRecordExample (record vs x-W/L, 022 view)
     export-png.ts              # shared PNG back half: papaya paper, brick rule, credit footer (caption | wordmark in Graduate, host · data sources · date), 2x canvas, download
     export-svg.ts              # P12 M7 any <svg> -> PNG: resolves var(--color-*), inlines class paint, rasterises, then export-png
     export-table.ts            # headers + rows -> ledger-style table PNG on a canvas (navy header bar, papaya stripes; numeric columns right-aligned), then export-png. Flat: no per-cell tints

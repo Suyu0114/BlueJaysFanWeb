@@ -1,0 +1,18 @@
+{
+  "kind": "glossary",
+  "slug": "x-wl",
+  "date": "2026-10-19",
+  "number": 6,
+  "term": "x-W/L",
+  "aka": "Expected won-lost record (Pythagorean)",
+  "definition": {
+    "en": "The record a team's runs scored (RS) and allowed (RA) \"should\" produce. The gap to the real record mostly comes from close games.\n1. Expected win % = RS^1.83 ÷ (RS^1.83 + RA^1.83)\n2. Multiply by games played and round",
+    "zh-TW": "依球隊的得分（RS）和失分（RA）推算「應該」有的戰績。和實際戰績的落差，大多來自比分接近的比賽。\n1. 預期勝率 = RS^1.83 ÷ (RS^1.83 + RA^1.83)\n2. 乘以出賽場數，四捨五入"
+  },
+  "scale": [
+    { "value": "±4", "label": { "en": "74% of clubs,\n2022–26", "zh-TW": "2022–26 年\n74% 的球隊" } },
+    { "value": "+10", "label": { "en": "Luckiest:\n2026 Reds", "zh-TW": "最幸運\n2026 紅人" } },
+    { "value": "−13", "label": { "en": "Unluckiest:\n2026 Tigers", "zh-TW": "最不走運\n2026 老虎" } }
+  ],
+  "example": { "team": true, "stat": "x_wl", "seasons": [2025, 2026] }
+}
