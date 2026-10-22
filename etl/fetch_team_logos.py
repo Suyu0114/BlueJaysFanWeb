@@ -54,6 +54,10 @@ _FILL_MAPS = {
 _BALL_SEAMS = {
     158: '<circle cx="155.1" cy="193.61" r="27" fill="#000"/>',
 }
+# Clubs whose unfilled paths (SVG default = black) are the whole mark. CWS 145 is
+# one unfilled path, so it was the only all-black logo in the set; paint it INK.
+# Elsewhere black stays as the third tone (BAL 110, PIT 134, COL 115, MIA 146...).
+_UNFILLED_TO_INK = {145}
 # Two colour forms in the wild, both seen across the 30 clubs:
 #   1. a fill="#134a8e" attribute on the path            (28 clubs)
 #   2. a `.cls-1 { fill: #0031a7; }` rule inside <defs><style>  (KC 118, WSH 120)
@@ -75,7 +79,8 @@ def recolour(svg: str, team_id: int | None = None) -> str:
     `fill="none"` / `fill: none` is left alone: it means "don't paint", not
     "paint white", and overriding it would fill shapes meant to be open.
 
-    A club in _FILL_MAPS / _BALL_SEAMS gets its hand-picked fills and seams.
+    A club in _FILL_MAPS / _BALL_SEAMS / _UNFILLED_TO_INK gets its hand-picked
+    fills, seams and ink.
     """
     fill_map = _FILL_MAPS.get(team_id, {})
 
@@ -98,6 +103,8 @@ def recolour(svg: str, team_id: int | None = None) -> str:
         return f"fill: {pick(value)}"
 
     svg = _FILL_CSS_RE.sub(sub_css, _FILL_ATTR_RE.sub(sub_attr, svg))
+    if team_id in _UNFILLED_TO_INK:
+        svg = svg.replace("<path d=", f'<path fill="{INK}" d=')
     seams = _BALL_SEAMS.get(team_id)
     if seams:
         i = svg.rindex("<path")
