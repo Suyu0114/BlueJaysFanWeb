@@ -17,8 +17,11 @@ export type Localized = { en: string; "zh-TW"?: string };
 /** The reader's language if the spec has it, else English. */
 export const pick = (t: Localized, locale: string) => (locale === "zh-TW" && t["zh-TW"]) || t.en;
 
-/** A written value and its label (News facts, series-part facts). */
-export type Fact = { label: Localized; value: string };
+/**
+ * A written value and its label (News facts, series-part facts). `player` (MLBAM id) puts that player's
+ * hand-drawn portrait on the tile, when content/portraits/<id>.png exists (the /player-portrait skill).
+ */
+export type Fact = { label: Localized; value: string; player?: number };
 
 export type ArticleCard = {
   kind: "article";
@@ -52,10 +55,10 @@ export type NewsCard = {
 };
 
 /**
- * One part of an article's social series: a takeaway with its numbers. X posts
- * them one by one; on Instagram they follow the article card in one carousel,
- * so they share its paper. The file (content/cards/part/<article slug>.json)
- * holds every part; this is one of them, resolved.
+ * One part of an article's social series: a takeaway with its numbers, posted
+ * one by one on X and Instagram, on the article card's paper. The file
+ * (content/cards/part/<article slug>.json) holds every part; this is one of
+ * them, resolved.
  */
 export type PartCard = {
   kind: "part";

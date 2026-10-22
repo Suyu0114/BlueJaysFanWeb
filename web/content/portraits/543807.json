@@ -1,0 +1,14 @@
+{
+  "name": "George Springer",
+  "skin": "light",
+  "hair": "black",
+  "face": { "width": 0.95, "jaw": 0.86, "length": 1.08 },
+  "ears": 1.12,
+  "eyes": { "size": 0.95, "spacing": 0.98, "smile": 0.6 },
+  "brows": { "weight": 1.1, "arch": 0.2, "tilt": 0.0 },
+  "nose": { "width": 1.0, "length": 1.15 },
+  "mouth": { "width": 1.2, "open": 0.7, "teeth": true },
+  "beard": { "style": "stubble", "length": 1.0 },
+  "neck": 1.05,
+  "chain": "thick"
+}
