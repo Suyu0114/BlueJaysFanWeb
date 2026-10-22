@@ -1,0 +1,14 @@
+{
+  "name": "Vladimir Guerrero Jr.",
+  "skin": "deep",
+  "hair": "black",
+  "face": { "width": 1.14, "jaw": 1.08, "length": 0.94 },
+  "ears": 0.95,
+  "eyes": { "size": 0.95, "spacing": 1.0, "smile": 0.7 },
+  "brows": { "weight": 1.25, "arch": 0.35, "tilt": 0.1 },
+  "nose": { "width": 1.4, "length": 0.9 },
+  "mouth": { "width": 1.5, "open": 0.95, "teeth": true },
+  "beard": { "style": "full", "length": 1.15 },
+  "neck": 1.35,
+  "chain": "thin"
+}

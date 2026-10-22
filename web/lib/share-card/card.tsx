@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { ImageResponse } from "next/og";
 import { getTranslations } from "next-intl/server";
 import { SITE, siteHost } from "@/lib/site";
-import { cardFonts, siteLogo } from "./fonts";
+import { cardFonts, playerPortrait, siteLogo } from "./fonts";
 import { Ink, roughLine, roughRect, scorecardFrame, seedFrom } from "./rough";
-import { pick, type ArticleCard, type CardSpec, type GlossaryCard, type NewsCard, type PartCard } from "./spec";
+import { pick, type ArticleCard, type CardSpec, type Fact, type GlossaryCard, type NewsCard, type PartCard } from "./spec";
 import {
   resolveCardStats,
   resolvePlayerExample,
@@ -283,6 +283,36 @@ function NoteCard({ value, label, S, zh, L, flex = true, row = false }: { value:
   );
 }
 
+/**
+ * A fact about one player, with his hand-drawn portrait. Portrait layout: a column card with the roundel big
+ * (the engraving needs ~200 px to read in a phone feed), two side by side. Landscape: the roundel left of value + label.
+ */
+function PlayerTile({ value, label, src, S, zh, L }: { value: string; label: string; src: string; S: KindStyle; zh: boolean; L: Layout }) {
+  const size = L.portrait ? 236 : 88;
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: L.portrait ? "column" : "row",
+        alignItems: "center",
+        gap: (L.portrait ? 8 : 10) * L.k,
+        flex: 1,
+        background: S.card,
+        border: `${1.5 * L.k}px solid ${S.cardBorder}`,
+        borderRadius: 8 * L.k,
+        padding: L.portrait ? `${12 * L.k}px ${14 * L.k}px` : `${5 * L.k}px ${10 * L.k}px`,
+      }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- Satori renders plain <img> */}
+      <img src={src} width={size} height={size} alt="" />
+      <div style={{ display: "flex", flexDirection: "column", alignItems: L.portrait ? "center" : "flex-start" }}>
+        <div style={{ fontFamily: "Gabriela", fontSize: L.value * (L.portrait ? 0.8 : 0.7), color: C.navy, lineHeight: 1.1 }}>{value}</div>
+        <div style={{ fontFamily: prose(zh), fontSize: L.portrait ? L.sub * 1.2 : L.sub, color: navyA(0.6), marginTop: 2 * L.k, ...labelColumn(label) }}>{labelLines(label)}</div>
+      </div>
+    </div>
+  );
+}
+
 /** A rubber stamp: double rough box, tilted, in the kind's accent. */
 function Stamp({ big, small, color, zh, L, seed }: { big: string; small: string; color: string; zh: boolean; L: Layout; seed: number }) {
   const fs = L.portrait ? 54 : 40;
@@ -388,7 +418,7 @@ function Card({ L, seed, S, tag, zh, logo, headerExtra, footerLeft, children }: 
 const dateFmt = (locale: string, ymd: string, opts: Intl.DateTimeFormatOptions = { dateStyle: "long" }) =>
   new Intl.DateTimeFormat(locale, { ...opts, timeZone: "UTC" }).format(new Date(`${ymd}T00:00:00Z`));
 
-type Ctx = { L: Layout; S: KindStyle; zh: boolean; locale: string; logo: string; seed: number; byline: string; rankLabel: string };
+type Ctx = { L: Layout; S: KindStyle; zh: boolean; locale: string; logo: string; seed: number; byline: string; rankLabel: string; portraits: Record<number, string> };
 
 function ArticleBody({ spec, stats, c }: { spec: ArticleCard; stats: CardStat[]; c: Ctx }) {
   const { L, S, zh } = c;
@@ -621,7 +651,10 @@ function GlossaryBody({ spec, example, c, exampleTitle, teamName }: { spec: Glos
   );
 }
 
-/** A series part: series name, the takeaway, a sentence or two, then up to 3 tiles (live stat cards, then facts). */
+/**
+ * A series part: series name, the takeaway, a sentence or two, then up to 3 tiles (live stat cards, then facts).
+ * Facts about a player with a portrait become PlayerTiles; on the portrait layout they sit side by side, before the other facts.
+ */
 function PartBody({ spec, stats, c }: { spec: PartCard; stats: CardStat[]; c: Ctx }) {
   const { L, S, zh } = c;
   const title = pick(spec.title, c.locale);
@@ -629,9 +662,23 @@ function PartBody({ spec, stats, c }: { spec: PartCard; stats: CardStat[]; c: Ct
   const inner = L.W - 2 * L.m - 2 * L.pad[1];
   const tSize = L.portrait ? fit(title, inner, 3, [84, 76, 68, 60]) : fit(title, inner, 2, [52, 46, 42, 38]);
   const dSize = L.portrait ? fit(text ?? "", inner, 5, [38, 34, 30]) : fit(text ?? "", inner, 2, [25, 23, 21]);
-  const facts = spec.facts.map((f) => (
-    <NoteCard key={f.value + pick(f.label, "en")} value={f.value} label={pick(f.label, c.locale)} S={S} zh={zh} L={L} row={L.portrait} flex={!L.portrait} />
-  ));
+  const portraitOf = (f: Fact) => (f.player ? c.portraits[f.player] : undefined);
+  const tile = (f: Fact) => {
+    const src = portraitOf(f);
+    const label = pick(f.label, c.locale);
+    return src ? (
+      <PlayerTile key={f.value + pick(f.label, "en")} value={f.value} label={label} src={src} S={S} zh={zh} L={L} />
+    ) : (
+      <NoteCard key={f.value + pick(f.label, "en")} value={f.value} label={label} S={S} zh={zh} L={L} row={L.portrait} flex={!L.portrait} />
+    );
+  };
+  const players = spec.facts.filter(portraitOf);
+  const facts = L.portrait
+    ? [
+        ...(players.length > 0 ? [<div key="players" style={{ display: "flex", gap: L.gap }}>{players.map(tile)}</div>] : []),
+        ...spec.facts.filter((f) => !portraitOf(f)).map(tile),
+      ]
+    : spec.facts.map(tile);
   const statCards = stats.map((s) => <StatCard key={s.label} stat={s} rankLabel={c.rankLabel} S={S} zh={zh} L={L} grow={!L.portrait} />);
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -793,7 +840,11 @@ export async function renderShareCard(spec: CardSpec, opts: CardOptions): Promis
   // No Chinese face, no Chinese card: the English one beats boxes for glyphs.
   if (!fonts) return renderShareCard(spec, { ...opts, locale: "en" });
 
-  const c: Ctx = { L, S, zh, locale, logo, seed, byline, rankLabel: tS("rankLabel") };
+  const playerIds = spec.kind === "part" ? [...new Set(spec.facts.flatMap((f) => (f.player ? [f.player] : [])))] : [];
+  const portraits: Record<number, string> = {};
+  for (const [id, src] of await Promise.all(playerIds.map(async (id) => [id, await playerPortrait(id)] as const))) if (src) portraits[id] = src;
+
+  const c: Ctx = { L, S, zh, locale, logo, seed, byline, rankLabel: tS("rankLabel"), portraits };
   const body =
     spec.kind === "article" ? (
       <ArticleBody spec={spec} stats={stats} c={c} />

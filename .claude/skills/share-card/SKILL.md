@@ -12,7 +12,7 @@ it, writes the captions and updates the queue.
 | Kind | Tag | Paper | Spec lives in | Render |
 |---|---|---|---|---|
 | `article` | ARTICLE / 文章 | parchment | the registry entry's `card` field (`web/content/articles/index.ts`) | `og` (check), `x`, `ig` |
-| `part` | ARTICLE + `2 / 6` | parchment (it follows the article card in a carousel) | `web/content/cards/part/<article slug>.json`, every part in one file; the route takes `&part=N` | `x`, `ig` |
+| `part` | ARTICLE + `2 / 6` | parchment (the article's series, so its paper) | `web/content/cards/part/<article slug>.json`, every part in one file; the route takes `&part=N` | `x`, `ig` |
 | `glossary` | BASEBALL 101 / 棒球名詞 + No. 001 | steel | `web/content/cards/glossary/<slug>.json` | `x`, `ig` |
 | `news` | NEWS / 時事 + date stamp | navy | `web/content/cards/news/<YYYY-MM-DD-slug>.json` | `x`, `ig` |
 
@@ -30,9 +30,11 @@ The plan and its status: **`web/content/social/queue.md`**.
 
 - **The queue is the plan.** Read `web/content/social/queue.md` first: what's next, the Baseball 101
   numbering, the platform rules. Update it at the end of every run.
-- **Per platform:** X is **English only** (the `x` card in English, English text). Instagram is
-  **English first, Chinese second**: a carousel with the English slide(s), then the zh-TW slide(s);
-  the caption in English, a `—` line, then Chinese. Render `ig` in both languages, `x` in English.
+- **Per platform:** X is **English only** (the `x` card in English, English text). Instagram gets
+  **two separate posts, one image each**: the English `ig` card with an English-only caption, and the
+  zh-TW card with a Chinese-only caption. **One point per post**: an article's parts go up one by one
+  like on X, never as one carousel (the author's call on 2026-10-21, after a 14-slide en + zh carousel
+  drew little reach). Render `ig` in both languages, `x` in English.
 - **The database is the source of truth**, as in `/publish-article`. Article, part `stats` and
   glossary cards store DB *keys* and read the values when rendered. News and part `facts` are
   written values: check every one against the DB first. A fact the DB doesn't hold (a trade, an
@@ -98,8 +100,11 @@ among 30 and the prior season, all live. Without `card` an article gets a title-
 
 - One part per section, in the article's order. Up to 3 tiles each: `stats` (live team metrics,
   like the article card) and/or `facts` (written values, checked in step 2; `"from → to"` works).
-- `title` about 40 English characters; `text` one or two sentences, about 150. On Instagram the
-  parts follow the article card in one carousel, so they share its paper.
+- A fact about one Jay can carry `"player": <mlbam_id>`: the tile then shows his hand-drawn portrait
+  (two side by side on Instagram). Draw it first with `/player-portrait` if
+  `web/content/portraits/<id>.svg` doesn't exist; without it the tile stays plain text.
+- `title` about 40 English characters; `text` one or two sentences, about 150. Each part is its
+  own post on both platforms, so it has to make sense without the article card before it.
 
 **Glossary** (`content/cards/glossary/<slug>.json`, slug = kebab-case term: `wrc-plus`, `hard-hit-pct`):
 
@@ -142,14 +147,19 @@ From `web/`, start `pnpm dev --port 3100` in the background and wait for "Ready"
 server per project. If it says another is running, use that one at its port (usually 3000) and
 leave it alone; it's the author's.
 
-Write each batch to `reports/share-cards/<batch>/` (git-ignored) in posting shape: `x/` (English)
-and `ig/` (carousel slides numbered in upload order, English first, then zh-TW). For example:
+Write every post to `reports/share-cards/kit/<day>/` (git-ignored; `<day>` = the queue's Day, lower
+case: `d4`, `of2`) as three files: `x.png` (English), `ig-en.png`, `ig-zh.png`. For example:
 
 ```bash
-B="http://localhost:3100/api/dev/share-card"; OUT=reports/share-cards/<batch>
-curl -s -o "$OUT/x/part1.png" -w "%{http_code}\n" "$B?kind=part&slug=<article>&part=1&size=x&locale=en"
-curl -s -o "$OUT/ig/iso-1-en.png" -w "%{http_code}\n" "$B?kind=glossary&slug=iso&size=ig&locale=en"
+B="http://localhost:3100/api/dev/share-card"; OUT=reports/share-cards/kit/of2; mkdir -p $OUT
+curl -s -o "$OUT/x.png" -w "%{http_code}\n" "$B?kind=part&slug=<article>&part=2&size=x&locale=en"
+curl -s -o "$OUT/ig-en.png" -w "%{http_code}\n" "$B?kind=part&slug=<article>&part=2&size=ig&locale=en"
+curl -s -o "$OUT/ig-zh.png" -w "%{http_code}\n" "$B?kind=part&slug=<article>&part=2&size=ig&locale=zh-TW"
 ```
+
+A change to `web/lib/share-card/` (layout, logo, fonts) means re-rendering every day still waiting to
+be posted: the kit must never hold a card from an older renderer (on 2026-10-21 every launch card
+still carried the Jays cap the SN roundel had replaced the day before).
 
 - **400** = a bad parameter (`kind=part` also needs `part=N`). **404 with plain text** = no spec: the
   file name, `kind` and `slug` must match, and an article must be in the registry.
@@ -179,22 +189,27 @@ can keep listening after the task stops; end that PID too.
   (`SITE.url` + `/en/articles/<slug>`): a post with an image shows no link card. Glossary / news
   posts link a site page when one fits (`/en/season/<year>`, `/en/players/<id>`, `/en/standings`).
   One hashtag, #BlueJays.
-- **Instagram** (the carousel): a hook line, 2–4 short lines in English, `—`, the same in Chinese,
-  then **at most 5 hashtags** (Instagram's limit). Article / part / news: `#BlueJays #TorontoBlueJays
-  #MLB #藍鳥 #棒球`. Baseball 101 is about the stat, so one Jays tag: `#Sabermetrics #BaseballStats
-  #MLB #BlueJays #棒球`. Articles say "link in bio" / 連結在個人檔案.
-- Write `captions.md` and an `index.html` posting page in the batch folder: every image in upload
-  order, each caption with a copy button.
-- The author posts from a phone, so also publish the posting page as a private Artifact (the images
-  as `files`, `capabilities: {downloads: true}` for save buttons and a zip of each Instagram
-  carousel). Update the kit already linked in the queue (pass its `url`) instead of making a new
-  one, so the link stays the same.
+- **Instagram**, two captions per day, each in one language only: a hook line, 2–4 short lines, for a
+  part `Part 2 of 7 · <series>. Full piece with live charts: link in bio.` / `<系列> 2／7。完整文章
+  （含互動圖表）：連結在個人檔案。`, then **at most 5 hashtags** in that language (Instagram's limit;
+  the sets are in the queue's Rules). A question at the end of an opinion part ("Who would you sign?")
+  invites comments, which is where the site's discussion lives. Never write "swipe" or "中文版在後".
+- Add each day to `POSTS` in `.claude/skills/share-card/kit/build_kit.py` (day, series, kind, part,
+  title, the X text and the `en` / `zh` Instagram text; a new series also goes in `SERIES`), then run
+  `conda run -n MLBxBaZi python .claude/skills/share-card/kit/build_kit.py`. It checks every image is
+  there and every X post fits 280 weighted characters, and writes `posting-kit.html` + `captions.md`
+  into `reports/share-cards/kit/`.
+- The author posts from a phone: publish that page to the kit already linked in the queue (pass its
+  `url`, so the link stays the same). Copy `reports/share-cards/kit/` into the scratchpad first (the
+  Artifact tool takes sources from the working directory or the scratchpad), publish with that copy
+  as `root`, the page as `file_path` and each new or changed `<day>/*.png` in `files`. The page keeps
+  its `downloads` capability (save buttons) and a "posted" tick per post on the device.
 - Update `web/content/social/queue.md`: rows → `ready`, file paths, anything that still needs the
   author.
 
 ### 7. Report to the author
 
-In the language the author used (usually Traditional Chinese): the batch folder and posting page,
+In the language the author used (usually Traditional Chinese): the kit folder and posting page,
 the fact table (anything corrected or not checkable, and any article sentence the DB contradicts),
 what's ready by day, and what's next in the queue. After posting, the author sends back the post
 URLs: add them to the queue's **Links** / **Posted**, and for an article also to the registry's

@@ -1,0 +1,187 @@
+<title>Jays Notes Launch Kit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Graduate&display=swap">
+<style>
+/* Layout: one column of posting days (D0 → D12, then OF0 → OF7); each day = the X post, then the English and
+   Chinese Instagram posts side by side (stacked on a phone). A sticky strip of day chips on top: one swipeable
+   row on touch screens, wrapped rows with a mouse. Light only, like the site it posts for. */
+:root {
+  --paper: #fdf0d5;
+  --sheet: #f6e3bf;
+  --ink: #003049;
+  --ink-soft: #3d5a6c;
+  --line: #d9c49c;
+  --action: #c1121f;
+  --action-ink: #fdf0d5;
+  --steel: #669bbc;
+  --done: #5f6b35;
+  --font-label: "Graduate", "Rockwell", "Courier New", serif;
+  --font-ui: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font: 15px/1.55 var(--font-ui); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper); }
+.wrap { max-width: 760px; margin: 0 auto; padding-inline: 16px; padding-block: 8px 48px; }
+h1 { font: 400 26px/1.15 var(--font-label); letter-spacing: .04em; text-transform: uppercase; margin: 16px 0 6px; text-wrap: balance; }
+.lede { margin: 0 0 4px; color: var(--ink-soft); max-width: 62ch; }
+.rules { display: flex; flex-direction: column; gap: 4px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 13.5px; color: var(--ink-soft); }
+.rules b { color: var(--ink); font-weight: 600; margin-right: 4px; }
+.days { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); border-bottom: 1px solid var(--line);
+  display: flex; gap: 6px; overflow-x: auto; overscroll-behavior-x: contain; padding: 10px 16px; margin: 14px -16px 0; scrollbar-width: none; }
+.days::-webkit-scrollbar { display: none; }
+@media (hover: hover) and (pointer: fine) { .days { flex-wrap: wrap; overflow-x: visible; } }
+.chip { flex: none; font: 400 13px/1 var(--font-label); letter-spacing: .05em; color: var(--ink); text-decoration: none;
+  border: 1.5px solid var(--ink); border-radius: 999px; padding: 7px 10px; background: var(--paper); }
+.chip:hover { background: var(--sheet); }
+.chip.is-part { border-color: var(--done); box-shadow: inset 0 -4px 0 var(--done); }
+.chip.is-done { background: var(--done); border-color: var(--done); color: var(--paper); }
+.chip[aria-current] { outline: 2px solid var(--action); outline-offset: 1px; }
+.series { font: 400 20px/1.2 var(--font-label); letter-spacing: .05em; text-transform: uppercase; margin: 32px 0 0; text-wrap: balance; }
+.post, .series { scroll-margin-top: calc(var(--nav-h, 56px) + 12px); }
+.post { display: flex; flex-direction: column; gap: 14px; padding-block: 22px; border-bottom: 1px solid var(--line); }
+.post-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.day { font: 400 15px/1 var(--font-label); letter-spacing: .05em; background: var(--ink); color: var(--paper); border-radius: 6px; padding: 6px 8px; }
+.post-head h2 { font-size: 17px; line-height: 1.3; margin: 0; flex: 1 1 14em; min-width: 0; text-wrap: balance; }
+.post.is-done .post-head h2 { color: var(--ink-soft); text-decoration: line-through; text-decoration-color: var(--done); }
+.post.is-done .day { background: var(--done); }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; }
+.block { display: flex; flex-direction: column; gap: 10px; background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-width: 0; }
+.block.is-done { border-color: var(--done); }
+.block-head { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; }
+.platform { font: 400 14px/1 var(--font-label); letter-spacing: .08em; text-transform: uppercase; }
+.block.is-done .platform { color: var(--done); }
+.meta { font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; flex: 1 1 auto; min-width: 0; }
+.done { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink-soft); cursor: pointer; margin-left: auto; }
+.done input { width: 20px; height: 20px; margin: 0; accent-color: var(--done); }
+.done:has(input:disabled) { cursor: default; color: var(--done); }
+.shot { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { font: 600 14px/1 var(--font-ui); border-radius: 8px; cursor: pointer; border: 1.5px solid var(--ink); background: var(--paper); color: var(--ink); min-height: 44px; padding: 0 16px; }
+.btn.save { background: var(--action); border-color: var(--action); color: var(--action-ink); }
+.btn:focus-visible, .chip:focus-visible, .done input:focus-visible { outline: 3px solid var(--steel); outline-offset: 2px; }
+.save { display: none; }
+body.can-save .save { display: inline-block; }
+.cap { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; padding: 10px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+  font: 14px/1.55 var(--font-ui); max-height: 15.5em; overflow-y: auto; }
+.note { margin: 0; font-size: 14px; color: var(--ink-soft); }
+.tip { font-size: 13px; color: var(--ink-soft); margin: 10px 0 0; }
+body.can-save .tip .long-press { display: none; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+<div class="wrap">
+  <h1>Jays Notes Launch Kit</h1>
+  <p class="lede">2026 賽季回顧（開場＋6 篇）＋ Baseball 101 No. 001–006，以及 2027 外野補強（開場＋7 篇）。一天一個重點：X 一則英文；Instagram 英文、中文各發一則，一則一張圖。</p>
+  <ul class="rules">
+    <li><b>X</b>只發英文：圖＋英文貼文。</li>
+    <li><b>Instagram</b>英文、中文分開發，各一張圖，說明文字也只放那個語言。</li>
+    <li><b>時間</b>中文在多倫多早上 8 點左右（台北晚上 8–9 點），英文在多倫多晚上 6–8 點。</li>
+  </ul>
+  <p class="tip"><span class="long-press">在手機上長按圖片就能存到相簿。</span>每一則各有自己的「已發」，只記在這台裝置；發完把貼文網址傳給 Claude，寫進貼文清單。</p>
+  <nav class="days" aria-label="跳到某一天">{{CHIPS}}</nav>
+<h2 class="series" id="review">2026 賽季回顧 ＋ Baseball 101</h2>
+{{REVIEW}}
+<h2 class="series" id="outfield">2027 外野補強</h2>
+<p class="note">文章上線後就能發；12/1 勞資協議到期前發完比較好。可以和上面的系列交錯。</p>
+{{OUTFIELD}}
+</div>
+<script>
+(() => {
+  const flash = (el, text) => { const was = el.dataset.label || el.textContent; el.dataset.label = was; el.textContent = text; clearTimeout(el._t); el._t = setTimeout(() => (el.textContent = was), 1800); };
+
+  // Copy: clipboard inside the tap; select the text if the frame refuses.
+  document.addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-copy]");
+    if (!b) return;
+    const pre = document.getElementById(b.dataset.copy);
+    const selectIt = () => { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); flash(b, "已選取，請手動複製"); };
+    try { navigator.clipboard.writeText(pre.textContent).then(() => flash(b, "已複製"), selectIt); } catch { selectIt(); }
+  });
+
+  // Posted ticks, one per post (X / IG English / IG 中文), this device only.
+  // The old kit kept one tick per day: carry it over (X, plus Instagram on days the old carousels covered).
+  const KEY = "launch-kit:done:v2", OLD_KEY = "launch-kit:done", OLD_IG_DAYS = {{OLD_IG_DAYS}};
+  let done = null;
+  try { done = JSON.parse(localStorage.getItem(KEY) || "null"); } catch {}
+  if (!done || typeof done !== "object") {
+    done = {};
+    try {
+      const old = JSON.parse(localStorage.getItem(OLD_KEY) || "{}") || {};
+      for (const [day, v] of Object.entries(old)) {
+        if (!v) continue;
+        done[day + "-x"] = true;
+        if (OLD_IG_DAYS.includes(day)) done[day + "-ig-en"] = done[day + "-ig-zh"] = true;
+      }
+      localStorage.setItem(KEY, JSON.stringify(done));
+    } catch {}
+  }
+  const paintDay = (day) => {
+    const boxes = [...document.querySelectorAll(`[data-day="${day}"]`)];
+    const n = boxes.filter((b) => b.checked).length;
+    const all = n === boxes.length;
+    document.getElementById(day)?.classList.toggle("is-done", all);
+    const chip = document.querySelector(`[data-chip="${day}"]`);
+    chip?.classList.toggle("is-done", all);
+    chip?.classList.toggle("is-part", n > 0 && !all);
+  };
+  document.querySelectorAll("[data-done]").forEach((cb) => {
+    cb.checked = cb.hasAttribute("data-posted") || !!done[cb.dataset.done];
+    cb.closest(".block").classList.toggle("is-done", cb.checked);
+    cb.addEventListener("change", () => {
+      done[cb.dataset.done] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(done)); } catch {}
+      cb.closest(".block").classList.toggle("is-done", cb.checked);
+      paintDay(cb.dataset.day);
+    });
+  });
+  new Set([...document.querySelectorAll("[data-day]")].map((b) => b.dataset.day)).forEach(paintDay);
+
+  // Day strip: its height sets where a jump lands; a mouse wheel scrolls it sideways when it overflows.
+  const nav = document.querySelector(".days");
+  const setNavH = () => document.documentElement.style.setProperty("--nav-h", nav.offsetHeight + "px");
+  setNavH();
+  if ("ResizeObserver" in window) new ResizeObserver(setNavH).observe(nav);
+  nav.addEventListener("wheel", (e) => {
+    if (nav.scrollWidth <= nav.clientWidth || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+    const next = Math.max(0, Math.min(nav.scrollWidth - nav.clientWidth, nav.scrollLeft + e.deltaY));
+    if (next === nav.scrollLeft) return;
+    e.preventDefault();
+    nav.scrollLeft = next;
+  }, { passive: false });
+
+  // The day on screen: outline its chip and keep it inside the strip.
+  let here = null;
+  const setHere = (day) => {
+    const chip = nav.querySelector(`[data-chip="${day}"]`);
+    if (!chip || chip === here) return;
+    here?.removeAttribute("aria-current");
+    chip.setAttribute("aria-current", "location");
+    here = chip;
+    if (nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: chip.offsetLeft - (nav.clientWidth - chip.offsetWidth) / 2 });
+  };
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver((entries) => entries.forEach((en) => en.isIntersecting && setHere(en.target.id)), { rootMargin: "-35% 0px -60% 0px" });
+    document.querySelectorAll(".post").forEach((s) => io.observe(s));
+  }
+
+  // Saving images: the downloads capability (the viewer confirms each save).
+  let downloads = null;
+  const lost = ["unavailable", "not_granted", "capability_disabled", "capability_removed"];
+  document.addEventListener("click", async (ev) => {
+    const b = ev.target.closest("[data-save]");
+    if (!b || !downloads) return;
+    try {
+      const data = await (await fetch(b.dataset.save)).blob();
+      await downloads.save({ filename: b.dataset.name, data });
+      flash(b, "已存");
+    } catch (err) {
+      const code = err && err.code;
+      if (lost.includes(code)) { downloads = null; document.body.classList.remove("can-save"); return; }
+      flash(b, code === "declined" ? "已取消" : code === "rate_limited" ? "稍等再試" : "存檔失敗");
+    }
+  });
+  const use = window.claude && window.claude.use;
+  if (use) use.call(window.claude, "downloads").then((d) => { downloads = d; document.body.classList.toggle("can-save", !!d); }, () => {});
+})();
+</script>

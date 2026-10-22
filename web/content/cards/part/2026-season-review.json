@@ -31,8 +31,8 @@
         "zh-TW": "Springer 和 Guerrero Jr. 兩人的 Off 合計少了約 77 分，約佔全隊跌幅 128 分的六成。"
       },
       "facts": [
-        { "label": { "en": "Springer · Off", "zh-TW": "Springer · Off" }, "value": "+48.3 → +4.0" },
-        { "label": { "en": "Guerrero Jr. · Off", "zh-TW": "Guerrero Jr. · Off" }, "value": "+27.0 → −5.4" },
+        { "label": { "en": "Springer · Off", "zh-TW": "Springer · Off" }, "value": "+48.3 → +4.0", "player": 543807 },
+        { "label": { "en": "Guerrero Jr. · Off", "zh-TW": "Guerrero Jr. · Off" }, "value": "+27.0 → −5.4", "player": 665489 },
         { "label": { "en": "Team Off", "zh-TW": "全隊 Off" }, "value": "+84.1 → −44.3" }
       ]
     },

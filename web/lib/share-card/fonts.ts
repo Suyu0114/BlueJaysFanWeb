@@ -2,10 +2,10 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { C, type KindStyle } from "./tokens";
 
-// Fonts and the site logo for the share cards (next/og ImageResponse) — the site
-// default and the article cards, and the social cards the /share-card skill
-// renders. Satori can't read the site's next/font faces, so each card fetches
-// its own subset from Google Fonts.
+// Fonts, the site logo and player portraits for the share cards (next/og
+// ImageResponse) — the site default and the article cards, and the social cards
+// the /share-card skill renders. Satori can't read the site's next/font faces,
+// so each card fetches its own subset from Google Fonts.
 
 /**
  * One Google Fonts face, only the glyphs in `text` (css2 `text=` subset — a few
@@ -66,4 +66,19 @@ export async function siteLogo(paper: Pick<KindStyle, "dark" | "paper">, variant
     svg = svg.replaceAll(C.papaya, "@cut").replaceAll(C.navy, C.papaya).replaceAll("@cut", paper.paper);
   }
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+}
+
+/**
+ * A player's cartoon portrait (content/portraits/<mlbam_id>.svg, drawn by
+ * scripts/player-portrait.mjs from his feature file via the /player-portrait
+ * skill) as a data URL, or null when he has none yet, so the tile falls back to
+ * plain text.
+ */
+export async function playerPortrait(mlbamId: number): Promise<string | null> {
+  try {
+    const svg = await readFile(join(process.cwd(), "content", "portraits", `${mlbamId}.svg`));
+    return `data:image/svg+xml;base64,${svg.toString("base64")}`;
+  } catch {
+    return null;
+  }
 }
