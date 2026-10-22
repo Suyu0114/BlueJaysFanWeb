@@ -99,6 +99,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   ├── pull_league_averages.py   # MLB / AL / NL averages from summed team stats (P12)
 │   ├── season_report.py          # SELECT-only article data pack -> reports/ (P12; team_trends P13; positions + monthly runs + Off/Def/OAA post-P13)
 │   ├── fa_outfield_candidates.py # one-shot: pending FA outfielders (MLBTR class previews) + MLB / Savant lines -> reports/ CSV; no DB
+│   ├── world_series_preview.py # one-shot: World Series preview pack (team views + both rosters' MLB / postseason / Savant lines) -> reports/; SELECT-only
 │   ├── pull_team_stats.py        # all 30 clubs' team lines + SP/RP split + wRC+/WAR (P13)
 │   ├── pull_team_statcast.py     # Savant team leaderboards, all 30 clubs (P13)
 │   ├── pull_team_position_splits.py # all 30 clubs' batting by position (MLB-average reference)

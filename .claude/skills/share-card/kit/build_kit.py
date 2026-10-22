@@ -12,12 +12,17 @@ HERE = pathlib.Path(__file__).parent
 OUT = pathlib.Path(__file__).resolve().parents[4] / "reports" / "share-cards" / "kit"
 SITE = "https://bluejaysfanweb.vercel.app/en"
 REVIEW, OUTFIELD = f"{SITE}/articles/2026-season-review", f"{SITE}/articles/2027-outfield-upgrade"
+WS = f"{SITE}/articles/2026-world-series-preview"
 
 TAGS = {
     ("article", "en"): "#BlueJays #TorontoBlueJays #MLB #Baseball #BaseballStats",
     ("article", "zh"): "#藍鳥 #多倫多藍鳥 #大聯盟 #棒球 #MLB",
     ("glossary", "en"): "#Sabermetrics #BaseballStats #MLB #Baseball #BlueJays",
     ("glossary", "zh"): "#棒球 #棒球數據 #大聯盟 #MLB #藍鳥",
+}
+# A series about other clubs (the World Series) swaps the Jays hashtags for the event's.
+SERIES_TAGS = {
+    "ws": {"en": "#WorldSeries #Brewers #Rays #MLB #BaseballStats", "zh": "#世界大賽 #大聯盟 #棒球 #MLB #棒球數據"},
 }
 BIO = {"en": "Full piece with live charts: link in bio.", "zh": "完整文章（含互動圖表）：連結在個人檔案。"}
 
@@ -398,9 +403,79 @@ Who would you sign?""",
 中外野交給 Bateman 和 Straw，再等 Barger、Santander 回歸，深度交給農場 🤞
 
 如果是你，會簽誰？"""),
+    dict(day="ws0", series="ws", kind="article", title="Article launch: 2026 World Series preview",
+         x=f"""New on Suyu's Jays Notes: a 2026 World Series preview.
+
+The Brewers won 103 games by getting on base and leaning on a lockdown bullpen. The Rays won 98, eight more than their run differential predicts. How they match up, and my pick.
+
+{WS}
+#WorldSeries""",
+         en="""2026 World Series preview: Brewers vs. Rays.
+
+Two clubs chasing a first title. The Brewers won 103 games by getting on base and leaning on a lockdown bullpen; the Rays won 98 by not striking out and not walking anyone, eight more than their run differential predicts.
+
+Three takeaways follow, one post at a time. The full preview, with live charts: link in bio.""",
+         zh="""2026 世界大賽前瞻：Brewers vs Rays。
+
+兩支都還沒拿過冠軍的球隊。Brewers 靠上壘和鐵牛棚拿下 103 勝；Rays 靠不被三振、不投保送贏了 98 場，比得失分預期多 8 勝。
+
+接下來分三篇，一次講一個重點。完整文章（含互動圖表）：連結在個人檔案。"""),
+    dict(day="ws1", series="ws", kind="article", part=1, title="Part 1/3 · Two ways to win",
+         x=f"""Two ways to win: the Brewers led MLB in OBP (.341) and pitcher strikeout rate. The Rays had the lowest strikeout rate in baseball (18.8%) and won 98 games, 8 more than their run differential predicts.
+
+Part 1/3: {WS}
+#WorldSeries""",
+         en="""Two ways to win.
+
+The Brewers get on base and strike hitters out: 1st in MLB in OBP (.341) and in pitcher strikeout rate (25.8%).
+
+The Rays rarely strike out (18.8%, lowest in MLB) or walk anyone (6.9%, also lowest), and won 98 games, 8 more than their run differential predicts.""",
+         zh="""兩種不同的贏球方式。
+
+Brewers 靠上壘和三振：上壘率 .341、投手三振率 25.8%，都是大聯盟第 1。
+
+Rays 很少被三振（18.8%，30 隊最低），投手也很少保送（6.9%，同樣最低），贏了 98 場，比得失分預期多 8 場。"""),
+    dict(day="ws2", series="ws", kind="article", part=2, title="Part 2/3 · Rays' rotation, Brewers' bullpen",
+         x=f"""The Brewers' bullpen has thrown more postseason innings than their starters: 40.2 IP, 1.33 ERA. The Rays are the opposite: a 1.98 starters' ERA over 50 innings, led by Rasmussen (8, 6 and 7 IP).
+
+Part 2/3: {WS}
+#WorldSeries""",
+         en="""Rays' rotation, Brewers' bullpen.
+
+This postseason the Brewers' bullpen has thrown 40⅔ innings, more than their starters' 30⅓, with a 1.33 ERA.
+
+The Rays are the opposite: their starters have a 1.98 ERA over 50 innings, and Drew Rasmussen went 8, 6 and 7 innings in his three starts. Jacob Misiorowski starts Game 1 for Milwaukee.""",
+         zh="""先發看 Rays，牛棚看 Brewers。
+
+這次季後賽 Brewers 牛棚投了 40.2 局，比先發的 30.1 局還多，ERA 1.33。
+
+Rays 剛好相反：先發 50 局 ERA 1.98，Rasmussen 三場先發投了 8、6、7 局。Brewers 的 Game 1 由 Misiorowski 先發。"""),
+    dict(day="ws3", series="ws", kind="article", part=3, title="Part 3/3 · My pick: the Brewers",
+         x=f"""My pick: the Brewers. Their bullpen has a 1.33 postseason ERA, Milwaukee held the Dodgers to 11 runs in 4 NLCS games, and the Rays' postseason OBP is .293. The Rays' path: starters who go deep and a long series.
+
+Part 3/3: {WS}
+#WorldSeries""",
+         en="""My pick: the Brewers.
+
+Their bullpen has a 1.33 ERA this postseason, and Milwaukee held the Dodgers to 11 runs in four NLCS games. The Rays' bats are less steady: a .293 postseason OBP.
+
+The Rays' path: starters who go six or seven innings, and a long series that wears the Brewers' bullpen down. Still, I'm hoping this goes six or seven games!
+
+Who's your pick?""",
+         zh="""我的預測：Brewers。
+
+Brewers 牛棚季後賽 ERA 1.33，NLCS 四場只讓 Dodgers 拿 11 分。Rays 的打線比較不穩：季後賽上壘率只有 .293。
+
+Rays 的劇本：先發每場吃 6、7 局，把系列賽拖長、拖累 Brewers 的牛棚。不過我還是希望打到第六或第七場!
+
+你看好哪一隊？"""),
 ]
 
-SERIES = {"review": ("2026 season review", "2026 賽季回顧", 6), "outfield": ("2027 outfield upgrade", "2027 外野補強", 7)}
+SERIES = {
+    "review": ("2026 season review", "2026 賽季回顧", 6),
+    "outfield": ("2027 outfield upgrade", "2027 外野補強", 7),
+    "ws": ("World Series preview", "世界大賽賽前分析", 3),
+}
 
 
 def ig_caption(p, lang):
@@ -408,7 +483,7 @@ def ig_caption(p, lang):
     if p["kind"] == "article" and "part" in p:
         en_name, zh_name, total = SERIES[p["series"]]
         body += "\n\n" + part_footer(en_name, zh_name, p["part"], total)[lang]
-    return body + "\n\n" + TAGS[(p["kind"], lang)]
+    return body + "\n\n" + (SERIES_TAGS.get(p["series"], {}).get(lang) or TAGS[(p["kind"], lang)])
 
 
 def x_weight(text):
@@ -463,8 +538,10 @@ def page():
     chips = "".join(f'<a class="chip" href="#{p["day"]}" data-chip="{p["day"]}">{p["day"].upper()}</a>' for p in POSTS)
     review = "\n".join(section(p) for p in POSTS if p["series"] == "review")
     outfield = "\n".join(section(p) for p in POSTS if p["series"] == "outfield")
+    ws = "\n".join(section(p) for p in POSTS if p["series"] == "ws")
     return (HERE / "kit_template.html").read_text(encoding="utf-8") \
         .replace("{{CHIPS}}", chips).replace("{{REVIEW}}", review).replace("{{OUTFIELD}}", outfield) \
+        .replace("{{WS}}", ws) \
         .replace("{{OLD_IG_DAYS}}", json.dumps(OLD_IG_DAYS))
 
 

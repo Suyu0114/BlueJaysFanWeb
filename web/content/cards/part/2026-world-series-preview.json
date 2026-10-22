@@ -1,0 +1,44 @@
+{
+  "kind": "part",
+  "slug": "2026-world-series-preview",
+  "series": { "en": "World Series preview", "zh-TW": "世界大賽賽前分析" },
+  "season": 2026,
+  "parts": [
+    {
+      "title": { "en": "Two ways to win", "zh-TW": "兩種不同的贏球方式" },
+      "text": {
+        "en": "The Brewers get on base and strike hitters out. The Rays rarely strike out or walk anyone, and won 8 more games than their run differential predicts.",
+        "zh-TW": "Brewers 靠上壘和三振；Rays 很少被三振、也很少投保送，還比得失分預期多贏了 8 場。"
+      },
+      "facts": [
+        { "label": { "en": "Brewers OBP · 1st in MLB", "zh-TW": "Brewers 上壘率 · 30 隊第 1" }, "value": ".341" },
+        { "label": { "en": "Rays K% · lowest in MLB", "zh-TW": "Rays 三振率 · 30 隊最低" }, "value": "18.8%" },
+        { "label": { "en": "Rays wins vs expected (x-W/L)", "zh-TW": "Rays 勝場 vs 預期（x-W/L）" }, "value": "98 vs 90" }
+      ]
+    },
+    {
+      "title": { "en": "Rays' rotation, Brewers' bullpen", "zh-TW": "先發看 Rays，牛棚看 Brewers" },
+      "text": {
+        "en": "This postseason the Brewers' bullpen has thrown more innings than their starters, with a 1.33 ERA. The Rays lean on starters who go deep.",
+        "zh-TW": "這次季後賽 Brewers 牛棚投的局數比先發還多，ERA 1.33；Rays 則靠能吃局的先發。"
+      },
+      "facts": [
+        { "label": { "en": "Brewers bullpen · postseason IP / ERA", "zh-TW": "Brewers 牛棚 · 季後賽局數 / ERA" }, "value": "40.2 / 1.33" },
+        { "label": { "en": "Rays starters · postseason IP / ERA", "zh-TW": "Rays 先發 · 季後賽局數 / ERA" }, "value": "50.0 / 1.98" },
+        { "label": { "en": "Rasmussen · IP in his 3 starts", "zh-TW": "Rasmussen · 三場先發局數" }, "value": "8 · 6 · 7" }
+      ]
+    },
+    {
+      "title": { "en": "My pick: the Brewers", "zh-TW": "我的預測：Brewers" },
+      "text": {
+        "en": "A lockdown bullpen and a steadier lineup. The Rays' path: starters who go deep, and a long series that wears the Brewers' bullpen down.",
+        "zh-TW": "鐵牛棚加上比較穩的打線。Rays 的劇本：先發吃局，把系列賽拖長、拖累 Brewers 的牛棚。"
+      },
+      "facts": [
+        { "label": { "en": "Dodgers' runs in 4 NLCS games", "zh-TW": "Dodgers NLCS 四場得分" }, "value": "11" },
+        { "label": { "en": "Rays postseason OBP", "zh-TW": "Rays 季後賽上壘率" }, "value": ".293" },
+        { "label": { "en": "Brewers starters · IP per start", "zh-TW": "Brewers 先發 · 季後賽每場局數" }, "value": "3.8" }
+      ]
+    }
+  ]
+}

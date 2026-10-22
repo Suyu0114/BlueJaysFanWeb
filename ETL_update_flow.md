@@ -123,6 +123,21 @@ Statcast 是 Savant 排行榜。
 >   才有資料——那時再跑一次。
 > - NPB 球員（例：Teruaki Sato）在 MLB API 沒有紀錄，成績欄空白。
 
+**Step 5c（季後賽，一次性）：世界大賽賽前資料包（DB 只讀）**
+```powershell
+python etl/world_series_preview.py
+```
+輸出到 `reports/world-series-2026/`（已 git-ignore）：`teams.md` / `.csv`（兩隊例行賽 vs MLB
+平均 + 30 隊排名，讀 `022` view）、`positions.md`（各守位 vs MLB，`025` view + 誰守那個位置）、
+`trends.md`（2022–2026 TOR / TB / MIL）、`postseason.md`（季後賽逐場、球隊季後賽成績、
+世界大賽賽程與預定先發）、`roster.csv`（兩隊 26 人名單：全 MLB 例行賽成績、季後賽成績、
+Savant、OAA、是否前藍鳥）、`arsenal.csv`（投手球種 run value）、`vs_jays.md`（藍鳥對兩隊）、
+`former_jays.md`、`README.md`。
+> - 兩隊球員不寫進任何資料表：`web_player_*` / `web_games` 是 Jays-only，而把別隊投手拉進
+>   `web_statcast_events` 會改變網站的 league reference（`web/lib/discipline.ts`）。
+> - 對戰組合寫在腳本的 `CLUBS`（2026 = MIL 158 vs TB 139），換年要改。
+> - 名單是跑的當下的 active roster：世界大賽名單在 Game 1 當天早上才交，那時再跑一次。
+
 **Step 6（P12 M6）：聯盟脈絡（Savant 排行榜 + 聯盟平均）**
 ```powershell
 python etl/pull_savant_leaderboards.py --season 2024 --season 2025 --season 2026

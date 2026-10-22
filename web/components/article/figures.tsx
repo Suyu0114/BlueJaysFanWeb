@@ -44,12 +44,14 @@ const seasonTrend = cache((season: number, prior: number | null) =>
   getTeamTrend(prior ? [prior, season] : [season]),
 );
 
+const clubPositions = cache((season: number, teamId: number) => getTeamPositionVsMlb(season, teamId));
+
 const seasonPlayers = cache(async (season: number, prior: number | null) => {
   const seasons = prior ? [season, prior] : [season];
   const [players, splits, vsMlb] = await Promise.all([
     getTeamPlayerSeasons(seasons),
     getTeamPositionSplits(seasons),
-    getTeamPositionVsMlb(season),
+    clubPositions(season, TORONTO_TEAM_ID),
   ]);
   return { players, splits, vsMlb };
 });
@@ -100,21 +102,43 @@ export async function SeasonRecord({ season, caption }: FigureProps) {
   );
 }
 
-/** Team stats vs the MLB average + rank among 30: `block` = one side, `highlight` = rows the text is about. */
+/**
+ * Team stats vs the MLB average + rank among 30: `block` = one side, `highlight` = rows the text is about,
+ * `teams` = MLB team ids side by side (default: the Jays alone, with the prior season) — any club works,
+ * the 022 views hold all 30.
+ */
 export async function TeamStats({
   season,
   block,
   highlight,
+  teams,
   caption,
-}: FigureProps & { block?: "offense" | "prevention"; highlight?: MetricKey[] }) {
+}: FigureProps & { block?: "offense" | "prevention"; highlight?: MetricKey[]; teams?: number[] }) {
+  const ids = teams ?? [TORONTO_TEAM_ID];
   const g = await seasonGames(season);
   const trend = g ? await seasonTrend(season, g.prior) : null;
-  if (!g || !trend?.clubs.some((r) => r.team_id === TORONTO_TEAM_ID && r.season === season)) return <Missing season={season} />;
+  if (!g || !trend || !ids.every((id) => trend.clubs.some((r) => r.team_id === id && r.season === season))) {
+    return <Missing season={season} />;
+  }
   const [t, locale] = await Promise.all([getTranslations("Season"), getLocale()]);
   return (
     <Figure caption={caption}>
-      <SeasonPanel seedKey={`article-team-${block ?? "both"}-${season}`} season={season} title={t("teamStatsTitle", { season })} note={t("teamStatsNote")}>
-        <TeamSeasonStats season={season} prior={g.prior} clubs={trend.clubs} mlb={trend.mlb} locale={locale} only={block} highlight={highlight} />
+      <SeasonPanel
+        seedKey={`article-team-${block ?? "both"}-${season}${teams ? `-${teams.join("-")}` : ""}`}
+        season={season}
+        title={t("teamStatsTitle", { season })}
+        note={t(ids.length > 1 ? "teamStatsNoteClubs" : "teamStatsNote")}
+      >
+        <TeamSeasonStats
+          season={season}
+          prior={g.prior}
+          clubs={trend.clubs}
+          mlb={trend.mlb}
+          locale={locale}
+          only={block}
+          highlight={highlight}
+          teamIds={ids}
+        />
       </SeasonPanel>
     </Figure>
   );
@@ -151,16 +175,18 @@ export async function PositionValue({
   );
 }
 
-/** HR / OPS at each position vs the MLB average + rank among 30 (025 view). */
-export async function PositionVsMlb({ season, caption }: FigureProps) {
+/** HR / OPS at each position vs the MLB average + rank among 30 (025 view); `teams` as in TeamStats. */
+export async function PositionVsMlb({ season, teams, caption }: FigureProps & { teams?: number[] }) {
   const g = await seasonGames(season);
-  const p = g ? await seasonPlayers(season, g.prior) : null;
-  if (!p || p.vsMlb.length === 0) return <Missing season={season} />;
+  const clubs = g
+    ? await Promise.all((teams ?? [TORONTO_TEAM_ID]).map(async (teamId) => ({ teamId, rows: await clubPositions(season, teamId) })))
+    : [];
+  if (clubs.length === 0 || clubs.some((c) => c.rows.length === 0)) return <Missing season={season} />;
   const [t, locale] = await Promise.all([getTranslations("Season"), getLocale()]);
   return (
     <Figure caption={caption}>
-      <SeasonPanel seedKey={`article-pos-mlb-${season}`} season={season} title={t("posTitle")}>
-        <PositionVsMlbTable rows={p.vsMlb} season={season} locale={locale} />
+      <SeasonPanel seedKey={`article-pos-mlb-${season}${teams ? `-${teams.join("-")}` : ""}`} season={season} title={t("posTitle")}>
+        <PositionVsMlbTable clubs={clubs} season={season} locale={locale} />
       </SeasonPanel>
     </Figure>
   );

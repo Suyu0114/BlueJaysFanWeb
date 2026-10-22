@@ -129,6 +129,11 @@ It writes `reports/season-review-<S>/`. Never create a venv; the project uses th
 | Newcomers, departures, trades, lines with other clubs | `roster_moves.md` |
 | League averages / reference rates | `league_context.md` |
 
+The pack is Jays-only. An article about other clubs (e.g. a World Series preview) uses its own
+one-shot pack instead: `etl/world_series_preview.py` → `reports/world-series-<year>/` (team lines
+from the same views as the figures, players / postseason from the MLB Stats API, which are
+`StatTable` numbers).
+
 For anything the pack doesn't hold, run a read-only query through `etl/db.py`'s `connect()`. Check
 table and column names in `docs/DATA_MODEL.md` first; it also lists "columns that don't exist".
 Read rates from the `015` / `022` / `025` views; never re-derive one.
@@ -163,9 +168,9 @@ no imports:
 | Screenshot of… | Tag |
 |---|---|
 | The season header cards (record, PCT, RS / RA, run diff, x-W/L, finish, win streak) | `<SeasonRecord season={2026} />` |
-| "Team stats vs MLB": offense or run prevention | `<TeamStats season={2026} block="offense" highlight={["k_pct", "iso"]} />` (`block` = `"offense"` / `"prevention"`, omit for both) |
+| "Team stats vs MLB": offense or run prevention | `<TeamStats season={2026} block="offense" highlight={["k_pct", "iso"]} />` (`block` = `"offense"` / `"prevention"`, omit for both; `teams={[158, 139]}` = other clubs side by side, e.g. a World Series preview) |
 | Value by position chart | `<PositionValue season={2026} metric="hr" />` (`metric` = `war` / `off` / `hr` / `ops`; `mode` = `compare` / `change` / `vsMlb`) |
-| "Each position vs MLB" table | `<PositionVsMlb season={2026} />` |
+| "Each position vs MLB" table | `<PositionVsMlb season={2026} />` (`teams={[158, 139]}` as in `TeamStats`) |
 | Splits table | `<SeasonSplits season={2026} highlight={["home", "away"]} />` (keys: `home`, `away`, `oneRun`, `blowouts`, `vsDivision`, `vsWinning`, `vsLosing`) |
 | Month by month (runs-per-game chart + record table) | `<MonthByMonth season={2026} />` |
 | A non-data image | `<Figure caption="…">![alt](/articles/<slug>/x.png)</Figure>` |

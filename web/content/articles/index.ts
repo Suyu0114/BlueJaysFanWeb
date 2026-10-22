@@ -23,6 +23,21 @@ export type Article = {
 
 export const ARTICLES: Article[] = [
   {
+    slug: "2026-world-series-preview",
+    date: "2026-10-22",
+    dataAsOf: "2026-10-22",
+    locales: ["en", "zh-TW"],
+    // No `card`: the share card's stats are Blue Jays numbers, so this one shows the title only.
+    title: {
+      en: "2026 World Series preview: Brewers vs. Rays",
+      "zh-TW": "2026 世界大賽前瞻：Brewers vs Rays",
+    },
+    summary: {
+      en: "Two clubs chasing a first title. The Brewers won 103 games by getting on base and leaning on a lockdown bullpen; the Rays won 98 by not striking out and not walking anyone, eight more than their run differential predicts. How they match up, and my pick.",
+      "zh-TW": "兩支都還沒拿過冠軍的球隊。Brewers 靠上壘和鐵牛棚拿下 103 勝；Rays 靠不被三振、不投保送贏了 98 場，比得失分預期多 8 勝。兩隊怎麼對上，以及我的預測。",
+    },
+  },
+  {
     slug: "2027-outfield-upgrade",
     date: "2026-10-17",
     dataAsOf: "2026-10-17",
