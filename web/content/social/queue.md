@@ -24,6 +24,9 @@ author posts by hand and sends back each post's URL, which goes in **Links**.
   Article / part / news: en `#BlueJays #TorontoBlueJays #MLB #Baseball #BaseballStats`,
   zh `#藍鳥 #多倫多藍鳥 #大聯盟 #棒球 #MLB`. Baseball 101: en `#Sabermetrics
   #BaseballStats #MLB #Baseball #BlueJays`, zh `#棒球 #棒球數據 #大聯盟 #MLB #藍鳥`.
+  A series about other clubs uses its own set (`SERIES_TAGS` in `build_kit.py`): the
+  World Series preview is en `#WorldSeries #Brewers #Rays #MLB #BaseballStats`, zh
+  `#世界大賽 #大聯盟 #棒球 #MLB #棒球數據`, and `#WorldSeries` on X.
 - **Baseball 101 numbers follow posting order** and are fixed once a card is posted.
 - **Status:** `idea` → `spec` (spec written) → `ready` (rendered + captions,
   waiting for the author) → `posted` (with links).
@@ -39,6 +42,24 @@ author posts by hand and sends back each post's URL, which goes in **Links**.
 
 - X: `x.com/suyujaysnotes` (`SITE.links.x`). Being set up by the author.
 - Instagram: `instagram.com/suyu.baseball.notes` (`SITE.links.instagram`, opened 2026-10-14).
+
+## 2026 World Series preview (article 2026-10-22): post first
+
+Time-sensitive: Game 1 is Friday 10/23, 8 PM ET. WS0 goes up before first pitch; WS1–WS3
+within the first days of the series (a preview is stale once it's well underway). Three parts,
+not one per section, for that reason. Same kit folder and phone kit (section WS0–WS3, at the top).
+
+| Day | Date | Post | Spec | Status | Links |
+|---|---|---|---|---|---|
+| WS0 | before G1 | Article: 2026 World Series preview (+ link) | registry entry (no `card`: the stat cards are Jays-only, so title only) + `content/cards/part/2026-world-series-preview.json` | ready | |
+| WS1 | | Part 1/3 · Two ways to win | part 1 | ready | |
+| WS2 | | Part 2/3 · Rays' rotation, Brewers' bullpen | part 2 | ready | |
+| WS3 | | Part 3/3 · My pick: the Brewers | part 3 | ready | |
+
+Facts: regular-season values (Brewers OBP .341, Rays K% 18.8%, 98 vs 90 x-W) from the 022
+views / `web_standings`; postseason values (bullpen / starter IP and ERA, Rasmussen's 8 · 6 · 7,
+Dodgers' 11 NLCS runs, Rays' .293 OBP, 3.8 IP per Brewers start) from the MLB Stats API
+(`reports/world-series-2026/`), not in the DB.
 
 ## Launch: 2026 season review + Baseball 101, first arc
 

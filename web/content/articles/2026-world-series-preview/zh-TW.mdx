@@ -1,0 +1,180 @@
+## 今年一定會誕生新冠軍
+
+恭喜 Brewers 和 Rays 打進世界大賽!! 更謝謝 Brewers 除了為去年的橫掃復仇 🧹，也幫我 Jays 報了一箭之仇 🙏 接下來我們來討論與分析一下這次的世界大賽吧!
+
+帳面上 Brewers 比較強：例行賽 103 勝是全聯盟最多，run diff +214 也是 30 隊第 1，打擊和投手的主要指標都在前 5 名。Rays 贏了 98 場，但依得失分算出的預期戰績（x-W/L）只有 90-72，等於多贏了 8 場。他們靠的是全聯盟最少三振的打線、最少保送的投手群，以及季後賽 21 局 ERA 1.29 的 Rasmussen。
+
+兩隊都沒拿過世界大賽冠軍，所以今年一定會誕生新冠軍 🏆 Brewers 是 1982 年以來第一次打進世界大賽，Rays 則是隊史第三次打進世界大賽（前兩次是 2008、2020）。
+
+<StatTable
+  title="2026 世界大賽對戰總覽"
+  file="2026-world-series-matchup"
+  headers={["", "Brewers", "Rays"]}
+  rows={[
+    ["例行賽戰績", "103-59，國聯中區第 1", "98-64，美聯東區第 1"],
+    ["x-W/L（依得失分的預期戰績）", "103-59", "90-72"],
+    ["Run diff（30 隊排名）", "+214（第 1）", "+86（第 6）"],
+    ["主場 / 客場", "55-26 / 48-33", "55-26 / 43-38"],
+    ["季後賽", "NLDS 3-1 Padres、NLCS 4-0 Dodgers", "ALDS 3-0 Yankees、ALCS 4-2 Guardians"],
+    ["系列賽 MVP", "NLCS：Jake Bauers", "ALCS：Freddy Peralta"],
+  ]}
+  note="戰績、x-W/L、run diff：本站資料庫（例行賽）。季後賽：MLB Stats API。系列賽 MVP：MLB.com。"
+/>
+
+兩隊例行賽只在開季碰過一次：3/30–4/1 在 Milwaukee 三連戰，Brewers 拿下兩場。Brewers 戰績較好，拿到主場優勢：G1、G2 在 Milwaukee 的 American Family Field，G3 到 G5 移到 St. Petersburg 的 Tropicana Field，需要的話 G6、G7 再回到 Milwaukee。兩隊主場都是 55-26，但 Rays 客場只有 43-38。Brewers 已經公布 Game 1 由 Misiorowski 先發，Rays 還沒公布。
+
+## 兩種不同的贏球方式
+
+兩隊都很會贏球，但贏法完全不同：Brewers 靠上壘和三振，Rays 靠不被三振、不投保送。
+
+**打擊：Brewers 是上壘機器，Rays 很難被三振。**
+
+Brewers 的 OBP（上壘率）.341、BB%（保送率）10.6%、打擊率 .258 都是全聯盟第 1，但 HR%（每個打席打出全壘打的比率）排第 30，ISO（長打能力）排第 25。每場 5.14 分排第 2，靠的是上壘和跑壘，不是長打。
+
+Rays 打線的 K% 18.8% 和 Whiff%（揮棒落空率）20.7% 都是全聯盟最低，但擊球品質偏弱：Barrel%（擊球初速和仰角都理想的強勁擊球比例）5.7% 是 30 隊最低，xwOBA（依擊球品質推算的預期打擊價值）.304 排第 28。
+
+<TeamStats season={2026} teams={[158, 139]} block="offense" highlight={["obp", "bb_pct", "k_pct", "brl_pct", "xwoba"]} />
+
+**投手：Brewers 三振打者，Rays 不給保送。** Brewers 投手群的 K% 25.8% 是第 1，被打 xwOBA .293 是第 2，打者很難打得扎實。Rays 投手的 BB% 6.9%、WHIP（每局被上壘人次）1.14、被打 BABIP（打進場內的球變成安打的比率）.263 都是第 1；但被打的 Barrel% 排第 25，HR/9 排第 23。
+
+<TeamStats season={2026} teams={[158, 139]} block="prevention" highlight={["pit_k_pct", "pit_bb_pct", "whip", "pit_brl_pct"]} />
+
+值得關注的是，Rays 攻守兩端的擊球品質都偏弱，成績卻比 Statcast 預期的好。打線實際 wOBA .320，比 xwOBA 高了 .016；投手被打 BABIP 全聯盟最低，但守備 OAA 只排第 15，所以不全是守備的功勞。這和多贏 8 場是同一個故事，可能是用人和防守佈陣，也可能是運氣。在美聯冠軍賽前三場，Rays 的主要攻擊手的確有稍微熄火（三場只得 3、3、2 分），所以這點在世界大賽值得注意。
+
+## 各位置的強弱
+
+兩隊打線的強項剛好錯開。Rays 的三壘是全 MLB 最強：Junior Caminero 幾乎包辦三壘（702 個打席佔 98%），42 轟讓 Rays 三壘的 OPS（.866）和全壘打都是 30 隊第 1。Brewers 則是一壘（.885）和二壘（.827）的 OPS 都是第 1：一壘主要是 NLCS MVP Jake Bauers（守一壘時 OPS .920），二壘是 Brice Turang 幾乎全包。
+
+兩隊最弱的都是游擊。Rays 游擊 OPS .586 排第 30，主要是守備型的 Taylor Walls（wRC+ 74）；Brewers 游擊 .648 排第 26。Brewers 的三壘全季只有 8 轟，30 隊最少。
+
+<PositionVsMlb season={2026} teams={[158, 139]} />
+
+## 投手對決：先發看 Rays，牛棚看 Brewers
+
+例行賽兩隊的先發差不多：Rays 先發 ERA 3.51 排第 3，Brewers 3.61 排第 5，Brewers 先發的 K-BB%（三振率減保送率）19.6% 是第 1。真正的差距在牛棚：Brewers 牛棚 FIP（只看三振、保送、全壘打的投手指標）3.69 排第 4，Rays 4.35 排第 23。
+
+<StatTable
+  title="兩隊先發輪值"
+  file="2026-world-series-starters"
+  headers={["投手", "隊", "2026 GS / IP", "ERA / FIP", "K% / BB%", "WAR", "季後賽"]}
+  rows={[
+    ["Jacob Misiorowski", "MIL", "30 / 174.2", "1.80 / 2.17", "37.9% / 6.6%", "6.6", "2 場 8.1 局，ERA 3.24"],
+    ["Logan Henderson", "MIL", "18 / 98.1", "2.47 / 3.32", "29.6% / 5.1%", "2.4", "2 場 9 局，ERA 3.00"],
+    ["Robert Gasser", "MIL", "20 / 109.1", "3.87 / 4.23", "22.2% / 7.6%", "1.5", "2 場 9 局，ERA 1.00"],
+    ["Dustin May", "MIL", "31 / 145.2", "4.70 / 3.63", "23.2% / 8.1%", "2.8", "3 場 7 局，ERA 6.43"],
+    ["Drew Rasmussen", "TB", "30 / 172.0", "2.67 / 2.81", "26.0% / 4.8%", "5.0", "3 場 21 局，ERA 1.29"],
+    ["Freddy Peralta", "TB", "32 / 169.0", "4.42 / 4.28", "21.4% / 8.6%", "1.9", "4 場 16.2 局，ERA 1.08"],
+    ["Nick Martinez", "TB", "31 / 180.0", "3.10 / 3.96", "15.1% / 3.6%", "2.9", "2 場 9 局，ERA 3.00"],
+    ["Griffin Jax", "TB", "23 / 112.1", "3.53 / 3.76", "25.3% / 7.6%", "1.6", "2 場 6 局，ERA 6.00"],
+  ]}
+  note="2026 例行賽（全 MLB 成績，May 含 Cardinals 時期、Peralta 含 Mets 時期）與季後賽到聯盟冠軍賽為止，MLB Stats API。局數為棒球記法：174.2 = 174⅔ 局。"
+/>
+
+**Misiorowski** 是今年最強的先發之一：ERA 1.80，Savant 的 xERA 百分位 99、直球球速百分位 100，四縫線用球率 63.4%、揮空率 40.2%。但季後賽兩場先發只投了 4 局和 4.1 局，都沒投滿 5 局。所以他在世界大賽的穩定度，也會大大的影響 Brewers 的投手調度。Brewers 已經公布由他先發 Game 1。
+
+**Rasmussen** 是 Rays 的王牌：季後賽三場先發投了 8、6、7 局，共 21 局、ERA 1.29，每場都吃得很深。他的球路很平均，卡特、四縫、伸卡各佔兩到三成。有趣的是，他當年是 Brewers 選進來的（2018 年第六輪），後來被交易到 Rays 換來 Willy Adames。
+
+**Peralta** 例行賽 ERA 4.42 不算好，季後賽卻投了 16.2 局、ERA 1.08（美聯冠軍賽出賽 3 場，其中兩場先發，說是今年的十月先生也不為過），拿下 ALCS MVP。他 2018–2025 年都在 Brewers，去年冬天先被交易到 Mets、交易大限前再到 Rays，這次要面對老東家。
+
+<StatTable
+  title="兩隊牛棚核心"
+  file="2026-world-series-bullpens"
+  headers={["投手", "隊", "2026 例行賽", "季後賽"]}
+  rows={[
+    ["Trevor Megill", "MIL", "30 SV，ERA 2.63，FIP 1.85", "5.2 局 0 失分，4 SV"],
+    ["Abner Uribe", "MIL", "ERA 1.97，FIP 2.68", "7 場 6.1 局，ERA 2.84"],
+    ["Aaron Ashby", "MIL", "75 場，ERA 3.12，K% 30.3%", "12.1 局 0 失分，2 SV"],
+    ["DL Hall", "MIL", "ERA 1.91，BB% 14.5%", "5.1 局 0 失分"],
+    ["Bryan Baker", "TB", "41 SV，ERA 1.44", "7 局 0 失分，5 SV"],
+    ["Tyler Wells", "TB", "ERA 2.38，WHIP 0.90", "3.1 局，ERA 10.80"],
+    ["Kevin Kelly", "TB", "71 場，ERA 2.44", "2.1 局，ERA 3.86"],
+    ["Cam Booser", "TB", "ERA 1.98，WHIP 0.76", "4.2 局 0 失分"],
+  ]}
+  note="2026 例行賽（全 MLB 成績，Wells 含 Orioles 時期）與季後賽到聯盟冠軍賽為止，MLB Stats API。"
+/>
+
+到了季後賽，Brewers 的牛棚更是關鍵：8 場投了 40.2 局，比先發的 30.1 局還多，ERA 1.33、WHIP 0.89。Rays 剛好相反，靠先發 50 局 ERA 1.98 撐起來，牛棚 30 局 ERA 3.60。Rays 的終結者 Bryan Baker 例行賽 41 次救援、ERA 1.44，季後賽 7 局沒有失分。ESPN 說 Rays 是例行賽「高槓桿投球」最好的投手群，這和牛棚整體 FIP 排第 23 並不衝突：最好的幾位都用在關鍵局面。
+
+## 該盯緊的打者
+
+兩隊最有價值的打者都是內野手：Brewers 的 Turang（WAR 5.9）和 Rays 的 Caminero（WAR 5.3，42 轟）。打擊最強的是 Bauers，wRC+（調整球場和聯盟差異後的打擊價值，100 = 聯盟平均）143 是兩隊最高。
+
+<StatTable
+  title="兩隊關鍵打者"
+  file="2026-world-series-hitters"
+  headers={["打者", "隊 / 位置", "AVG / OBP / SLG", "HR", "SB", "wRC+", "WAR", "季後賽（打席）"]}
+  rows={[
+    ["Brice Turang", "MIL 2B", ".268 / .366 / .450", "21", "19", "127", "5.9", ".222 / .382 / .370（35）"],
+    ["Jackson Chourio", "MIL LF", ".291 / .351 / .487", "25", "23", "130", "4.6", ".171 / .211 / .343（38）"],
+    ["Jake Bauers", "MIL 1B", ".266 / .389 / .484", "26", "11", "143", "3.6", ".269 / .441 / .423（34）"],
+    ["Garrett Mitchell", "MIL CF", ".262 / .354 / .416", "11", "14", "116", "3.1", ".207 / .303 / .483（33）"],
+    ["William Contreras", "MIL C", ".270 / .341 / .417", "18", "1", "109", "3.0", ".367 / .457 / .700（35）"],
+    ["Junior Caminero", "TB 3B", ".276 / .360 / .524", "42", "3", "142", "5.3", ".273 / .351 / .455（37）"],
+    ["Jonathan Aranda", "TB 1B", ".274 / .358 / .434", "22", "0", "123", "3.0", ".257 / .333 / .343（40）"],
+    ["Liam Hicks", "TB C", ".284 / .367 / .434", "18", "3", "123", "3.0", ".222 / .300 / .259（31）"],
+    ["Yandy Díaz", "TB DH", ".293 / .359 / .446", "22", "3", "125", "2.5", ".308 / .341 / .564（41）"],
+    ["Chandler Simpson", "TB LF", ".306 / .333 / .356", "0", "46", "93", "2.3", ".240 / .259 / .360（28）"],
+  ]}
+  note="2026 例行賽（全 MLB 成績，Hicks 含 Marlins 時期）與季後賽到聯盟冠軍賽為止，MLB Stats API。wRC+、WAR 是 FanGraphs 經 MLB 授權的數據。"
+/>
+
+- **Contreras** 是季後賽最熱的打者：.367 / .457 / .700，3 支全壘打。
+- **Bauers** 拿下 NLCS MVP，季後賽上壘率 .441。他的優勢是選球，正好對上不太保送的 Rays 投手群。
+- **Chourio** 例行賽 25 轟 23 盜，季後賽卻很冷：38 個打席打擊率 .171。ESPN 指出他的揮棒率從例行賽 47% 升到 56%，看起來有點急。
+- **Caminero** 例行賽 42 轟，季後賽到 ALCS G6 才打出第一支全壘打。他的手感是 Rays 打線最大的變數。
+- **Díaz** 是 Rays 季後賽最穩的打者：.308 / .341 / .564，2 支全壘打。
+- **Aranda** 要面對一個難題：ESPN 的數字是他遇到 98 mph 以上的快速球，41 個打席只打 .091。而 Brewers 投手季後賽的快速球平均是 98.3 mph。
+- **Simpson** 是兩隊盜壘最多的人，46 次盜壘、但 0 轟。兩隊都愛跑：每場盜壘數都是聯盟前 5。
+
+## 季後賽一路走來：兩隊都靠投手
+
+兩隊都是靠投手打進世界大賽。
+
+Brewers 8 場只丟 21 分，71 局只被打 3 支全壘打。
+
+Rays 9 場丟 23 分，WHIP 1.01。
+
+打擊方面，Brewers 每場 4.25 分，Rays 打線的上壘率只有 .293。
+
+<StatTable
+  title="2026 季後賽球隊成績"
+  file="2026-postseason-team-lines"
+  headers={["2026 季後賽", "Brewers", "Rays"]}
+  rows={[
+    ["戰績", "7-1", "7-2"],
+    ["每場得分", "4.25", "3.89"],
+    ["AVG / OBP / SLG", ".250 / .343 / .396", ".232 / .293 / .356"],
+    ["HR", "10", "7"],
+    ["投手 ERA / WHIP", "2.03 / 1.06", "2.59 / 1.01"],
+    ["先發局數 / ERA", "30.1 / 2.97", "50.0 / 1.98"],
+    ["牛棚局數 / ERA", "40.2 / 1.33", "30.0 / 3.60"],
+    ["被打 HR", "3", "6"],
+  ]}
+  note="季後賽到聯盟冠軍賽為止，MLB Stats API。局數為棒球記法：30.1 = 30⅓ 局。"
+/>
+
+Brewers 在 NLDS 以 3-1 淘汰 Padres，NLCS 再橫掃 Dodgers。MLB.com 指出 Brewers 這四場都曾經落後，而 Dodgers 整個系列賽只打出 1 支全壘打。Rays 在 ALDS 橫掃 Yankees，三場只丟 5 分；ALCS 打完三場還 1-2 落後 Guardians，之後連贏三場。
+
+季後賽本來就是低分環境：MLB.com 的數字是季後賽平均每場 3.5 分，例行賽 4.48 分。所以 Brewers 每場 4.25 分其實不差。不過樣本只有 8–9 場，這些比率只能當參考。
+
+## 我的預測
+
+我的判斷是 Brewers 會獲勝，主要原因有兩個：
+
+- **Brewers 的鐵牛棚真的穩定且強大。** 例行賽牛棚 FIP 排第 4，季後賽 8 場投了 40.2 局、ERA 只有 1.33。連 Dodgers 都突破不了，NLCS 四場只拿 11 分。
+- **Rays 的打擊還是相對不穩定。** 季後賽上壘率只有 .293，ALCS 前三場合計只得 8 分，例行賽的擊球品質也排在聯盟後段。
+
+如果 Rays 想獲勝，關鍵是讓 Brewers 的牛棚累下來。Brewers 的先發本來就投不長，季後賽平均每場不到 4 局，比賽很快就會交給牛棚；連 Dodgers 都突破不了這個牛棚群，Rays 正面突破的機率不大。比較可行的劇本是 Rays 的先發像 Rasmussen 一樣每場吃 6、7 局，讓自己較弱的牛棚少上場，同時逼 Brewers 的牛棚天天上陣。Uribe 季後賽前七場全都出賽，最後一次出賽就丟了 2 分。消耗牛棚體力、把比賽拖到第七戰，應該是 Rays 的勝利劇本。不過 Brewers 從 NLCS 結束到 Game 1 休息了 7 天，牛棚是養足體力上場的，所以這個劇本要到系列賽後段才有機會發揮。
+
+ESPN 的一萬次模擬也是 Brewers 佔上風：Brewers 59%、Rays 41%。但七戰四勝的系列賽變數很大，今年 Brewers 自己就橫掃了兩屆衛冕冠軍 Dodgers。
+
+但我還是希望比賽打到第六或第七場哈哈!
+
+## 資料來源與註記
+
+- 數據截至 2026-10-22（兩隊都打完聯盟冠軍賽）。
+- 兩隊例行賽的球隊數據、各位置打擊與 30 隊排名：本站資料庫（和 [五季走勢](/team)、[2026 賽季回顧](/season/2026) 同一套算法）。
+- 球員成績、季後賽成績與賽程：[MLB Stats API](https://statsapi.mlb.com)。wRC+、WAR 是 FanGraphs 經 MLB 授權的數據。
+- Statcast 百分位與球路：[Baseball Savant](https://baseballsavant.mlb.com)。
+- [MLB.com 世界大賽預覽](https://www.mlb.com/news/brewers-vs-rays-world-series-preview)：系列賽 MVP、兩隊歷史與淵源、NLCS 細節、季後賽平均得分。
+- [ESPN first look](https://www.espn.com/mlb/story/_/id/50214717/world-series-rays-brewers-first-look-preview)：勝率模擬、Chourio 的揮棒率、Aranda 對快速球的數據、高槓桿投球。
