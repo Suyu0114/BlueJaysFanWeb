@@ -41,6 +41,19 @@ INK = "#003049"  # navy
 PAPER = "#fdf0d5"  # papaya
 
 _WHITE = {"#fff", "#ffffff", "white"}
+
+# Clubs where "every non-white fill -> INK" swallows the mark. MIL 158's gold
+# (outline + the "m b" letters + the ball) and its navy glove are both non-white,
+# so the glove read as one navy blob. Their fills are mapped by hand instead.
+_FILL_MAPS = {
+    158: {"#ffc72c": PAPER, "#13294b": INK, "#fff": PAPER},
+}
+# ...and MIL's ball, now paper on paper, gets its seams back from a black disc
+# laid under the leather panels (the last path). Black is the third tone BAL 110
+# and PIT 134 already carry: their unfilled paths render black.
+_BALL_SEAMS = {
+    158: '<circle cx="155.1" cy="193.61" r="27" fill="#000"/>',
+}
 # Two colour forms in the wild, both seen across the 30 clubs:
 #   1. a fill="#134a8e" attribute on the path            (28 clubs)
 #   2. a `.cls-1 { fill: #0031a7; }` rule inside <defs><style>  (KC 118, WSH 120)
@@ -52,7 +65,7 @@ _HERE = Path(__file__).resolve().parent
 OUT_DIR = _HERE.parent / "web" / "public" / "team-logos"
 
 
-def recolour(svg: str) -> str:
+def recolour(svg: str, team_id: int | None = None) -> str:
     """Every non-white fill -> INK, every white fill -> PAPER.
 
     Covers BOTH colour forms: the fill="..." attribute and `fill: ...` inside a
@@ -61,10 +74,16 @@ def recolour(svg: str) -> str:
 
     `fill="none"` / `fill: none` is left alone: it means "don't paint", not
     "paint white", and overriding it would fill shapes meant to be open.
+
+    A club in _FILL_MAPS / _BALL_SEAMS gets its hand-picked fills and seams.
     """
+    fill_map = _FILL_MAPS.get(team_id, {})
 
     def pick(value: str) -> str:
-        return PAPER if value.strip().lower() in _WHITE else INK
+        value = value.strip().lower()
+        if value in fill_map:
+            return fill_map[value]
+        return PAPER if value in _WHITE else INK
 
     def sub_attr(m: re.Match[str]) -> str:
         value = m.group(1).strip().lower()
@@ -78,7 +97,12 @@ def recolour(svg: str) -> str:
             return m.group(0)
         return f"fill: {pick(value)}"
 
-    return _FILL_CSS_RE.sub(sub_css, _FILL_ATTR_RE.sub(sub_attr, svg))
+    svg = _FILL_CSS_RE.sub(sub_css, _FILL_ATTR_RE.sub(sub_attr, svg))
+    seams = _BALL_SEAMS.get(team_id)
+    if seams:
+        i = svg.rindex("<path")
+        svg = svg[:i] + seams + svg[i:]
+    return svg
 
 
 def fetch_team_ids() -> list[int]:
@@ -98,7 +122,7 @@ def run(out_dir: Path = OUT_DIR) -> None:
         if r.status_code != 200:
             log.warning("No cap logo for team %s (HTTP %s)", team_id, r.status_code)
             continue
-        svg = recolour(r.text)
+        svg = recolour(r.text, team_id)
         (out_dir / f"{team_id}.svg").write_text(svg, encoding="utf-8")
         written += 1
 
