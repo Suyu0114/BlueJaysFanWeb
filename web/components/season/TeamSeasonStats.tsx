@@ -4,6 +4,7 @@ import { HEAD_ROW, stripeBg, TD, TD_FIRST, TD_LAST, TH, TH_FIRST, TH_LAST } from
 import RankChip from "@/components/team/RankChip";
 import { PanelBlock } from "@/components/team/TeamPanel";
 import { ordinal } from "@/lib/ordinal";
+import { teamAbbr } from "@/lib/team-abbr";
 import { buildGrid, type GridRow } from "@/lib/team-grid";
 import { formatMetric, METRIC, metricLabel, type MetricKey } from "@/lib/team-metrics";
 import { TORONTO_TEAM_ID } from "@/lib/team-ids";
@@ -14,7 +15,9 @@ import type { MlbSeasonRow, TeamSeasonRow } from "@/lib/team-trends";
 // Values, MLB averages and ranks all come from the 022 views through P13's
 // buildGrid — nothing is computed here. Offense and run prevention side by
 // side, each split into the registry's sections (run scoring / contact quality,
-// run prevention / contact allowed / defense).
+// run prevention / contact allowed / defense). An article can pass two or more
+// `teamIds` (a World Series preview): one value + rank column per club, no
+// prior season.
 
 const OFFENSE: MetricKey[] = [
   "r_per_g", "avg", "obp", "slg", "ops", "iso", "wrc_plus", "k_pct", "bb_pct", "hr_pct", "sb_per_g", "bat_war",
@@ -34,27 +37,99 @@ export default async function TeamSeasonStats({
   locale,
   only,
   highlight = [],
+  teamIds = [TORONTO_TEAM_ID],
 }: {
   season: number;
-  prior: number | null; // shown only when the 022 views hold a Jays row for it
+  prior: number | null; // shown only when the 022 views hold a Jays row for it (one club only)
   clubs: TeamSeasonRow[]; // all 30 clubs, `season` (+ `prior`)
   mlb: MlbSeasonRow[];
   locale: string;
   only?: "offense" | "prevention";
   highlight?: MetricKey[];
+  teamIds?: number[]; // two or more = clubs side by side
 }) {
   const t = await getTranslations("Team");
   const te = await getTranslations("Export");
-  const hasPrior = prior != null && clubs.some((r) => r.season === prior && r.team_id === TORONTO_TEAM_ID);
+  const hasPrior =
+    teamIds.length === 1 && prior != null && clubs.some((r) => r.season === prior && r.team_id === teamIds[0]);
   const seasons = hasPrior ? [prior, season] : [season];
   const cur = seasons.length - 1;
 
   const hint = (k: MetricKey) => (t.has(`hints.${k}`) ? t(`hints.${k}`) : undefined);
   const label = (k: MetricKey) => metricLabel(METRIC[k], t);
+  const fmt = (r: GridRow, v: number | null) => formatMetric(v, METRIC[r.key].format);
+  const sectionRow = (r: GridRow, width: number) => (
+    <tr key={`${r.section}-head`}>
+      <td colSpan={width} className="pb-1 pl-3 pt-3 text-left font-display text-[11px] uppercase tracking-wider text-navy/55">
+        {t(`sections.${r.section}`)}
+      </td>
+    </tr>
+  );
+  const metricCell = (r: GridRow) => (
+    // Sticky (opaque papaya) so the metric stays visible while the table scrolls on
+    // phones; a highlighted row lays the same brick wash over it.
+    <td
+      className={`${TD_FIRST} sticky left-0 z-[1] bg-papaya ${highlight.includes(r.key) ? "bg-linear-to-r from-brick/20 to-brick/20" : ""}`}
+      title={hint(r.key)}
+    >
+      {label(r.key)}
+    </td>
+  );
 
-  const block = (title: string, keys: MetricKey[]) => {
-    const rows: GridRow[] = buildGrid(keys.map((k) => METRIC[k]), clubs, mlb, seasons);
-    const fmt = (r: GridRow, v: number | null) => formatMetric(v, METRIC[r.key].format);
+  // Two or more clubs: metric | each club's value + rank chip | MLB average.
+  const compareBlock = (title: string, keys: MetricKey[]) => {
+    const grids = teamIds.map((id) => buildGrid(keys.map((k) => METRIC[k]), clubs, mlb, seasons, id));
+    const rows = grids[0];
+    const abbrs = teamIds.map((id) => teamAbbr(id));
+    const who = `${season} ${abbrs.join(" vs ")}`;
+    const headers = [t("colMetric"), ...abbrs.flatMap((a) => [a, `${a} ${t("colMlbRank")}`]), t("trendsMlb")];
+    const copyRows = rows.map((r, i) => [
+      label(r.key),
+      ...grids.flatMap((g) => {
+        const c = g[i].cells[cur];
+        return [fmt(r, c.value), c.rank != null ? ordinal(c.rank, locale, c.tied) : ""];
+      }),
+      fmt(r, r.cells[cur].mlb),
+    ]);
+    return (
+      <PanelBlock title={title} action={
+          <TableExport headers={headers} rows={copyRows} name={`${who} ${title}`} caption={`${who} · ${title}`} />
+        }>
+        <div className="overflow-x-auto">
+          <table className="w-full whitespace-nowrap border-separate border-spacing-0 text-right text-sm tabular-nums">
+            <thead>
+              <tr className={HEAD_ROW}>
+                <th className={`${TH_FIRST} sticky left-0 z-[1] bg-navy`}>{t("colMetric")}</th>
+                {abbrs.map((a) => <th key={a} className={TH}>{a}</th>)}
+                <th className={TH_LAST}>{t("trendsMlb")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => [
+                (i === 0 || rows[i - 1].section !== r.section) && sectionRow(r, abbrs.length + 2),
+                <tr key={r.key} className={`text-navy ${stripeBg(i, highlight.includes(r.key))}`}>
+                  {metricCell(r)}
+                  {grids.map((g, j) => {
+                    const c = g[i].cells[cur];
+                    return (
+                      <td key={abbrs[j]} className={TD}>
+                        <span className="font-semibold">{fmt(r, c.value)}</span>
+                        <RankChip rank={c.rank} tied={c.tied} locale={locale} small className="ml-1.5 min-w-[2.75rem]" />
+                      </td>
+                    );
+                  })}
+                  <td className={`${TD_LAST} text-navy/70`}>{fmt(r, r.cells[cur].mlb)}</td>
+                </tr>,
+              ])}
+            </tbody>
+          </table>
+        </div>
+      </PanelBlock>
+    );
+  };
+
+  const singleBlock = (title: string, keys: MetricKey[]) => {
+    const rows: GridRow[] = buildGrid(keys.map((k) => METRIC[k]), clubs, mlb, seasons, teamIds[0]);
     const headers = [t("colMetric"), season, t("trendsMlb"), t("colMlbRank"), ...(hasPrior ? [prior] : [])];
     const copyRows = rows.map((r) => {
       const c = r.cells[cur];
@@ -91,27 +166,10 @@ export default async function TeamSeasonStats({
             <tbody>
               {rows.map((r, i) => {
                 const c = r.cells[cur];
-                const section = i === 0 || rows[i - 1].section !== r.section;
                 return [
-                  section && (
-                    <tr key={`${r.section}-head`}>
-                      <td
-                        colSpan={width}
-                        className="pb-1 pl-3 pt-3 text-left font-display text-[11px] uppercase tracking-wider text-navy/55"
-                      >
-                        {t(`sections.${r.section}`)}
-                      </td>
-                    </tr>
-                  ),
+                  (i === 0 || rows[i - 1].section !== r.section) && sectionRow(r, width),
                   <tr key={r.key} className={`text-navy ${stripeBg(i, highlight.includes(r.key))}`}>
-                    {/* Sticky (opaque papaya) so the metric stays visible while the table scrolls on
-                        phones; a highlighted row lays the same brick wash over it. */}
-                    <td
-                      className={`${TD_FIRST} sticky left-0 z-[1] bg-papaya ${highlight.includes(r.key) ? "bg-linear-to-r from-brick/20 to-brick/20" : ""}`}
-                      title={hint(r.key)}
-                    >
-                      {label(r.key)}
-                    </td>
+                    {metricCell(r)}
                     <td className={`${TD} font-semibold`}>{fmt(r, c.value)}</td>
                     <td className={`${TD} text-navy/70`}>{fmt(r, c.mlb)}</td>
                     <td className={`${hasPrior ? TD : TD_LAST} text-center`}>
@@ -128,6 +186,7 @@ export default async function TeamSeasonStats({
     );
   };
 
+  const block = teamIds.length > 1 ? compareBlock : singleBlock;
   if (only === "offense") return block(t("offenseTitle"), OFFENSE);
   if (only === "prevention") return block(t("preventionTitle"), PREVENTION);
   return (

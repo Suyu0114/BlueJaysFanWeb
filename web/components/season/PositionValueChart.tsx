@@ -148,16 +148,16 @@ export default function PositionValueChart({
   const vsDigits = VS_MLB_DIGITS[metric];
   const vsRows = hasMlbReference(metric)
     ? vsMlb.map((r) => {
-        const jays = r.jays[metric];
+        const jays = r.club[metric];
         const mlb = r.mlb[metric];
         return {
           group: r.group,
           v: jays != null && mlb != null ? jays - mlb : null,
           jays,
           mlb,
-          pa: r.jays.pa,
-          rank: metric === "hr" ? r.jays.hr_rank : r.jays.ops_rank,
-          tied: metric === "hr" ? r.jays.hr_tied : r.jays.ops_tied,
+          pa: r.club.pa,
+          rank: metric === "hr" ? r.club.hr_rank : r.club.ops_rank,
+          tied: metric === "hr" ? r.club.hr_tied : r.club.ops_tied,
         };
       })
     : [];

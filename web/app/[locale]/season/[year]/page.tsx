@@ -330,7 +330,7 @@ export default async function SeasonPage({
                   <p className="mt-2 text-[11px] leading-snug text-navy/55">{t("posNote")}</p>
                 </div>
               )}
-              {positionVsMlb.length > 0 && <PositionVsMlbTable rows={positionVsMlb} season={season} locale={locale} />}
+              {positionVsMlb.length > 0 && <PositionVsMlbTable clubs={[{ teamId: TORONTO_TEAM_ID, rows: positionVsMlb }]} season={season} locale={locale} />}
             </div>,
           )}
 

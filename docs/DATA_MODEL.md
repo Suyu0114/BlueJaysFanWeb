@@ -315,6 +315,8 @@ needs paid FanGraphs — see CLAUDE.md). A multi-position player gets multiple r
 which carries the player's primary position on every leaderboard (Varsho's 2024 LF
 row says CF). Keying on it collapsed each multi-position player onto one row, the
 last position pulled winning, until 2026-10-17. Each run replaces the season's rows.
+**Every MLB fielder on the leaderboard, not only Jays** (no roster filter; 2026 = 1,238
+rows) — readers that mean "Jays" must join the roster themselves.
 
 | Column | Type | Null | Meaning |
 |---|---|---|---|
