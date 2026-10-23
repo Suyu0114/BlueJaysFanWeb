@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { Reveal } from "@/components/motion/Reveal";
 import ArticleEnd from "@/components/article/ArticleEnd";
+import ClubMatchup from "@/components/article/ClubMatchup";
 import ViewPing from "@/components/article/ViewPing";
 import { ARTICLES, getArticle, shownLocale } from "@/content/articles";
 import { routing } from "@/i18n/routing";
@@ -92,6 +93,7 @@ export default async function ArticlePage({ params }: { params: Params }) {
         {t("back")}
       </Link>
       <Reveal as="section" className="mt-4">
+        {article.teams && <ClubMatchup teams={article.teams} className="mb-3" />}
         <h1 className="text-3xl font-semibold leading-tight text-navy">{title}</h1>
         <p className="mt-3 text-sm text-navy/65" lang={locale}>
           {t("byline", { author: SITE.author })} · <time dateTime={article.date}>{day(article.date)}</time>

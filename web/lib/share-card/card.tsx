@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ImageResponse } from "next/og";
 import { getTranslations } from "next-intl/server";
 import { SITE, siteHost } from "@/lib/site";
-import { cardFonts, playerPortrait, siteLogo } from "./fonts";
+import { cardFonts, playerPortrait, siteLogo, teamLogo } from "./fonts";
 import { Ink, roughLine, roughRect, scorecardFrame, seedFrom } from "./rough";
 import { pick, type ArticleCard, type CardSpec, type Fact, type GlossaryCard, type NewsCard, type PartCard } from "./spec";
 import {
@@ -117,6 +117,11 @@ function cjkPieces(s: string): string[] {
   }
   if (cur.trim()) out.push(cur);
   return out.map((p) => p.trim()).filter(Boolean);
+}
+/** fit() for a title: a zh title also needs its widest piece to fit a line, or that piece breaks mid-phrase. */
+function fitTitle(title: string, zh: boolean, width: number, lines: number, sizes: number[]): number {
+  const whole = zh ? sizes.filter((s) => cjkPieces(title).every((p) => textWidth(p, s) <= width)) : sizes;
+  return fit(title, width, lines, whole.length > 0 ? whole : sizes);
 }
 /** The title row's wrapping style: zh wraps its pieces (see cjkPieces). */
 const titleRow = (zh: boolean) => (zh ? { flexWrap: "wrap" as const } : {});
@@ -418,13 +423,47 @@ function Card({ L, seed, S, tag, zh, logo, headerExtra, footerLeft, children }: 
 const dateFmt = (locale: string, ymd: string, opts: Intl.DateTimeFormatOptions = { dateStyle: "long" }) =>
   new Intl.DateTimeFormat(locale, { ...opts, timeZone: "UTC" }).format(new Date(`${ymd}T00:00:00Z`));
 
-type Ctx = { L: Layout; S: KindStyle; zh: boolean; locale: string; logo: string; seed: number; byline: string; rankLabel: string; portraits: Record<number, string> };
+type Ctx = {
+  L: Layout;
+  S: KindStyle;
+  zh: boolean;
+  locale: string;
+  logo: string;
+  seed: number;
+  byline: string;
+  rankLabel: string;
+  portraits: Record<number, string>;
+  teamLogos: string[];
+};
+
+/**
+ * The clubs an article is about (registry `teams`): their cap logos, "VS" between — the article page's ClubMatchup.
+ * Big under an article card's title; small in front of a series part's series name.
+ */
+function Matchup({ c, size, vsSize }: { c: Ctx; size: number; vsSize: number }) {
+  const { S } = c;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: vsSize * 0.6 }}>
+      {c.teamLogos.flatMap((src, i) => [
+        ...(i > 0
+          ? [
+              <div key={`vs-${i}`} style={{ fontFamily: "Graduate", fontSize: vsSize, letterSpacing: 2, color: softInk(S, 0.5) }}>
+                VS
+              </div>,
+            ]
+          : []),
+        // eslint-disable-next-line @next/next/no-img-element -- Satori renders plain <img>
+        <img key={`logo-${i}`} src={src} width={size} height={size} alt="" />,
+      ])}
+    </div>
+  );
+}
 
 function ArticleBody({ spec, stats, c }: { spec: ArticleCard; stats: CardStat[]; c: Ctx }) {
   const { L, S, zh } = c;
   const title = pick(spec.title, c.locale);
   const inner = L.W - 2 * L.m - 2 * L.pad[1];
-  const size = L.portrait ? fit(title, inner, 4, [80, 72, 64, 56]) : fit(title, inner, 2, [56, 50, 44, 40]);
+  const size = L.portrait ? fitTitle(title, zh, inner, 4, [80, 72, 64, 56]) : fitTitle(title, zh, inner, 2, [56, 50, 44, 40]);
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: size, lineHeight: 1.2, color: S.ink, marginTop: L.gap * (L.portrait ? 1.6 : 1), ...titleRow(zh) }}>
@@ -433,6 +472,11 @@ function ArticleBody({ spec, stats, c }: { spec: ArticleCard; stats: CardStat[];
       <div style={{ display: "flex", marginTop: L.gap * 0.8 }}>
         <Rule color={S.rule} width={L.portrait ? 260 : 190} L={L} seed={c.seed + 21} />
       </div>
+      {c.teamLogos.length > 0 && (
+        <div style={{ display: "flex", marginTop: L.gap * (L.portrait ? 1.6 : 1.1) }}>
+          <Matchup c={c} size={L.portrait ? 240 : 130} vsSize={L.value} />
+        </div>
+      )}
       {stats.length > 0 && (
         <div
           style={{
@@ -660,7 +704,7 @@ function PartBody({ spec, stats, c }: { spec: PartCard; stats: CardStat[]; c: Ct
   const title = pick(spec.title, c.locale);
   const text = spec.text ? pick(spec.text, c.locale) : null;
   const inner = L.W - 2 * L.m - 2 * L.pad[1];
-  const tSize = L.portrait ? fit(title, inner, 3, [84, 76, 68, 60]) : fit(title, inner, 2, [52, 46, 42, 38]);
+  const tSize = L.portrait ? fitTitle(title, zh, inner, 3, [84, 76, 68, 60]) : fitTitle(title, zh, inner, 2, [52, 46, 42, 38]);
   const dSize = L.portrait ? fit(text ?? "", inner, 5, [38, 34, 30]) : fit(text ?? "", inner, 2, [25, 23, 21]);
   const portraitOf = (f: Fact) => (f.player ? c.portraits[f.player] : undefined);
   const tile = (f: Fact) => {
@@ -682,19 +726,21 @@ function PartBody({ spec, stats, c }: { spec: PartCard; stats: CardStat[]; c: Ct
   const statCards = stats.map((s) => <StatCard key={s.label} stat={s} rankLabel={c.rankLabel} S={S} zh={zh} L={L} grow={!L.portrait} />);
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      <div
-        style={{
-          display: "flex",
-          fontFamily: zh ? "Noto Serif TC" : "Graduate",
-          fontWeight: zh ? 700 : 400,
-          fontSize: L.tag * 0.9,
-          letterSpacing: 2,
-          color: softInk(S, 0.6),
-          textTransform: "uppercase",
-          marginTop: L.gap * (L.portrait ? 1.2 : 0.4),
-        }}
-      >
-        {pick(spec.series, c.locale)}
+      <div style={{ display: "flex", alignItems: "center", gap: L.gap * 0.9, marginTop: L.gap * (L.portrait ? 1.2 : 0.4) }}>
+        {c.teamLogos.length > 0 && <Matchup c={c} size={L.portrait ? 88 : 56} vsSize={L.tag * 0.75} />}
+        <div
+          style={{
+            display: "flex",
+            fontFamily: zh ? "Noto Serif TC" : "Graduate",
+            fontWeight: zh ? 700 : 400,
+            fontSize: L.tag * 0.9,
+            letterSpacing: 2,
+            color: softInk(S, 0.6),
+            textTransform: "uppercase",
+          }}
+        >
+          {pick(spec.series, c.locale)}
+        </div>
       </div>
       <div style={{ display: "flex", fontFamily: prose(zh), fontWeight: zh ? 700 : 400, fontSize: tSize, lineHeight: 1.2, color: S.ink, marginTop: L.gap * 0.4, ...titleRow(zh) }}>
         {titleContent(title, zh, tSize, inner)}
@@ -728,7 +774,7 @@ function NewsBody({ spec, c }: { spec: NewsCard; c: Ctx }) {
   const deck = spec.deck ? pick(spec.deck, c.locale) : null;
   const inner = L.W - 2 * L.m - 2 * L.pad[1];
   const textW = L.portrait ? inner : inner - 300;
-  const hSize = L.portrait ? fit(headline, textW, 4, [96, 88, 80, 72, 64, 56]) : fit(headline, textW, 3, [52, 46, 42, 38]);
+  const hSize = L.portrait ? fitTitle(headline, zh, textW, 4, [96, 88, 80, 72, 64, 56]) : fitTitle(headline, zh, textW, 3, [52, 46, 42, 38]);
   const dSize = L.portrait ? fit(deck ?? "", textW, 5, [36, 32, 28]) : fit(deck ?? "", textW, 3, [25, 23, 21]);
   const stamp = zh
     ? { big: dateFmt("zh-TW", spec.date, { month: "numeric", day: "numeric" }), small: spec.date.slice(0, 4) }
@@ -827,6 +873,7 @@ export async function renderShareCard(spec: CardSpec, opts: CardOptions): Promis
     tS("rankLabel"),
     tC("example"),
     tC("teamExample"),
+    (spec.kind === "article" || spec.kind === "part") && spec.teams.length > 1 ? "VS" : "",
     ...stats.flatMap((s) => [s.label, s.label.toUpperCase(), s.value, s.delta?.text ?? "", s.rank?.text ?? "", s.prior ?? ""]),
     !example
       ? ""
@@ -843,8 +890,10 @@ export async function renderShareCard(spec: CardSpec, opts: CardOptions): Promis
   const playerIds = spec.kind === "part" ? [...new Set(spec.facts.flatMap((f) => (f.player ? [f.player] : [])))] : [];
   const portraits: Record<number, string> = {};
   for (const [id, src] of await Promise.all(playerIds.map(async (id) => [id, await playerPortrait(id)] as const))) if (src) portraits[id] = src;
+  const teams = spec.kind === "article" || spec.kind === "part" ? spec.teams : [];
+  const teamLogos = (await Promise.all(teams.map(teamLogo))).filter((s): s is string => s != null);
 
-  const c: Ctx = { L, S, zh, locale, logo, seed, byline, rankLabel: tS("rankLabel"), portraits };
+  const c: Ctx = { L, S, zh, locale, logo, seed, byline, rankLabel: tS("rankLabel"), portraits, teamLogos };
   const body =
     spec.kind === "article" ? (
       <ArticleBody spec={spec} stats={stats} c={c} />

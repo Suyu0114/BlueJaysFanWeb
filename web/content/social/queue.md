@@ -51,7 +51,7 @@ not one per section, for that reason. Same kit folder and phone kit (section WS0
 
 | Day | Date | Post | Spec | Status | Links |
 |---|---|---|---|---|---|
-| WS0 | before G1 | Article: 2026 World Series preview (+ link) | registry entry (no `card`: the stat cards are Jays-only, so title only) + `content/cards/part/2026-world-series-preview.json` | ready | |
+| WS0 | before G1 | Article: 2026 World Series preview (+ link) | registry entry (no `card`: the stat cards are Jays-only, so title + the two clubs' logos from `teams`) + `content/cards/part/2026-world-series-preview.json` | ready | |
 | WS1 | | Part 1/3 · Two ways to win | part 1 | ready | |
 | WS2 | | Part 2/3 · Rays' rotation, Brewers' bullpen | part 2 | ready | |
 | WS3 | | Part 3/3 · My pick: the Brewers | part 3 | ready | |

@@ -415,7 +415,7 @@ The Brewers won 103 games by getting on base and leaning on a lockdown bullpen. 
 Two clubs chasing a first title. The Brewers won 103 games by getting on base and leaning on a lockdown bullpen; the Rays won 98 by not striking out and not walking anyone, eight more than their run differential predicts.
 
 Three takeaways follow, one post at a time. The full preview, with live charts: link in bio.""",
-         zh="""2026 世界大賽前瞻：Brewers vs Rays。
+         zh="""2026 世界大賽賽前預測：Brewers vs Rays。
 
 兩支都還沒拿過冠軍的球隊。Brewers 靠上壘和鐵牛棚拿下 103 勝；Rays 靠不被三振、不投保送贏了 98 場，比得失分預期多 8 勝。
 
@@ -474,7 +474,7 @@ Rays 的劇本：先發每場吃 6、7 局，把系列賽拖長、拖累 Brewers
 SERIES = {
     "review": ("2026 season review", "2026 賽季回顧", 6),
     "outfield": ("2027 outfield upgrade", "2027 外野補強", 7),
-    "ws": ("World Series preview", "世界大賽賽前分析", 3),
+    "ws": ("World Series preview", "世界大賽賽前預測", 3),
 }
 
 

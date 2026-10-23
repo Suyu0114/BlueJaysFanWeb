@@ -10,8 +10,12 @@ import { DUR, EASE_SOFT, SPRING_SOFT } from "@/lib/motion";
 // cards both wrap their content in this so the site reads as one set of
 // hand-drawn parchment cards (the schedule calendar uses the same look with its
 // own overlay). rough.js needs literal colors — these mirror the @theme tokens.
-const NAVY = "#003049";
-const INK_FAINT = "rgba(0, 48, 73, 0.28)"; // faint navy inner rule
+// `steel` ink marks a card that links off the site (another club's player →
+// MLB.com), so it reads as a different kind of link from the navy ones.
+const INKS = {
+  navy: { line: "#003049", faint: "rgba(0, 48, 73, 0.28)" }, // faint navy inner rule
+  steel: { line: "#669bbc", faint: "rgba(102, 155, 188, 0.4)" },
+} as const;
 
 // Offset "print" shadow. Written in motion's own order (offsets, then colour)
 // so the hover can interpolate it; #00304933 / #00304940 as rgba.
@@ -28,6 +32,7 @@ function seedFromString(s: string): number {
 export default function ScorecardFrame({
   seedKey,
   variant = "card",
+  ink = "navy",
   className,
   children,
 }: {
@@ -38,6 +43,8 @@ export default function ScorecardFrame({
   //             affordance that isn't there.
   // "control" = single tighter line, no shadow/hover (segmented toggles).
   variant?: "card" | "panel" | "control";
+  // Frame line colour; the print shadow stays navy either way.
+  ink?: keyof typeof INKS;
   className?: string;
   children: React.ReactNode;
 }) {
@@ -74,24 +81,25 @@ export default function ScorecardFrame({
       while (svg.firstChild) svg.removeChild(svg.firstChild);
       const rc = rough.svg(svg);
       const layers: SVGGElement[] = [];
+      const { line, faint } = INKS[ink];
 
       if (variant === "control") {
         // Single tighter hand-drawn line for small segmented toggles.
         const inset = 3;
         layers.push(
           rc.rectangle(inset, inset, w - 2 * inset, h - 2 * inset, {
-            stroke: NAVY,
+            stroke: line,
             strokeWidth: 1.6,
             roughness: 1.5,
             seed,
           }),
         );
       } else {
-        // Double-line scorecard frame: navy outer + a faint navy inner rule.
+        // Double-line scorecard frame: ink outer + a faint inner rule.
         const inset = 5;
         layers.push(
           rc.rectangle(inset, inset, w - 2 * inset, h - 2 * inset, {
-            stroke: NAVY,
+            stroke: line,
             strokeWidth: 2.5,
             roughness: 1.4,
             seed,
@@ -100,7 +108,7 @@ export default function ScorecardFrame({
         const inset2 = inset + 4;
         layers.push(
           rc.rectangle(inset2, inset2, w - 2 * inset2, h - 2 * inset2, {
-            stroke: INK_FAINT,
+            stroke: faint,
             strokeWidth: 1,
             roughness: 2,
             seed: seed + 1,
@@ -133,7 +141,7 @@ export default function ScorecardFrame({
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [seed, variant, inView]);
+  }, [seed, variant, ink, inView]);
 
   const surface =
     variant === "control" ? "rounded-md bg-dirt/40" : "rounded-lg bg-dirt/40";

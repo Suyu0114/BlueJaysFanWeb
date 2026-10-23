@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import ScorecardFrame from "@/components/ScorecardFrame";
+import ClubMatchup from "@/components/article/ClubMatchup";
 import { Reveal } from "@/components/motion/Reveal";
 import { ARTICLES, shownLocale } from "@/content/articles";
 import { getArticleViews, publicViews } from "@/lib/article-views";
@@ -45,11 +46,14 @@ export default async function ArticlesPage({ params }: { params: Promise<{ local
               <Reveal as="li" key={a.slug}>
                 <ScorecardFrame seedKey={`article-${a.slug}`}>
                   <Link href={`/articles/${a.slug}`} className="relative z-10 block p-5">
-                    <time dateTime={a.date} className="text-xs text-navy/55">
-                      {dateFmt.format(new Date(`${a.date}T00:00:00Z`))}
-                      {shown !== locale && ` · ${t(`languageNames.${shown}`)}`}
-                      {count != null && ` · ${t("views", { count })}`}
-                    </time>
+                    <div className="flex items-center justify-between gap-3">
+                      <time dateTime={a.date} className="text-xs text-navy/55">
+                        {dateFmt.format(new Date(`${a.date}T00:00:00Z`))}
+                        {shown !== locale && ` · ${t(`languageNames.${shown}`)}`}
+                        {count != null && ` · ${t("views", { count })}`}
+                      </time>
+                      {a.teams && <ClubMatchup teams={a.teams} size={28} />}
+                    </div>
                     <h2 className="mt-1 text-xl font-semibold leading-snug text-navy" lang={shown}>
                       {a.title[shown]}
                     </h2>
