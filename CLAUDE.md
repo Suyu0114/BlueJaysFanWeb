@@ -174,7 +174,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
 /ETL_update_flow.md            # backfill + manual re-run steps
 /web/                          # Next.js app
   app/[locale]/
-    page.tsx                   # team home + "Today's Blue Jays" module
+    page.tsx                   # home: h1 (SITE.name) + subtitle, latest 3 articles (ArticleCard compact), "Today's Blue Jays", standings, calendar; WebSite JSON-LD (the site name Google shows)
     template.tsx               # page-to-page fade on client navigation (skipped on first load)
     players/page.tsx           # roster list with Current 26-man / All 2024-2026 toggle
     players/[mlbam_id]/
@@ -186,12 +186,12 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     standings/page.tsx         # P11: three views (AL / NL / Wild Card) + clinch legend
     season/[year]/page.tsx     # P12 M5: team season vs prior (record strip, games above .500 + run diff by game number, months, splits, leaders, value by position); generateStaticParams = seasons with R finals; player modules hide when a season has no player rows (< 2024). Post-P13: TeamNav tabs; MLB rank chips on PCT / RS / RA / run diff + "Where {season} ranked" (StrengthsWeaknesses single) from the 022 views, hidden without a Jays row; leaders WAR/OPS/HR/SB + ERA/WHIP/SO/SV, each card "All →" (#stats-<tab>-<column>) into the player stats table (last panel), preceded by "team stats vs MLB" (TeamSeasonStats); getTeamTrend loads season + prior. Value by position panel = chart (2024+, player rows) + PositionVsMlbTable (any season in the 025 view, 2022+). Record strip / month by month / splits are components (`SeasonRecordStrip` / `MonthlyRecordPanel` / `SeasonSplitsPanel`, panels via `SeasonPanel`) so articles embed the same modules
     team/page.tsx              # P13: Blue Jays over the latest 5 seasons vs the MLB average + 30-club ranks — season strip, ① record & run differential, ② offense, ③ run prevention, ④ trajectory + splits, ⑤ strengths & weaknesses, ⑥ glossary & method; TeamNav tabs on top; SSG, revalidate 3600
-    articles/page.tsx          # article list (content/articles registry, newest first; a missing locale is listed in the language it has); registry `teams` -> ClubMatchup logos on the card's date row
+    articles/page.tsx          # article list (content/articles registry, newest first; a missing locale is listed in the language it has); one ArticleCard each; registry `teams` -> ClubMatchup logos on the card's date row
     articles/[slug]/page.tsx   # one article: dynamic import of content/articles/<slug>/<locale>.mdx (falls back to the first locale + notice); registry `teams` -> ClubMatchup above the title; byline, date, dataAsOf line, view count (>= MIN_PUBLIC_VIEWS), JSON-LD Article, canonical + hreflang; ArticleEnd (share + discussion) + ViewPing; revalidate 3600 (figures read live data)
     articles/[slug]/opengraph-image.tsx # share card per article per locale: renderShareCard (lib/share-card, kind article, size og) — title + the registry `card` stats read from the DB; prerendered — lists its own locale × slug params
     opengraph-image.tsx        # site default share card per locale: renderSiteCard (wordmark, Home.subtitle, the lettered logo on the share cards' parchment + hand-drawn frame); inherited by every page without its own
     about/page.tsx             # bio + contact card (#contact: LinkedIn / portfolio / email / X / Instagram when set) + how the data works + sharing credit; JSON-LD Person (no email)
-  app/sitemap.ts               # /sitemap.xml: every page in both locales with hreflang alternates (static pages, articles, seasons, all-time roster players); revalidate 1 day
+  app/sitemap.ts               # /sitemap.xml: every page in both locales with hreflang alternates + x-default = en (static pages, articles, seasons, all-time roster players); revalidate 1 day
   app/robots.ts                # /robots.txt: allow all but /api/, points to the sitemap
   app/api/dev/share-card/route.ts # DEV ONLY (404 unless `next dev`): ?kind=&slug=&size=og|x|ig&locale=[&part=N] -> PNG of a committed spec (registry `card` / content/cards JSON), for /share-card
   app/api/views/[slug]/route.ts # POST: +1 article view — registry slugs only, VERCEL_ENV=production only (dev / preview return the count), one parameterized upsert, nothing about the reader stored
@@ -263,6 +263,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
       TeamSeasonStats.tsx      # server: the team's season line vs the MLB average + 30-club rank + prior season — offense (run scoring / contact) | run prevention (incl. contact allowed / OAA); P13 buildGrid over the 022 views, nothing computed; `only` = one side, `highlight` = MetricKey rows in brick (article figures); `teamIds` (default [141]) with 2+ ids = clubs side by side, no prior column
       PlayerStatsTable.tsx     # client: every Jay's season line, sortable — position players (Offense: slash/HR/RBI/SB/wRC+/Off | Defense: Def/OAA | WAR) and pitchers tabs; All | Regulars (100+ PA / 20+ IP); copy table; leader-card hash jumps (rate stats -> Regulars); "MLB average" row pinned in <tfoot> (rate columns, same 022 MLB row)
     article/
+      ArticleCard.tsx          # server: one article's hand-drawn card (date / views / ClubMatchup, title, summary, Read) — the list page (h2) and the home page's latest three (h3, `compact`: summary clamped, cards level)
       ArticleEnd.tsx           # server: end-of-article panel — ArticleShare + "Join the discussion" (the article's X / IG post from the registry's `discuss`, else the profile; hidden with neither)
       ArticleShare.tsx         # client: Share on X (intent, via the site handle) / Copy link / native share sheet (useSyncExternalStore, like ContactEmail)
       ViewPing.tsx             # client: POST /api/views once per browser per 24 h (localStorage, guarded); skips navigator.webdriver
@@ -298,6 +299,7 @@ ETL runs **outside** Next.js (Vercel functions can't run pybaseball). Next.js ca
     season-stats.ts            # web_player_season_stats (incl. P9 basic line + P10 pitcher line) + batter games-played
     discipline.ts              # P12 015-view readers (batter/pitcher discipline, batted-ball profile, zone reference), scope 'mlb'|'jays'
     season-format.ts           # r3 / signed / wl / streakText — display helpers shared by the season modules
+    seo.ts                     # localeAlternates(locale, path) = canonical + hreflang (en / zh-TW / x-default) for every page's generateMetadata; playerMetadata (player pages: "{name} stats" / "{name} · Batting")
     site.ts                    # SITE (name / author / url / contact links incl. x + instagram / email parts) + sourceLine() + xHandle(): the only place the brand and contacts live
     article-views.ts           # getArticleViews (one query, cached) + publicViews / MIN_PUBLIC_VIEWS (counts stay hidden below 50)
     share-card/                # link previews + social cards (next/og) — the only place their design lives
@@ -395,6 +397,7 @@ Env vars live in `.env` at the repo root (single `DATABASE_URL`). The ETL loads
 - **Pre-aggregate in ETL where possible.** Player season stats go in `web_player_season_stats`; pages should not aggregate 3000 rows on every request.
 - **D3 components receive plain JSON props** (`BattedBallEvent[]`), not Supabase clients. Keep them framework-pure for easier testing.
 - **No new dependencies without a clear reason.** The stack is intentionally small.
+- **Every page sets its own title, description and `alternates: localeAlternates(locale, path)`** (`web/lib/seo.ts`) in `generateMetadata`. Without it a page inherits the layout's bare site name, which is how 270 pages once shared one `<title>` (fixed 2026-10-22). A new page adds the same three; reuse its heading / subtitle keys for the title and description.
 - **Site name, author and contact links live only in `web/lib/site.ts`.** Header, footer, About, layout metadata and every export read `SITE`; the brand is a proper noun and stays English in zh-TW, so it is not in `messages/` (there is no `Nav.brand`). A profile link (`SITE.links.x`, `SITE.links.instagram`) shows up in the footer, About, the Person JSON-LD and the articles' discussion block as soon as it's set; `null` hides it everywhere. X is `x.com/suyujaysnotes` (2026-10-06); Instagram is `instagram.com/suyu.baseball.notes` (2026-10-14).
 - **Articles are MDX in the repo, not a CMS.** Data figures are the live season modules embedded by season (`<TeamStats season={2026} block="offense" highlight={["iso"]} />`), never screenshots; PNG only for non-data images (`web/public/articles/<slug>/`). The text's own numbers are dated by the registry's `dataAsOf`. Numbers the site has no module for (free agents, prospects, NPB) go in a `<StatTable>` (static, not DB-checked); MDX has no GFM, so a Markdown pipe table won't render. Add a figure by reusing a season component — don't fork a second copy of a module for articles.
 - **`/api/views/[slug]` is the only write path visitors can trigger.** Keep it that narrow: a whitelisted slug, production only, one parameterized statement, no reader data. Anything new that writes from the site needs the same scrutiny (and its own `web_` table with RLS on).

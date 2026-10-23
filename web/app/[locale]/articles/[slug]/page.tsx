@@ -7,8 +7,8 @@ import ArticleEnd from "@/components/article/ArticleEnd";
 import ClubMatchup from "@/components/article/ClubMatchup";
 import ViewPing from "@/components/article/ViewPing";
 import { ARTICLES, getArticle, shownLocale } from "@/content/articles";
-import { routing } from "@/i18n/routing";
 import { getArticleViews, publicViews } from "@/lib/article-views";
+import { localeAlternates } from "@/lib/seo";
 import { SITE } from "@/lib/site";
 
 // One article: content/articles/<slug>/<locale>.mdx, rendered with the site
@@ -40,10 +40,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     description,
     authors: [{ name: SITE.author, url: SITE.links.linkedin }],
     // One URL per language, so search engines index both and link them as translations.
-    alternates: {
-      canonical: `/${locale}/articles/${slug}`,
-      languages: Object.fromEntries(routing.locales.map((l) => [l, `/${l}/articles/${slug}`])),
-    },
+    alternates: localeAlternates(locale, `/articles/${slug}`),
     openGraph: {
       type: "article",
       title,

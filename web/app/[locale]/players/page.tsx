@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import RosterExplorer from "@/components/RosterExplorer";
@@ -5,8 +6,21 @@ import ScorecardFrame from "@/components/ScorecardFrame";
 import SlidingPill from "@/components/motion/SlidingPill";
 import { Reveal } from "@/components/motion/Reveal";
 import { getRosterByMode, type RosterMode } from "@/lib/players";
+import { localeAlternates } from "@/lib/seo";
 
 export const revalidate = 86400;
+
+// ?mode=all-time is the same page with a different list: one canonical URL.
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Roster" });
+  const meta = await getTranslations({ locale, namespace: "Meta" });
+  return {
+    title: t("title"),
+    description: meta("rosterDescription"),
+    alternates: localeAlternates(locale, "/players"),
+  };
+}
 
 function isMode(value: string | undefined): value is RosterMode {
   return value === "current" || value === "all-time";

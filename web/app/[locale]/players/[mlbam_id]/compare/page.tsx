@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -21,6 +22,7 @@ import Exportable from "@/components/Exportable";
 import SprayChart from "@/components/charts/SprayChart";
 import PitchMovementChart from "@/components/charts/PitchMovementChart";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
+import { playerMetadata } from "@/lib/seo";
 import {
   JAYS,
   SEASON_TOTAL,
@@ -75,6 +77,15 @@ const MIN_BF = 160; // ≈ 40 IP
 function pickSeason(raw: string | undefined, seasons: number[]): number | null {
   const n = Number(raw);
   return raw && seasons.includes(n) ? n : null;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; mlbam_id: string }>;
+}): Promise<Metadata> {
+  const { locale, mlbam_id } = await params;
+  return playerMetadata(locale, mlbam_id, "compare");
 }
 
 export default async function ComparePage({

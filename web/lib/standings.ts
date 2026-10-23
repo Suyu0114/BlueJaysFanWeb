@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { sql } from "./db";
 
 // P11: MLB standings snapshot (web_standings, one row per team per season).
@@ -72,7 +73,8 @@ export const DIVISION_KEY: Record<number, string> = {
   [NL_WEST]: "nlWest",
 };
 
-export async function getStandings(season: number): Promise<StandingsRow[]> {
+// cache(): the standings page reads it for its metadata and its body in one render.
+export const getStandings = cache(async (season: number): Promise<StandingsRow[]> => {
   return sql<StandingsRow[]>`
     select
       season,
@@ -103,7 +105,7 @@ export async function getStandings(season: number): Promise<StandingsRow[]> {
     where season = ${season}
     order by division_id, division_rank
   `;
-}
+});
 
 /** Rows for one division, already ranked. */
 export function byDivision(

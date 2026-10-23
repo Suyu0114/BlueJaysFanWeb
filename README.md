@@ -32,6 +32,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
    - `/standings` — three views behind a hand-drawn segmented toggle: **American League** and **National League** (three division tables each, AL East first, with the full mlb.com column set — W / L / PCT / GB / WCGB / L10 / STRK / RS / RA / DIFF / X-W/L / HOME / AWAY), and **Wild Card** with its own retro AL/NL switch, a cut line, and a clinch-marker legend (z / y / x / e)
    - Club cap logos recoloured to the site palette (navy ink on papaya paper) and wobbled with a shared SVG filter, so they read as hand-drawn stamps rather than glossy vectors
 5. **Home page**
+   - The site name and subtitle, then the three latest articles ("All articles →")
    - "In the Race" module — AL East standings + the AL playoff picture (seeds 1-6, cut line, chasers), in the parchment scorecard chrome
    - Month schedule calendar — opponent (`vs` / `@`) + result/score or game time (ET); doubleheaders show both games; current / most-recent game day highlighted; click a final game to open its box score
    - "Today's Blue Jays" module — HR hero from the most recent game (hardest-contact fallback when nobody homered) + best pitching line (IP / K / H, no fake ERA)
@@ -51,7 +52,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 10. **Articles** (`/articles`, nav "Articles") — long-form season write-ups in English and Chinese; their charts are the season page's own modules, embedded by season and drawn from live data, not screenshots. A draft becomes a page with the Claude Code project skill `/publish-article`, which fact-checks every number against the database (the database wins)
    - Each article has its own share card (link previews on X / LINE / Facebook): the site's hand-drawn scorecard with 2–3 stat cards read live from the database. Plus share buttons, a public view count (shown from 50 views) and a "Join the discussion" link to its X post: the site has no comments on purpose
    - Social cards for X and Instagram in both languages — article, "Baseball 101" (a numbered series explaining one stat with a Blue Jays example) and news — drawn by the same renderer, each kind on its own paper. The Claude Code project skill `/share-card` writes the spec, checks the numbers against the database, renders every size and drafts the captions
-   - Discoverability: `sitemap.xml` + `robots.txt`, canonical + hreflang links, and Vercel Web Analytics for the author
+   - Discoverability: `sitemap.xml` + `robots.txt`, a title / description / canonical + hreflang (with x-default) on every page, `WebSite` JSON-LD on the home page, and Vercel Web Analytics for the author
 11. **About & credit**: `/about` (bio, contact card, how the data works, sharing credit) and a footer on every page with the author and contact links
    - `etl/season_report.py` writes a season-review data pack (team / batters / pitchers / movers / roster moves with every club / league context / five-season team trends vs MLB + definitions and caveats) to `reports/` (git-ignored)
 
@@ -108,7 +109,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 ├── db/migrations/                # plain SQL: 001 → 027
 ├── web/                          # Next.js app
 │   ├── app/[locale]/
-│   │   ├── page.tsx              # Home: standings + schedule calendar + "Today's Blue Jays"
+│   │   ├── page.tsx              # Home: latest articles + "Today's Blue Jays" + standings + schedule calendar
 │   │   ├── template.tsx          # page-to-page fade (skipped on first load)
 │   │   ├── standings/            # Divisions + wild card + clinch legend
 │   │   ├── team/                 # Team trends: five seasons vs MLB (P13)
@@ -137,7 +138,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   │   ├── compare/              # P12 Compare tab: controls, club splits, arc, arsenal compare, velo, zone grid
 │   │   ├── season/               # season page modules: panel, record strip, month by month (+ runs-per-game chart), splits,
 │   │   │                         # trend by game number, team stats vs MLB, value by position (+ vs MLB table), player stats table
-│   │   ├── article/              # figures (season modules + PlayerCards for MDX), StatTable (static article tables, row links), ArticleEnd / ArticleShare, ViewPing
+│   │   ├── article/              # figures (season modules + PlayerCards for MDX), StatTable (static article tables, row links), ArticleCard, ArticleEnd / ArticleShare, ViewPing
 │   │   ├── team/                 # P13 team page: season strip, run sources, rank grid, trends,
 │   │   │                         # rotation/bullpen, ERA vs FIP, trajectory, splits, callouts, glossary
 │   │   ├── Exportable / TableExport  # "PNG ↓" on charts; "PNG ↓" + "Copy table" on tables (generic)
@@ -156,7 +157,7 @@ Built by **Suyu Cheng** · [LinkedIn](https://www.linkedin.com/in/suyu-cheng) ·
 │   │                             # motion (timing tokens), ink-draw, use-lingering-hover, use-details-menu, nav,
 │   │                             # P12: compare, discipline, season-deltas, savant,
 │   │                             # team-season (pure) + team-season-data, export-svg, copy-table,
-│   │                             # site (brand + contacts), export-png, export-table,
+│   │                             # site (brand + contacts), seo (canonical + hreflang, player metadata), export-png, export-table,
 │   │                             # share-card/ (link previews + social cards: layouts, papers, rough.js frame, fonts, DB stats),
 │   │                             # P13: team-trends, team-metrics, team-grid, team-callouts,
 │   │                             # percentile-color, ordinal, team-ids,

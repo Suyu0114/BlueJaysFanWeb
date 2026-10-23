@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import Exportable from "@/components/Exportable";
 import ContactLuck from "@/components/team/ContactLuck";
@@ -24,6 +25,7 @@ import { metricsIn, tiedRank } from "@/lib/team-metrics";
 import { gamesAboveSeries, postseasonResult, seasonSplits, type PostseasonResult, type WinLoss } from "@/lib/team-season";
 import { getLatestTeamSeason, getTeamGames } from "@/lib/team-season-data";
 import { getPostseasonGames, getTeamTrend, getTrendSeasons, type TeamSeasonRow } from "@/lib/team-trends";
+import { localeAlternates } from "@/lib/seo";
 
 // P13: the Blue Jays over five seasons from a team / analyst angle — every
 // number next to the MLB average and the Jays' rank among 30 clubs. Rates,
@@ -42,6 +44,17 @@ function splitContext(clubs: TeamSeasonRow[]) {
     ownDivision: me?.division_id ?? 201,
     divisionOf: new Map(clubs.filter((r) => r.division_id != null).map((r) => [r.team_id, r.division_id as number])),
     pctOf: new Map(clubs.filter((r) => r.pct != null).map((r) => [r.team_id, r.pct as number])),
+  };
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Team" });
+  const seasons = await getTrendSeasons();
+  return {
+    ...(seasons.length > 0 && { title: t("title", { from: seasons[0], to: seasons[seasons.length - 1] }) }),
+    description: t("subtitle"),
+    alternates: localeAlternates(locale, "/team"),
   };
 }
 

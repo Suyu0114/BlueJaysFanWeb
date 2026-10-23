@@ -8,6 +8,7 @@ import { SITE } from "@/lib/site";
 // /sitemap.xml for search engines: every page in both languages, each entry
 // listing its translation (hreflang). Players = everyone on the 2024–2026
 // all-time roster; seasons = every season page; articles = the registry.
+// x-default = English, as in the pages' own alternates (lib/seo.ts).
 // Lives outside [locale]; proxy.ts already skips paths with an extension.
 
 export const revalidate = 86400;
@@ -17,7 +18,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries = (path: string, extra: Partial<MetadataRoute.Sitemap[number]> = {}) =>
     routing.locales.map((locale) => ({
       url: `${SITE.url}/${locale}${path}`,
-      alternates: { languages: Object.fromEntries(routing.locales.map((l) => [l, `${SITE.url}/${l}${path}`])) },
+      alternates: {
+        languages: {
+          ...Object.fromEntries(routing.locales.map((l) => [l, `${SITE.url}/${l}${path}`])),
+          "x-default": `${SITE.url}/${routing.defaultLocale}${path}`,
+        },
+      },
       ...extra,
     }));
 

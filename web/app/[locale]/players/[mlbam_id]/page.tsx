@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -21,6 +22,7 @@ import {
 import CountUp from "@/components/motion/CountUp";
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
+import { playerMetadata } from "@/lib/seo";
 import { getSeasonClubLabels } from "@/lib/compare";
 import { Link } from "@/i18n/navigation";
 import {
@@ -111,6 +113,15 @@ function pickLatest(stats: SeasonStats[]): {
 } {
   const sorted = [...stats].sort((a, b) => b.season - a.season);
   return { latest: sorted[0] ?? null, prior: sorted[1] ?? null };
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; mlbam_id: string }>;
+}): Promise<Metadata> {
+  const { locale, mlbam_id } = await params;
+  return playerMetadata(locale, mlbam_id);
 }
 
 export default async function PlayerOverviewPage({
