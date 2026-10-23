@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
@@ -40,6 +41,7 @@ import { getLeagueSeason } from "@/lib/savant";
 import { r3 } from "@/lib/season-format";
 import { getTeamTrend } from "@/lib/team-trends";
 import { getTeamPositionVsMlb } from "@/lib/team-position";
+import { localeAlternates } from "@/lib/seo";
 
 // P12 M5: the Blue Jays' regular season on one page, vs the season before —
 // record, games above .500 and run differential by game number, month by
@@ -56,6 +58,24 @@ export const revalidate = 3600;
 export async function generateStaticParams() {
   const seasons = await getTeamSeasons();
   return seasons.map((s) => ({ year: String(s) }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; year: string }>;
+}): Promise<Metadata> {
+  const { locale, year } = await params;
+  const season = Number(year);
+  const seasons = await getTeamSeasons();
+  if (!seasons.includes(season)) return {};
+  const t = await getTranslations({ locale, namespace: "Season" });
+  const prior = seasons.includes(season - 1) ? season - 1 : null;
+  return {
+    title: t("title", { season }),
+    description: prior ? t("subtitle", { prior }) : t("subtitleNoPrior"),
+    alternates: localeAlternates(locale, `/season/${season}`),
+  };
 }
 
 export default async function SeasonPage({

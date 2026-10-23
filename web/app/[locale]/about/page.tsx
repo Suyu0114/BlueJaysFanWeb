@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import ContactEmail from "@/components/ContactEmail";
 import ScorecardFrame from "@/components/ScorecardFrame";
 import { Reveal } from "@/components/motion/Reveal";
+import { localeAlternates } from "@/lib/seo";
 import { SITE, xHandle } from "@/lib/site";
 
 // Who made the site and how to reach them: the bio, a contact card (#contact,
@@ -24,7 +25,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "About" });
-  return { title: t("title") };
+  return {
+    title: t("title"),
+    description: t("lede", { site: SITE.name, author: SITE.author }),
+    alternates: localeAlternates(locale, "/about"),
+  };
 }
 
 export default function AboutPage({

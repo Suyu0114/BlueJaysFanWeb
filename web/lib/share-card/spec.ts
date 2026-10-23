@@ -30,6 +30,7 @@ export type ArticleCard = {
   title: Localized;
   season?: number; // the stat cards' season (registry `card`); none = title only
   stats: CardStatKey[]; // 0 or 2–3: "record" or any team metric key (022 views)
+  teams: number[]; // registry `teams`: the clubs' cap logos, "VS" between
 };
 
 export type GlossaryCard = {
@@ -72,6 +73,7 @@ export type PartCard = {
   season?: number;
   stats: CardStatKey[]; // live team values, the article card's stat cards
   facts: Fact[]; // up to 3 tiles in all with `stats`
+  teams: number[]; // the article's registry `teams`: small cap logos in front of the series name
 };
 
 type PartFile = {
@@ -102,6 +104,7 @@ export async function loadCardSpec(kind: CardKind, slug: string, part?: number):
       title: { en: a.title.en ?? a.title["zh-TW"] ?? slug, "zh-TW": a.title["zh-TW"] },
       season: a.card?.season,
       stats: a.card?.stats ?? [],
+      teams: a.teams ?? [],
     };
   }
   const spec = await readSpec(kind, slug);
@@ -124,6 +127,7 @@ export async function loadCardSpec(kind: CardKind, slug: string, part?: number):
     season: file.season,
     stats: p.stats ?? [],
     facts: p.facts ?? [],
+    teams: a.teams ?? [],
   };
 }
 

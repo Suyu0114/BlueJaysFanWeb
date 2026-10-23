@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { sql } from "./db";
 import { lastJaysPosition } from "./season-position";
 
@@ -76,9 +77,10 @@ export async function getRosterByMode(mode: RosterMode): Promise<RosterPlayer[]>
   return mode === "all-time" ? getRosterAllTime() : getRoster();
 }
 
-export async function getPlayer(
+// cache(): a player page reads it for its metadata and its body in one render.
+export const getPlayer = cache(async (
   mlbamId: number,
-): Promise<RosterPlayer | null> {
+): Promise<RosterPlayer | null> => {
   const rows = await sql<RosterPlayer[]>`
     select p.mlbam_id, p.name, p.position, p.bats, p.throws, p.headshot_url,
       coalesce(p.is_active_26, false) as is_active_26,
@@ -89,7 +91,7 @@ export async function getPlayer(
     limit 1
   `;
   return rows[0] ?? null;
-}
+});
 
 // Which subpages should PlayerNav render for this player?
 // - batting / pitching: derived from web_player_seasons.appeared_as_*

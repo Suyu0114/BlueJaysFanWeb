@@ -19,6 +19,9 @@ export type Article = {
   // The share card's stat cards (lib/share-card): which season, and 2–3 keys —
   // "record" or a team metric from the 022 views. Values are read from the DB.
   card?: { season: number; stats: CardStatKey[] };
+  // The clubs the article is about (MLB team ids), for an article on other
+  // clubs: their cap logos over the title, on the list card and the share card.
+  teams?: number[];
 };
 
 export const ARTICLES: Article[] = [
@@ -27,10 +30,11 @@ export const ARTICLES: Article[] = [
     date: "2026-10-22",
     dataAsOf: "2026-10-22",
     locales: ["en", "zh-TW"],
-    // No `card`: the share card's stats are Blue Jays numbers, so this one shows the title only.
+    // No `card`: the share card's stats are Blue Jays numbers, so this one shows the title + the two logos.
+    teams: [158, 139],
     title: {
       en: "2026 World Series preview: Brewers vs. Rays",
-      "zh-TW": "2026 世界大賽前瞻：Brewers vs Rays",
+      "zh-TW": "2026 世界大賽賽前預測：Brewers vs Rays",
     },
     summary: {
       en: "Two clubs chasing a first title. The Brewers won 103 games by getting on base and leaning on a lockdown bullpen; the Rays won 98 by not striking out and not walking anyone, eight more than their run differential predicts. How they match up, and my pick.",

@@ -69,6 +69,21 @@ export async function siteLogo(paper: Pick<KindStyle, "dark" | "paper">, variant
 }
 
 /**
+ * A club's cap logo (public/team-logos/<id>.svg, recoloured navy on papaya by
+ * etl/fetch_team_logos.py) as a data URL, or null when there's no file. Not
+ * knocked out like siteLogo: it is only drawn on article cards and their series
+ * parts, which are both parchment.
+ */
+export async function teamLogo(teamId: number): Promise<string | null> {
+  try {
+    const svg = await readFile(join(process.cwd(), "public", "team-logos", `${teamId}.svg`));
+    return `data:image/svg+xml;base64,${svg.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * A player's cartoon portrait (content/portraits/<mlbam_id>.svg, drawn by
  * scripts/player-portrait.mjs from his feature file via the /player-portrait
  * skill) as a data URL, or null when he has none yet, so the tile falls back to

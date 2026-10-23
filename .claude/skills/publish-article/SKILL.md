@@ -176,6 +176,7 @@ no imports:
 | A non-data image | `<Figure caption="…">![alt](/articles/<slug>/x.png)</Figure>` |
 | A table of numbers the site has no module for (free agents, prospects, NPB) | `<StatTable title="…" file="ascii-name" headers={["Player", "PA"]} rows={[["Randy Arozarena", "670"]]} note="source / scope" />` (`links={["/players/664770", null]}` = a link per row on the first cell, for Jays with a player page) |
 | A player's roster card (the players page's card) | `<PlayerCards ids={[623993, 680718]} />` (MLBAM ids; 1–3 sit in one row) |
+| Another club's players (no page on this site) | `<OtherClubPlayerCards players={[{ id: 694819, name: "Jacob Misiorowski", team: 158, pos: "P", bats: "R", throws: "R" }]} />` (static, from the article's data pack; links to MLB.com, steel frame; list one club's players together: with 4+ cards each club starts a new row) |
 
 - **No Markdown pipe tables.** The site's MDX has no GFM plugin, so a `| a | b |` table renders as
   plain text. Every table is a figure tag: a site module if the data is in the DB, otherwise a
@@ -214,6 +215,9 @@ no imports:
   "r_per_g", "ra_per_g"] }`. Use `"record"` or the metric keys listed in step 4, and pick the
   numbers the article's argument rests on. Values come from the DB when the image is built.
   Without `card` the image shows the title only.
+- `teams`: for an article about other clubs (a World Series preview), their MLB team ids, e.g.
+  `teams: [158, 139]`. Their cap logos go over the title, on the list card, on the share image and on the article's
+  series part cards (`/share-card`).
 - `discuss`: leave it out at first. The site has no comments; readers discuss each article on its
   X / Instagram post. Until the author posts and sends the URL, the article links the profile
   instead. When they send it, add `discuss: { x: "https://x.com/suyujaysnotes/status/…" }`.

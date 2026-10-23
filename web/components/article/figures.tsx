@@ -13,6 +13,7 @@ import { getStandings, TORONTO_TEAM_ID } from "@/lib/standings";
 import { getTeamGames, getTeamPlayerSeasons, getTeamPositionSplits, getTeamSeasons } from "@/lib/team-season-data";
 import { getTeamTrend } from "@/lib/team-trends";
 import { getTeamPositionVsMlb } from "@/lib/team-position";
+import { teamAbbr } from "@/lib/team-abbr";
 import { POSITION_GROUPS, valueByPosition, type SplitKey } from "@/lib/team-season";
 import type { MetricKey } from "@/lib/team-metrics";
 
@@ -239,6 +240,7 @@ const CARD_COLS: Record<number, string> = {
   2: "mx-auto max-w-md grid-cols-2",
   3: "grid-cols-3",
 };
+const cardCols = (n: number) => `grid gap-2 sm:gap-4 ${CARD_COLS[n] ?? "grid-cols-2 sm:grid-cols-4"}`;
 
 /** The players page's roster cards for these players (by MLBAM id), linking to their pages. */
 export async function PlayerCards({ ids, caption }: { ids: number[]; caption?: ReactNode }) {
@@ -247,7 +249,7 @@ export async function PlayerCards({ ids, caption }: { ids: number[]; caption?: R
   const t = await getTranslations("Articles");
   return (
     <Figure caption={caption}>
-      <ul className={`grid gap-2 sm:gap-4 ${CARD_COLS[ids.length] ?? "grid-cols-2 sm:grid-cols-4"}`}>
+      <ul className={cardCols(ids.length)}>
         {players.map(
           (p) =>
             p && (
@@ -267,4 +269,42 @@ export async function PlayerCards({ ids, caption }: { ids: number[]; caption?: R
   );
 }
 
-export const ARTICLE_FIGURES = { Figure, SeasonRecord, TeamStats, PositionValue, PositionVsMlb, SeasonSplits, MonthByMonth, PlayerCards };
+// Other clubs' players never enter the DB, so their cards are written into the MDX (from the
+// article's data pack) and link to MLB.com; the headshot is MLB's, same URL as etl/mlb_api.py HEADSHOT_URL.
+type ClubPlayer = { id: number; name: string; team: number; pos: string; bats: string; throws: string };
+const headshotUrl = (id: number) => `https://midfield.mlbstatic.com/v1/people/${id}/spots/120`;
+const mlbPlayerUrl = (id: number) => `https://www.mlb.com/player/${id}`;
+
+/**
+ * Roster cards for another club's players (team = MLB team id), linking to MLB.com in a steel frame.
+ * With 4+ cards each club starts its own row, so a 3 + 4 split doesn't share a row.
+ */
+export function OtherClubPlayerCards({ players, caption }: { players: ClubPlayer[]; caption?: ReactNode }) {
+  return (
+    <Figure caption={caption}>
+      <ul className={cardCols(players.length)}>
+        {players.map((p, i) => (
+          <li key={p.id} className={players.length > 3 && i > 0 && p.team !== players[i - 1].team ? "col-start-1" : undefined}>
+            <RosterCard
+              player={{ mlbam_id: p.id, name: p.name, position: p.pos, bats: p.bats, throws: p.throws, headshot_url: headshotUrl(p.id) }}
+              club={teamAbbr(p.team)}
+              href={mlbPlayerUrl(p.id)}
+            />
+          </li>
+        ))}
+      </ul>
+    </Figure>
+  );
+}
+
+export const ARTICLE_FIGURES = {
+  Figure,
+  SeasonRecord,
+  TeamStats,
+  PositionValue,
+  PositionVsMlb,
+  SeasonSplits,
+  MonthByMonth,
+  PlayerCards,
+  OtherClubPlayerCards,
+};

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import ScorecardFrame from "@/components/ScorecardFrame";
 import { Reveal } from "@/components/motion/Reveal";
@@ -14,23 +15,17 @@ import {
   NL_DIVISIONS,
   type StandingsRow,
 } from "@/lib/standings";
+import { localeAlternates } from "@/lib/seo";
 
 // Standings move daily and the nightly ETL pings /api/revalidate anyway; 1h
 // matches the home page. The view switcher is client-side (StandingsTabs), so
 // the page stays statically rendered.
 export const revalidate = 3600;
 
-export default async function StandingsPage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
-  const { locale } = await params;
-  setRequestLocale(locale);
-  const t = await getTranslations("Standings");
-
-  // Same offseason fallback as the home page: before the new season's feed
-  // populates, show last season's final standings rather than an empty page.
+// Same offseason fallback as the home page: before the new season's feed
+// populates, show last season's final standings rather than an empty page.
+// getStandings is cached, so the metadata and the page share the query.
+async function currentStandings(): Promise<{ season: number; rows: StandingsRow[] }> {
   const todayET = new Date().toLocaleDateString("en-CA", {
     timeZone: "America/New_York",
   });
@@ -40,6 +35,29 @@ export default async function StandingsPage({
     season -= 1;
     rows = await getStandings(season);
   }
+  return { season, rows };
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Standings" });
+  const { season } = await currentStandings();
+  return {
+    title: t("title"),
+    description: t("subtitle", { season }),
+    alternates: localeAlternates(locale, "/standings"),
+  };
+}
+
+export default async function StandingsPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations("Standings");
+  const { season, rows } = await currentStandings();
 
   const divisions = (ids: readonly number[], all: StandingsRow[]) =>
     ids.map((d) => (

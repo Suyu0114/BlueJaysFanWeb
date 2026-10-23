@@ -27,7 +27,14 @@
     "seasonProgress": "{season} so far",
     "vsLastYear": "vs {season} final",
     "onPaceFor": "on pace for {pace}",
-    "progressDisclaimer": "Compared against last season's full-year WAR, not the same date last year."
+    "progressDisclaimer": "Compared against last season's full-year WAR, not the same date last year.",
+    "latestArticles": "Latest articles",
+    "allArticles": "All articles →"
+  },
+  "Meta": {
+    "rosterDescription": "The Toronto Blue Jays' 26-man roster and everyone who played for them in 2024–2026, each with a stats page.",
+    "playerTitle": "{name} stats",
+    "playerDescription": "{name}'s Blue Jays stats: season lines, Statcast charts and game logs."
   },
   "Calendar": {
     "title": "Schedule",
@@ -388,6 +395,7 @@
     "tabAll": "All 2024-2026",
     "bats": "Bats",
     "throws": "Throws",
+    "mlbLink": "MLB.com ↗",
     "filterLabel": "Filter by type",
     "filterAll": "All",
     "filterPitchers": "Pitchers",

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import SprayChartExplorer from "@/components/charts/SprayChartExplorer";
@@ -6,8 +7,18 @@ import { Reveal } from "@/components/motion/Reveal";
 import { getBattedBalls } from "@/lib/batting";
 import { getSeasonClubLabels } from "@/lib/compare";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
+import { playerMetadata } from "@/lib/seo";
 
 export const revalidate = 86400;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; mlbam_id: string }>;
+}): Promise<Metadata> {
+  const { locale, mlbam_id } = await params;
+  return playerMetadata(locale, mlbam_id, "batting");
+}
 
 export default async function BattingPage({
   params,

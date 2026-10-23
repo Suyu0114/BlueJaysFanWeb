@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import FieldingDiagram from "@/components/charts/FieldingDiagram";
@@ -5,6 +6,7 @@ import PlayerNav from "@/components/PlayerNav";
 import { Reveal } from "@/components/motion/Reveal";
 import { getFielding } from "@/lib/fielding";
 import { getPlayer, getPlayerAvailability } from "@/lib/players";
+import { playerMetadata } from "@/lib/seo";
 import { getSeasonClubLabels } from "@/lib/compare";
 
 export const revalidate = 86400;
@@ -20,6 +22,15 @@ function frvTone(v: number | null): string {
   if (v > 0) return "text-grass";
   if (v < 0) return "text-brick";
   return "text-navy/60";
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; mlbam_id: string }>;
+}): Promise<Metadata> {
+  const { locale, mlbam_id } = await params;
+  return playerMetadata(locale, mlbam_id, "fielding");
 }
 
 export default async function FieldingPage({

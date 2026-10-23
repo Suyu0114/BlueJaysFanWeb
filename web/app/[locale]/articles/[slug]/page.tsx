@@ -4,10 +4,11 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { Reveal } from "@/components/motion/Reveal";
 import ArticleEnd from "@/components/article/ArticleEnd";
+import ClubMatchup from "@/components/article/ClubMatchup";
 import ViewPing from "@/components/article/ViewPing";
 import { ARTICLES, getArticle, shownLocale } from "@/content/articles";
-import { routing } from "@/i18n/routing";
 import { getArticleViews, publicViews } from "@/lib/article-views";
+import { localeAlternates } from "@/lib/seo";
 import { SITE } from "@/lib/site";
 
 // One article: content/articles/<slug>/<locale>.mdx, rendered with the site
@@ -39,10 +40,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     description,
     authors: [{ name: SITE.author, url: SITE.links.linkedin }],
     // One URL per language, so search engines index both and link them as translations.
-    alternates: {
-      canonical: `/${locale}/articles/${slug}`,
-      languages: Object.fromEntries(routing.locales.map((l) => [l, `/${l}/articles/${slug}`])),
-    },
+    alternates: localeAlternates(locale, `/articles/${slug}`),
     openGraph: {
       type: "article",
       title,
@@ -92,6 +90,7 @@ export default async function ArticlePage({ params }: { params: Params }) {
         {t("back")}
       </Link>
       <Reveal as="section" className="mt-4">
+        {article.teams && <ClubMatchup teams={article.teams} className="mb-3" />}
         <h1 className="text-3xl font-semibold leading-tight text-navy">{title}</h1>
         <p className="mt-3 text-sm text-navy/65" lang={locale}>
           {t("byline", { author: SITE.author })} · <time dateTime={article.date}>{day(article.date)}</time>

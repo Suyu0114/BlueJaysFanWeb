@@ -27,7 +27,14 @@
     "seasonProgress": "{season} 本季進度",
     "vsLastYear": "相較 {season} 球季",
     "onPaceFor": "預估全季 {pace}",
-    "progressDisclaimer": "與去年球季最終 WAR 相比，並非去年同期的數字。"
+    "progressDisclaimer": "與去年球季最終 WAR 相比，並非去年同期的數字。",
+    "latestArticles": "最新文章",
+    "allArticles": "所有文章 →"
+  },
+  "Meta": {
+    "rosterDescription": "Toronto Blue Jays 26 人現役名單，以及 2024–2026 期間曾為藍鳥出賽的每位球員，各有一頁數據。",
+    "playerTitle": "{name} 數據",
+    "playerDescription": "{name} 的藍鳥數據：逐季成績、Statcast 圖表與比賽紀錄。"
   },
   "Calendar": {
     "title": "賽程",
@@ -388,6 +395,7 @@
     "tabAll": "歷年陣容",
     "bats": "打擊",
     "throws": "投球",
+    "mlbLink": "MLB.com 球員頁 ↗",
     "filterLabel": "依類型篩選",
     "filterAll": "全部",
     "filterPitchers": "投手",
